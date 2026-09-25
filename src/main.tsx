@@ -20,7 +20,7 @@ import ReelsScreen from "@/routes/ReelsScreen.tsx";
 RuntimeLoader.setWasmUrl(riveWasmUrl);
 RuntimeLoader.setWasmFallbackUrl(riveFallbackWasmUrl);
 
-faceapi.nets.tinyFaceDetector.loadFromUri('/static/facemodels/').then(r => {
+faceapi.nets.tinyFaceDetector.loadFromUri('static/facemodels/').then(r => {
     console.log("Loaded Face Detector Model");
 })
 

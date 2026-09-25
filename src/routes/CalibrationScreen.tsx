@@ -66,7 +66,7 @@ export default function CalibrationScreen() {
         microphoneIndicatorRef.current.start()
 
         if (timerCompleteAudioRef.current == null) {
-            timerCompleteAudioRef.current = new Audio("/static/audio/timer_complete.mp3")
+            timerCompleteAudioRef.current = new Audio("static/audio/timer_complete.mp3")
         }
     }, [])
 

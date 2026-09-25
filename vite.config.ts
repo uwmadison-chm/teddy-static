@@ -12,6 +12,8 @@ export default defineConfig({
   plugins: [
     react(),
   ],
+  // Relative base so the build works from any subdirectory
+  base: './',
   assetsInclude: ['src/assets/**'],
   server: {
     port: 9000,

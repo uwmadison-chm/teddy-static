@@ -60,7 +60,7 @@ export default function ReelsScreen() {
             if (!videoElementsRef.current.length) {
                 for (const reelID of reelIDs.current) {
                     const videoElement = document.createElement('video');
-                    videoElement.setAttribute('src', "/static/reels/" + TeddyReels[reelID]);
+                    videoElement.setAttribute('src', "static/reels/" + TeddyReels[reelID]);
                     videoElement.load()
                     videoElement.addEventListener("playing", ()=> {
                         CurrentSessionData.logEvent("reelPlaying", reelID);
