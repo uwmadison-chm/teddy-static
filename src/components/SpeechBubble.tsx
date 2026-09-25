@@ -60,7 +60,7 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
     const setMessageTimeout = () => {
         cancelMessageTimeout();
         if (maxTextDuration) {
-            setTimeoutId(setTimeout(() => {
+            setTimeoutId(window.setTimeout(() => {
                 setDidTimeout(true);
             }, maxTextDuration));
         }

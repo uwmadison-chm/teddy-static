@@ -27,7 +27,7 @@ export const TypeWriter = React.forwardRef<TypeWriterFunctions, Props>(({onTypin
     useEffect(() => {
         if (isTyping) {
             currentProgressRef.current = 0
-            intervalRef.current = setInterval(() => {
+            intervalRef.current = window.setInterval(() => {
                 currentProgressRef.current += 1;
                 setCurrentProgress(currentProgressRef.current)
                 if (currentProgressRef.current >= displayString.length) {
