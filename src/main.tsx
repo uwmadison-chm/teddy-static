@@ -7,11 +7,18 @@ import IntroScreen from "@/routes/IntroScreen.tsx";
 import SpeechBubbleBlocker from "@/components/SpeechBubbleBlocker.tsx";
 import RecordingNotification from "@/components/RecordingNotification.tsx";
 import * as faceapi from 'face-api.js';
+import { RuntimeLoader } from "@rive-app/react-webgl2";
+import riveWasmUrl from "@rive-app/webgl2/rive.wasm?url";
+import riveFallbackWasmUrl from "@rive-app/webgl2/rive_fallback.wasm?url";
 import SessionExpiredScreen from "@/routes/SessionExpiredScreen.tsx";
 import CompleteSessionScreen from "@/routes/CompleteSessionScreen.tsx";
 import VideoLogScreen from "@/routes/VideoLogScreen.tsx";
 import SentencesScreen from "@/routes/SentencesScreen.tsx";
 import ReelsScreen from "@/routes/ReelsScreen.tsx";
+
+// Serve Rive's WASM ourselves instead of from its default CDNs
+RuntimeLoader.setWasmUrl(riveWasmUrl);
+RuntimeLoader.setWasmFallbackUrl(riveFallbackWasmUrl);
 
 faceapi.nets.tinyFaceDetector.loadFromUri('/static/facemodels/').then(r => {
     console.log("Loaded Face Detector Model");

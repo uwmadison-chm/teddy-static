@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
-import emitter from "tiny-emitter/instance";
+import * as events from "@/utils/events.tsx";
 import { IoVideocam } from "react-icons/io5";
 
 const RecordingNotification = () => {
     const [isUp, setIsUp] = useState(false);
 
     useEffect(() => {
-        emitter.on("recordingnotificationstatus", (isShown: boolean) => {
+        const off = events.on("recordingnotificationstatus", (isShown) => {
             setIsUp(isShown);
         });
         return () => {
-            emitter.off("recordingnotificationstatus");
+            off();
         };
     }, []);
     if (!isUp) {

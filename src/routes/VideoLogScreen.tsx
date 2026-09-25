@@ -1,5 +1,6 @@
 import {getRandomItem, removeItem, saveBlob, useAnimatedNavigate} from "@/utils/utils"
-import {Teddy, TeddyAnimations, type TeddyFunctions} from "@/components/Teddy.tsx";
+import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
+import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {
     FADING_PANEL_DEFAULT_LABEL,
     FadingPanel,

@@ -1,13 +1,14 @@
 import {useEffect, useRef} from "react";
-import {Teddy, TeddyAnimations, type TeddyFunctions} from "@/components/Teddy.tsx";
-import {SetCanLeavePageSafely} from "@/data/sessionData.tsx";
+import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
+import {TeddyAnimations} from "@/components/teddyAnimations.ts";
+import {setCanLeavePageSafely} from "@/data/sessionData.tsx";
 
 
 export default function SessionExpiredScreen() {
     const teddyRef = useRef<TeddyFunctions>(null);
 
     useEffect(() => {
-        SetCanLeavePageSafely()
+        setCanLeavePageSafely()
         teddyRef.current?.showTextSequence(TeddyAnimations.SADNESS,
           [
               "Oh no, this session has expired!",

@@ -21,6 +21,7 @@
     },
 
     /* Linting */
+    "strict": false,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true

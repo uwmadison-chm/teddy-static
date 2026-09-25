@@ -1,7 +1,6 @@
 import * as React from "react";
-import {useCallback, useEffect, useImperativeHandle, useRef, useState} from "react";
-import Cookies from "js-cookie";
-import emitter from "tiny-emitter/instance";
+import {useCallback, useEffect, useEffectEvent, useImperativeHandle, useRef, useState} from "react";
+import * as events from "@/utils/events.tsx";
 
 export interface UserVideoProps {
     onInitialized?: () => void;
@@ -21,11 +20,11 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
     const onRecordingCompleteRef = useRef<(result:Blob)=>void>(null);
     const timeoutRef = useRef<number>(null);
 
-    const [silhouetteShown, setSilhouetteShown] = useState<boolean>(Cookies.get("SilhouetteShown") == "true");
+    const [silhouetteShown, setSilhouetteShown] = useState<boolean>(localStorage.getItem("SilhouetteShown") == "true");
     const isRecording = useRef<boolean>(false);
 
 
-    const startCamera = () => {
+    const startCamera = useEffectEvent(() => {
         navigator.mediaDevices
             .getUserMedia({ video: {facingMode: 'user', height: {ideal: 600}}, audio: true, })
             .then((localMediaStream) => {
@@ -54,7 +53,7 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
             .catch((error) => {
                 console.log("Rejected!", error);
             });
-    }
+    });
 
     useEffect(() => {
         startCamera()
@@ -73,7 +72,7 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
             // @ts-expect-error
             timeoutRef.current = setTimeout(stopRecording, timeout);
         }
-        emitter.emit("recordingnotificationstatus", true);
+        events.emit("recordingnotificationstatus", true);
         isRecording.current = true;
     }
 
@@ -86,7 +85,7 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
             timeoutRef.current = null;
         }
         mediaRecorderRef.current.stop();
-        emitter.emit("recordingnotificationstatus", false);
+        events.emit("recordingnotificationstatus", false);
         isRecording.current = false;
     }
 
@@ -117,7 +116,7 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
                            checked={silhouetteShown}
                            onChange={(e) => {
                                setSilhouetteShown(e.target.checked)
-                               Cookies.set("SilhouetteShown", e.target.checked);
+                               localStorage.setItem("SilhouetteShown", String(e.target.checked));
                            }}/>
                     <span className="handle"></span>
                 </label>

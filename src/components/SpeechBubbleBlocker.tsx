@@ -1,26 +1,26 @@
 import { useEffect, useState } from "react";
-import emitter from "tiny-emitter/instance";
+import * as events from "@/utils/events.tsx";
 
 const SpeechBubbleBlocker = () => {
     const [isUp, setIsUp] = useState(false);
 
     useEffect(() => {
-        emitter.on("speechbubblestatus", (isShown: boolean) => {
+        const off = events.on("speechbubblestatus", (isShown) => {
             setIsUp(isShown);
             if ('ontouchstart' in window) {
                 window.document.body.ontouchstart = (e: TouchEvent) => {
-                    emitter.emit("speechbubbleblockerclicked");
+                    events.emit("speechbubbleblockerclicked");
                 }
             } else {
                 window.document.body.onclick = (e: PointerEvent) => {
                     if (e.pointerType) {
-                        emitter.emit("speechbubbleblockerclicked");
+                        events.emit("speechbubbleblockerclicked");
                     }
                 }
             }
         });
         return () => {
-            emitter.off("speechbubblestatus");
+            off();
             window.document.onclick = null;
         };
     }, []);
@@ -40,7 +40,7 @@ const SpeechBubbleBlocker = () => {
 //                 right: 0
 //         }}
 //              onClick={()=> {
-//                  emitter.emit("speechbubbleblockerclicked");
+//                  events.emit("speechbubbleblockerclicked");
 //              }}
 //         >
 //     </div>

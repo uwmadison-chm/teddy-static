@@ -1,6 +1,7 @@
 import {useAnimatedNavigate} from "@/utils/utils"
-import {useEffect, useRef} from "react";
-import {Teddy, TeddyAnimations, type TeddyFunctions} from "@/components/Teddy.tsx";
+import {useEffect, useEffectEvent, useRef} from "react";
+import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
+import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {
     FADING_PANEL_DEFAULT_LABEL,
     FadingPanel,
@@ -20,7 +21,7 @@ export default function IntroScreen() {
     const hasExpired = CurrentSessionData.hasExpired();
     const noFadeNavigate = useNavigate();
 
-    useEffect(() => {
+    const onMount = useEffectEvent(() => {
         if (hasExpired) {
             noFadeNavigate("sessionexpired");
         }
@@ -32,7 +33,10 @@ export default function IntroScreen() {
               fadingPanelRef.current.showStartPanel()
           }
         );
+    });
 
+    useEffect(() => {
+        onMount();
     }, [])
 
     async function checkForCameraPermissions() {

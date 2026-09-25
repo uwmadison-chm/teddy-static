@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useImperativeHandle, useRef, useState} from "react";
+import {useCallback, useEffect, useEffectEvent, useImperativeHandle, useRef, useState} from "react";
 import * as React from "react";
 
 export interface TypeWriterFunctions {
@@ -24,10 +24,10 @@ export const TypeWriter = React.forwardRef<TypeWriterFunctions, Props>(({onTypin
         };
     }, []);
 
-    useEffect(() => {
+    const onTypingChanged = useEffectEvent((isTyping: boolean) => {
         if (isTyping) {
             currentProgressRef.current = 0
-            intervalRef.current = setInterval(() => {
+            intervalRef.current = window.setInterval(() => {
                 currentProgressRef.current += 1;
                 setCurrentProgress(currentProgressRef.current)
                 if (currentProgressRef.current >= displayString.length) {
@@ -39,13 +39,16 @@ export const TypeWriter = React.forwardRef<TypeWriterFunctions, Props>(({onTypin
             clearInterval(intervalRef.current)
             onTypingComplete()
         }
+    });
 
+    useEffect(() => {
+        onTypingChanged(isTyping);
     }, [isTyping]);
 
     const onSkipToEnd = useCallback(() => {
         setIsTyping(false);
         setCurrentProgress(Number.POSITIVE_INFINITY)
-    }, [isTyping, displayString])
+    }, [])
 
     useImperativeHandle(ref, () => ({
         showText: (newText) => {
