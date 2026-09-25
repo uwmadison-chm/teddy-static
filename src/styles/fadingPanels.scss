@@ -1,0 +1,72 @@
+@use "./colors.scss";
+
+.fade-panel-set {
+    position: absolute;
+    bottom: 7%;
+    left: 12%;
+    right:12%;
+
+    .fade-panel {
+        flex-direction:column;
+    }
+
+    $border-radius: 0;
+    $big-border-radius: 5vh;
+    button {
+        width: 100%;
+        margin-top: .2vh;
+        font-size: 2.6vh;
+        padding: 1.8vh 5vh;
+        height: auto;
+        font-weight: 400;
+        border: none;
+        border-radius: $border-radius;
+        color: colors.$onPrimary;
+        user-select: none;
+        cursor: pointer;
+
+        background-color: colors.$primaryColor;
+
+        &:active {
+            background-color: colors.$primaryColor1;
+        }
+
+        &:first-child {
+            border-top-left-radius: $big-border-radius;
+            border-top-right-radius: $big-border-radius;
+        }
+        &:last-child {
+            border-bottom-left-radius: $big-border-radius;
+            border-bottom-right-radius: $big-border-radius;
+        }
+
+        &:nth-child(2) {
+            background-color: colors.$primaryColor1;
+
+            &:active {
+                background-color: colors.$primaryColor2;
+            }
+        }
+        &:nth-child(3) {
+            background-color: colors.$primaryColor2;
+
+            &:active {
+                background-color: colors.$primaryColor3;
+            }
+        }
+        &:nth-child(4) {
+            background-color: colors.$primaryColor3;
+
+            &:active {
+                background-color: colors.$primaryColor4;
+            }
+        }
+        &:nth-child(5) {
+            background-color: colors.$primaryColor4;
+
+            &:active {
+                background-color: colors.$primaryColor5;
+            }
+        }
+    }
+}

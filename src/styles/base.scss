@@ -1,0 +1,68 @@
+@use "./colors.scss";
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,100..900;1,100..900');
+
+* {
+  box-sizing: border-box;
+  margin: 0px;
+  padding: 0px;
+  font: inherit;
+  overflow-wrap: break-word;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+img, svg, video, canvas, audio, iframe, embed, object {
+  display: block;
+  vertical-align: middle;
+}
+
+html,
+body, #root {
+  user-select: none;
+  padding:0;
+  margin:0;
+  background-color: colors.$pageBGColor;
+  height: 100%;
+  overflow: hidden;
+  max-width:100%;
+  font-family: Inter, -apple-system, "system-ui", "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  font-feature-settings: "cv11";
+  text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizelegibility;
+  touch-action: manipulation;
+  tab-size: 4;
+  line-height:1.5;
+}
+
+.wrapper {
+  height:100%;
+  width:100%;
+}
+
+.uninteractive {
+  pointer-events: none;
+  cursor:default;
+}
+
+.phone-screen-wrapper {
+  background-color: colors.$phoneAreaBGColor;
+  box-shadow: 2px 2px 8px 0 rgba(0, 0, 0, 0.3);
+  border-left: 1px solid #f0f0f0;
+  border-right: 1px solid #f0f0f0;
+  height:100%;
+  margin:0 auto;
+  display: flex;
+  max-width: 60vh;
+  overflow: hidden;
+  position: relative;
+}
+
+.spacer {
+  flex-grow: 1;
+  display: flex;
+}
+

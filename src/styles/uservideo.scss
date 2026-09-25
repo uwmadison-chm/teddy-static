@@ -1,0 +1,183 @@
+@use "./colors.scss";
+
+.user-video {
+  width: 25%;
+  margin: 5vh 10% 0;
+  aspect-ratio: 1;
+  position: absolute;
+  top:0;
+  right:0;
+  z-index:15000;
+
+  .user-video-cover {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 500px;
+    position: relative;
+    top: 0;
+    left: 0;
+  }
+
+  video {
+    width: 100%;
+    height: 100%;
+    transform: scaleX(-1);
+    object-fit: cover;
+  }
+
+  .bg {
+    width: 100%;
+    height: 100%;
+    background-color: colors.$uservideoBG;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+  }
+
+  .outline,
+  .silhouette {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-image: url("/static/images/silhouette.png");
+    background-size: cover;
+    z-index: 10;
+    -webkit-transition: .4s;
+    transition: .4s;
+  }
+  .outline {
+    background-image: url("/static/images/headoutline.png");
+  }
+
+  .silhouette-controls {
+    position: absolute;
+    bottom: -2.5vh;
+    left:50%;
+    transform: translateX(-50%);
+    width:13vh;
+    height: 4vh;
+    background-color: white;
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    border-radius: 1vh;
+    font-size: 1.1vh;
+    font-weight: 600;
+    padding: 0 5%;
+    line-height:100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 20000;
+    cursor:default;
+
+    .icon {
+      display: inline-block;
+      height: 60%;
+      aspect-ratio: 1;
+      mask-image: url("/static/images/silhouette.png");
+      mask-size: cover;
+      background: #ccc;
+      margin-bottom: 2%;
+
+      &.outline-icon {
+        mask-image: url("/static/images/headoutline.png");
+        background: #eee;
+      }
+    }
+
+    .switch {
+      margin:0 .7vh;
+      flex-shrink: 0;
+    }
+  }
+}
+
+
+.recording-notification {
+  position:absolute;
+  margin: 3vh 0;
+  background-color: white;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  border: 1px solid #efefef;
+  border-radius: 2.5vh;
+  height: 3vh;
+  aspect-ratio: 5;
+  line-height:2.8vh;
+  text-align: center;
+  font-size: 1.6vh;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%);
+  cursor:default;
+  font-weight: 600;
+
+  svg {
+    display: inline-block;
+    margin-right:5%;
+    color: colors.$recordingColor;
+    height:100%;
+    margin-top:-1%;
+    vertical-align: middle;
+  }
+}
+
+.countdown-timer,
+.face-detector {
+  position: absolute;
+  top: 40vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width:20vh;
+  height:20vh;
+}
+.circle-progress-text {
+  cursor: default;
+  font-size: 6vh;
+  font-weight: 700;
+  transition-duration: 0.5s;
+}
+
+.microphone-level-indicator {
+
+  height: 3vh;
+  width: 3vh;
+  margin: 2.5vh 5% 0;
+  aspect-ratio: 1;
+  position: absolute;
+  top:0;
+  right:0;
+
+  .indicator {
+    mask-image: url("/static/images/microphone-levels.svg");
+    background-color: #ccc;
+    mask-size: cover;
+    height: 100%;
+    width: 100%;
+    position: relative;
+
+    .level {
+      background-color: colors.$primaryColor1;
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:0;
+      transition-duration: 0.1s;
+    }
+  }
+
+
+
+  &::before {
+    content: "";
+    width: 70%;
+    height: 70%;
+    background-color: colors.$primaryColor4;
+    position: absolute;
+    top:50%;
+    left:-80%;
+    transform: translate(0, -50%);
+    mask-image: url("/static/images/microphone.svg");
+    mask-size: cover;
+  }
+}

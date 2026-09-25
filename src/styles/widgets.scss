@@ -1,0 +1,60 @@
+@use "./colors.scss";
+
+$width: 4vh;
+$height: 2.4vh;
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 4vh;
+  height: 2.4vh;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .handle {
+    position: absolute;
+    cursor: pointer;
+    border-radius: calc($height/2);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: .4s;
+    transition: .4s;
+
+    &:before {
+      position: absolute;
+      content: "";
+      height: $height*.8;
+      aspect-ratio: 1;
+      left: $width*.06;
+      bottom: $height*.1;
+      background-color: white;
+      -webkit-transition: .4s;
+      transition: .4s;
+      border-radius: 50%;
+    }
+  }
+
+  input:checked + .handle {
+    background-color: colors.$primaryColor;
+  }
+
+  input:focus + .handle {
+    box-shadow: 0 0 1px colors.$primaryColor;
+  }
+
+  input:checked + .handle:before {
+    -webkit-transform: translateX(84%);
+    -ms-transform: translateX(84%);
+    transform: translateX(84%);
+  }
+
+}
+
+

@@ -1,0 +1,41 @@
+@use "./colors.scss";
+
+$width: 4vh;
+$height: 3.5vh;
+
+.loader {
+  margin-bottom: 3vh;
+  width: calc(6*$width);
+  height: calc(2*$height);
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  color: colors.$uservideoBG;
+  filter: drop-shadow($width $height 0 currentColor) drop-shadow($width*2 0 0 currentColor) drop-shadow($width*4 0 0 currentColor);
+  clip-path: inset(0 100% 0 0);
+  animation: l12 2s infinite steps(7);
+}
+.loader:before {
+  content: "";
+  width: $width;
+  height: $height;
+  --c:no-repeat radial-gradient(farthest-side,currentColor 92%,#0000);
+  background:
+          var(--c) left /70% 70%,
+          var(--c) right/20% 20%,
+          var(--c) top    0 right 15%/20% 20%,
+          var(--c) bottom 0 right 15%/20% 20%;
+}
+@keyframes l12 {
+  100% {clip-path: inset(0 (-$width) 0 0)}
+}
+
+.loader-wrapper {
+  position:absolute;
+  left: 0;
+  right: 0;
+  top: 55vh;
+  text-align: center;
+  font-size: 3vh;
+  font-weight:200;
+}
