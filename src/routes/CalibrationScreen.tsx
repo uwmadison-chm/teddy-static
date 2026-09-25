@@ -1,5 +1,6 @@
 import {saveBlob, useAnimatedNavigate} from "@/utils/utils"
-import {Teddy, TeddyAnimations, type TeddyFunctions} from "@/components/Teddy.tsx";
+import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
+import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {
     FADING_PANEL_DEFAULT_LABEL,
     FadingPanel,
@@ -30,7 +31,7 @@ export default function CalibrationScreen() {
     const faceDetectButtonDelayTimeout = useRef(null);
 
     const [tryingToDetectFace, setTryingToDetectFace] = useState<boolean>(true);
-    const postDetectFaceTimeoutRef = useRef<any>(null);
+    const postDetectFaceTimeoutRef = useRef<number | null>(null);
 
 
     useEffect(() => {
@@ -102,7 +103,7 @@ export default function CalibrationScreen() {
 
 
             if (userVideoRef.current.getIsRecording()) {
-                postDetectFaceTimeoutRef.current = setTimeout(() => {
+                postDetectFaceTimeoutRef.current = window.setTimeout(() => {
                     userVideoRef.current.stop();
                     postDetectFaceTimeoutRef.current = null;
                 }, 5000)

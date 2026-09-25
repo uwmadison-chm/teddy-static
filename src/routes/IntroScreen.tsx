@@ -1,6 +1,7 @@
 import {useAnimatedNavigate} from "@/utils/utils"
 import {useEffect, useRef} from "react";
-import {Teddy, TeddyAnimations, type TeddyFunctions} from "@/components/Teddy.tsx";
+import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
+import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {
     FADING_PANEL_DEFAULT_LABEL,
     FadingPanel,

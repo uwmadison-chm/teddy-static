@@ -1,7 +1,8 @@
 import {useEffect, useRef, useState} from "react";
-import {Teddy, TeddyAnimations, type TeddyFunctions} from "@/components/Teddy.tsx";
+import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
+import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {VideoUploader} from "@/data/videoUploader.tsx";
-import {CurrentSessionData, SetCanLeavePageSafely} from "@/data/sessionData.tsx";
+import {CurrentSessionData, setCanLeavePageSafely} from "@/data/sessionData.tsx";
 import {
     FADING_PANEL_DEFAULT_LABEL,
     FadingPanel,
@@ -27,7 +28,7 @@ export default function CompleteSessionScreen() {
     function onVideosCompletedUploaded(didUpload:boolean) {
         const nextURL = CurrentSessionData.nextURL;
         if (!nextURL) {
-            SetCanLeavePageSafely()
+            setCanLeavePageSafely()
         }
         setWaitingForVideoUploads(false);
 
@@ -98,7 +99,7 @@ export default function CompleteSessionScreen() {
                 <FadingPanel label={FADING_PANEL_DEFAULT_LABEL}>
                     <button
                             onClick={(_e)=>{
-                                SetCanLeavePageSafely()
+                                setCanLeavePageSafely()
                                 window.location.assign(CurrentSessionData.nextURL);
                             }}>
                         Continue to REDCap

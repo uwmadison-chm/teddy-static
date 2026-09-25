@@ -175,7 +175,7 @@ export const CurrentSessionData = new SessionData();
 const pageStatus = {
     canLeave:false
 }
-export function SetCanLeavePageSafely() {
+export function setCanLeavePageSafely() {
     pageStatus.canLeave = true
 }
 window.addEventListener("beforeunload", function (e) {

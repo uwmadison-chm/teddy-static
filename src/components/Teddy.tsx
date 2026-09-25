@@ -1,5 +1,5 @@
 import * as React from "react";
-import {type RefObject, useCallback, useEffect, useImperativeHandle, useRef} from "react";
+import {useCallback, useEffect, useImperativeHandle, useRef} from "react";
 import {
     Fit,
     Layout,
@@ -8,7 +8,8 @@ import {
     useRive,
     useStateMachineInput
 } from "@rive-app/react-webgl2";
-import {SpeechBubble} from "@/components/SpeechBubble.tsx";
+import {SpeechBubble, type SpeechBubbleFunctions} from "@/components/SpeechBubble.tsx";
+import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 
 export interface TeddyProps {
     initialAnimation?: string,
@@ -28,25 +29,10 @@ export interface TeddyFunctions {
     playAnimation:(animation:string) => void;
 }
 
-export const TeddyAnimations = {
-    IDLE: "idle",
-    WATCH_MOVIE: "watch_movie",
-    WAVE: "wave",
-    WAVE_SHORT: "wave_short",
-    PEERING: "is_peering",
-    SUCCESS: "success",
-    SADNESS: "sadness",
-    FAIL: "fail",
-    HANDS_UP: "hands_up",
-    HANDS_DOWN: "hands_down",
-    SLIGHTLY_HAPPY: "slightly_happy",
-    LISTEN: "is_listening",
-}
-
 export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnimation, isSmallTeddy, ...textBubblesProps}, ref) => {
 
     const stateMachineAnimations = useRef({} as { [id: string] : StateMachineInput; })
-    const speechBubbleRef :RefObject<any> = useRef(null)
+    const speechBubbleRef = useRef<SpeechBubbleFunctions>(null)
 
     const { RiveComponent, rive, canvas } = useRive({
         src: "static/rive/teddy.riv",

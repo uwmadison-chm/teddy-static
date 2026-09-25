@@ -11,7 +11,7 @@ interface SpeechBubbleProps {
     bubbleStyleOverride?: object;
 }
 
-interface SpeechBubbleFunctions {
+export interface SpeechBubbleFunctions {
     showText: (text: string, autoShow?: boolean, callback?: () => void, maxTimeout?: number) => void;
     showTextSequence: (textArray: Array<string>, callback?: () => void, maxTimeout?: number) => void;
     blockerTapped: () => void;
