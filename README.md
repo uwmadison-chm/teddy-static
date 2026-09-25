@@ -10,9 +10,9 @@ To run the dev server, first make sure you have Node and NPM installed and updat
 
 First, run `npm install` to install all requirements.
 
-Run `npx vite` to start the development server. The page should be running and available at http://localhost:5173/. You'll need to be running the Django server locally too, so it can serve the required static files.
+Run `npx vite` to start the development server. The page should be running and available at http://localhost:9000/. Static files are served from `public/`.
 
-Note that the React development server passes all relevant requests through to the Django development server, so you should now be able to access the Djando admin console through http://localhost:5173/admin/
+The dev server doesn't proxy `/api/` requests anywhere, so session and video uploads will fail locally unless you add a `server.proxy` entry in `vite.config.ts` pointing at a pig instance.
 
 ## Linking to Teddy
 
