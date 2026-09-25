@@ -1,6 +1,6 @@
 import * as React from "react";
 import {useCallback, useEffect, useImperativeHandle, useRef, useState} from "react";
-import emitter from "tiny-emitter/instance";
+import * as events from "@/utils/events.tsx";
 
 export interface UserVideoProps {
     onInitialized?: () => void;
@@ -72,7 +72,7 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
             // @ts-expect-error
             timeoutRef.current = setTimeout(stopRecording, timeout);
         }
-        emitter.emit("recordingnotificationstatus", true);
+        events.emit("recordingnotificationstatus", true);
         isRecording.current = true;
     }
 
@@ -85,7 +85,7 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
             timeoutRef.current = null;
         }
         mediaRecorderRef.current.stop();
-        emitter.emit("recordingnotificationstatus", false);
+        events.emit("recordingnotificationstatus", false);
         isRecording.current = false;
     }
 

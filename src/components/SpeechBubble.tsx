@@ -1,5 +1,5 @@
 import {type RefObject, useCallback, useEffect, useImperativeHandle, useRef, useState} from "react";
-import emitter from "tiny-emitter/instance";
+import * as events from "@/utils/events.tsx";
 import * as React from "react";
 import { FaPlay } from "react-icons/fa";
 import {TypeWriter} from "@/components/TypeWriter.tsx";
@@ -34,7 +34,7 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
     const typeWriterRef = useRef(null);
 
     useEffect(() => {
-        emitter.on("speechbubbleblockerclicked", function() {
+        const off = events.on("speechbubbleblockerclicked", function() {
             (ref as RefObject<SpeechBubbleFunctions>).current.blockerTapped();
         });
         if (props.initialText) {
@@ -45,7 +45,7 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
         }
 
         return () => {
-            emitter.off("speechbubbleblockerclicked");
+            off();
         };
     }, []);
 
@@ -101,7 +101,7 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
     }, [isTyping]);
 
     useEffect(() => {
-        emitter.emit("speechbubblestatus", isBlockerUp);
+        events.emit("speechbubblestatus", isBlockerUp);
     }, [isBlockerUp]);
 
     useImperativeHandle(ref, () => ({
