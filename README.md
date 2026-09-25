@@ -14,6 +14,13 @@ Run `npx vite` to start the development server. The page should be running and a
 
 The dev server doesn't proxy `/api/` requests anywhere, so session and video uploads will fail locally unless you add a `server.proxy` entry in `vite.config.ts` pointing at a pig instance.
 
+## Deployment configuration
+
+`public/config.js` is copied to `dist/config.js` and loaded before the app. Edit it on the server to change settings without rebuilding:
+
+- `apiUrl`: base URL of pig's API, e.g. `https://wilbur.chm.wisc.edu/api/`. If pig is on a different origin, it must send CORS headers allowing this site.
+- `debug`: when `true`, nothing is uploaded; uploads are logged to the console. Adding `?debug=1` to the URL also turns this on.
+
 ## Linking to Teddy
 
 TODO: What URL parameters do we require?

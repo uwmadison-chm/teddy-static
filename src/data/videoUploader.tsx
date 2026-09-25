@@ -1,5 +1,6 @@
 import {removeItem} from "@/utils/utils.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
+import {apiEndpoint, Config} from "@/data/config.ts";
 
 class VideoUpload {
     videoID: string;
@@ -60,7 +61,14 @@ class VideoUploaderClass {
             extraData:extra,
         }));
 
-        fetch("/api/upload_video/", {method: "POST", body: data})
+        if (Config.debug) {
+            console.log("Debug mode: skipping video upload", videoID, extra);
+            videoUpload.status = "complete";
+            this.checkIfShouldCallOnComplete();
+            return;
+        }
+
+        fetch(apiEndpoint("upload_video/"), {method: "POST", body: data})
             .then(function (response) {
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
