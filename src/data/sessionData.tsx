@@ -1,4 +1,3 @@
-import axios from "axios";
 import {removeItem} from "@/utils/utils.tsx";
 
 class EventLogItem {
@@ -140,13 +139,20 @@ class SessionData {
         if (!previousServerUploads.includes(uniqueID)) {
             previousServerUploads.push(uniqueID);
 
-            axios.post("/api/save_session/", {
-                    participantId: this.participantID,
-                    sessionData: this,
-                    sessionUUID: this.sessionUUID,
-                    uploadTimestamp: new Date().getTime(),
+            fetch("/api/save_session/", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        participantId: this.participantID,
+                        sessionData: this,
+                        sessionUUID: this.sessionUUID,
+                        uploadTimestamp: new Date().getTime(),
+                    }),
                 })
                 .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
                     if (onComplete) {
                         onComplete();
                     }

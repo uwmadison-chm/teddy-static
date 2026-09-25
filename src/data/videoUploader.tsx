@@ -1,4 +1,3 @@
-import axios from "axios";
 import {removeItem} from "@/utils/utils.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
 
@@ -61,8 +60,11 @@ class VideoUploaderClass {
             extraData:extra,
         }));
 
-        axios.post("/api/upload_video/", data)
+        fetch("/api/upload_video/", {method: "POST", body: data})
             .then(function (response) {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
                 videoUpload.status = "complete";
                 VideoUploader.checkIfShouldCallOnComplete()
             })

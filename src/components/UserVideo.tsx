@@ -1,6 +1,5 @@
 import * as React from "react";
 import {useCallback, useEffect, useImperativeHandle, useRef, useState} from "react";
-import Cookies from "js-cookie";
 import emitter from "tiny-emitter/instance";
 
 export interface UserVideoProps {
@@ -21,7 +20,7 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
     const onRecordingCompleteRef = useRef<(result:Blob)=>void>(null);
     const timeoutRef = useRef<number>(null);
 
-    const [silhouetteShown, setSilhouetteShown] = useState<boolean>(Cookies.get("SilhouetteShown") == "true");
+    const [silhouetteShown, setSilhouetteShown] = useState<boolean>(localStorage.getItem("SilhouetteShown") == "true");
     const isRecording = useRef<boolean>(false);
 
 
@@ -117,7 +116,7 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
                            checked={silhouetteShown}
                            onChange={(e) => {
                                setSilhouetteShown(e.target.checked)
-                               Cookies.set("SilhouetteShown", e.target.checked);
+                               localStorage.setItem("SilhouetteShown", String(e.target.checked));
                            }}/>
                     <span className="handle"></span>
                 </label>
