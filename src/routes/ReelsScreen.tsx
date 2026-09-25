@@ -29,7 +29,7 @@ export default function ReelsScreen() {
 
     // Use this to test module outside of normal flow
     if (CurrentSessionData.currentModule < 0) {
-        // eslint-disable-next-line react-hooks/immutability
+
         CurrentSessionData.currentModule = 0;
     }
 

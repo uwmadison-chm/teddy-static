@@ -1,4 +1,4 @@
-import {type RefObject, useCallback, useEffect, useImperativeHandle, useRef, useState} from "react";
+import {useCallback, useEffect, useEffectEvent, useImperativeHandle, useRef, useState} from "react";
 import * as events from "@/utils/events.tsx";
 import * as React from "react";
 import { FaPlay } from "react-icons/fa";
@@ -33,16 +33,21 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
     const [didTimeout, setDidTimeout] = useState(false);
     const typeWriterRef = useRef(null);
 
-    useEffect(() => {
-        const off = events.on("speechbubbleblockerclicked", function() {
-            (ref as RefObject<SpeechBubbleFunctions>).current.blockerTapped();
-        });
+    const onBlockerClicked = useEffectEvent(() => {
+        blockerTapped();
+    });
+
+    const showInitialText = useEffectEvent(() => {
         if (props.initialText) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setIsTyping(true);
             setText(props.initialText);
             typeWriterRef.current.showText(props.initialText);
         }
+    });
+
+    useEffect(() => {
+        const off = events.on("speechbubbleblockerclicked", () => onBlockerClicked());
+        showInitialText();
 
         return () => {
             off();
@@ -66,7 +71,7 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
         }
     };
 
-    const blockerTapped = useCallback(() => {
+    const blockerTapped = () => {
         if (isTyping) {
             setIsTyping(false);
             typeWriterRef.current.skipToEnd()
@@ -82,21 +87,27 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
                 setIsBlockerUp(false);
             }
         }
-    }, [isTyping, queuedText]);
+    };
+
+    const onMessageTimedOut = useEffectEvent(() => {
+        blockerTapped();
+        setDidTimeout(false);
+    });
 
     useEffect(() => {
         if (didTimeout) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            blockerTapped();
-            setDidTimeout(false);
+            onMessageTimedOut();
         }
     }, [didTimeout]);
 
+    const onTypingStarted = useEffectEvent(() => {
+        setIsBlockerUp(true);
+        setMessageTimeout();
+    });
+
     useEffect(() => {
         if (isTyping) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setIsBlockerUp(true);
-            setMessageTimeout();
+            onTypingStarted();
         }
     }, [isTyping]);
 

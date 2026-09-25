@@ -47,7 +47,7 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
 
     function resetAnimationState(animationName) {
         if (stateMachineAnimations.current[animationName] != null) {
-            // eslint-disable-next-line react-hooks/immutability
+
             stateMachineAnimations.current[animationName].value = false;
         }
     }
@@ -62,7 +62,7 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
         // console.log(animationTrigger, "trying to trigger animation", animationName)
 
         if (animationTrigger != null && animationTrigger.type == StateMachineInputType.Boolean) {
-            // eslint-disable-next-line react-hooks/immutability
+
             animationTrigger.value = true;
         } else {
             animationTrigger?.fire()
@@ -84,7 +84,7 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
     useEffect(() => {
         // console.log(initialStateMachineInput, "trying to trigger initial teddy state")
         if (initialStateMachineInput != null && initialStateMachineInput?.type == StateMachineInputType.Boolean) {
-            // eslint-disable-next-line react-hooks/immutability
+
             initialStateMachineInput.value = true
         } else {
             initialStateMachineInput?.fire()

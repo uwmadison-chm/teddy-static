@@ -45,9 +45,10 @@ export default function CalibrationScreen() {
                 fadingPanelRef.current.showStartPanel()
             }, 9000);
         }
+        const userVideo = userVideoRef.current;
         return () => {
             if (postDetectFaceTimeoutRef.current != null) {
-                userVideoRef.current.stop();
+                userVideo.stop();
                 clearTimeout(postDetectFaceTimeoutRef.current);
             }
         }
