@@ -1,4 +1,5 @@
 import {removeItem} from "@/utils/utils.tsx";
+import {apiEndpoint, Config} from "@/data/config.ts";
 
 class EventLogItem {
     timestamp: number;
@@ -139,7 +140,15 @@ class SessionData {
         if (!previousServerUploads.includes(uniqueID)) {
             previousServerUploads.push(uniqueID);
 
-            fetch("/api/save_session/", {
+            if (Config.debug) {
+                console.log("Debug mode: skipping session upload", uploadID);
+                if (onComplete) {
+                    onComplete();
+                }
+                return;
+            }
+
+            fetch(apiEndpoint("save_session/"), {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({
