@@ -45,7 +45,7 @@ class SessionData {
         this.currentModule = -1;
 
         // Reels aren't in the default: which reels to play has to come from the link.
-        const modulesText = params.get("modules") || `${ModuleNames.Sentence}|${ModuleNames.VideoLog}`;
+        const modulesText = params.get("modules") || ModuleNames.VideoLog;
         for (const moduleText of modulesText.split("|")) {
             const parts = moduleText.split(":");
             const moduleName = parts[0].toLowerCase();
@@ -56,7 +56,7 @@ class SessionData {
             }
         }
         if (!this.modules.length) {
-            this.modules = [new ModuleParam("videolog", []), new ModuleParam("sentence", [])];
+            this.modules = [new ModuleParam(ModuleNames.VideoLog, [])];
         }
 
         // Problems with the link that mean the session can't run as asked.

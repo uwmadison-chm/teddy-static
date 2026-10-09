@@ -30,7 +30,7 @@ Teddy passes every parameter in its link to pig when it starts the run. Which on
 
 Teddy also reads `nextURL` (where the end screen sends the participant), `expirationTime` (a time in milliseconds after which the link no longer works), and `modules`.
 
-`modules` lists the activities to run, in order, separated by `|`. Each can name its items after a colon: `modules=videolog:01,03|sentence:02|reels:01,02`. Video log prompts and sentences are chosen at random when the link doesn't name them. Reels never are: a link that includes `reels` has to name the reels to play, by the IDs in `src/data/reels.ts`, and Teddy shows a "something's wrong with this link" screen if it doesn't. Without `modules`, Teddy runs `sentence|videolog`.
+`modules` lists the activities to run, in order, separated by `|`. Each can name its items after a colon: `modules=videolog:01,03|sentence:02|reels:01,02`. Video log prompts and sentences are chosen at random when the link doesn't name them. Reels never are: a link that includes `reels` has to name the reels to play, by the IDs in `src/data/reels.ts`, and Teddy shows a "something's wrong with this link" screen if it doesn't. Without `modules`, Teddy runs `videolog`.
 
 ## What Teddy sends to pig
 
