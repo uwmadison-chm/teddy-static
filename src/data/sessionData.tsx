@@ -1,5 +1,7 @@
 import {allowedNextURL} from "@/data/config.ts";
 import {TeddyReels} from "@/data/reels.ts";
+import {TeddySentences} from "@/data/sentences.ts";
+import {TeddyVideoLogPrompts} from "@/data/videoLogPrompts.ts";
 import {sendEvent} from "@/data/pig.ts";
 
 const ModuleNames = {
@@ -44,32 +46,34 @@ class SessionData {
         this.modules = [];
         this.currentModule = -1;
 
-        // Reels aren't in the default: which reels to play has to come from the link.
-        const modulesText = params.get("modules") || ModuleNames.VideoLog;
-        for (const moduleText of modulesText.split("|")) {
-            const parts = moduleText.split(":");
-            const moduleName = parts[0].toLowerCase();
-            if (Object.values(ModuleNames).includes(moduleName)) {
-                const argsString = parts[1] || "";
-                const args = argsString.split(",").filter(x => !!x);
-                this.modules.push(new ModuleParam(moduleName, args))
-            }
-        }
-        if (!this.modules.length) {
-            this.modules = [new ModuleParam(ModuleNames.VideoLog, [])];
-        }
-
         // Problems with the link that mean the session can't run as asked.
         this.linkProblems = [];
-        for (const module of this.modules) {
-            if (module.module == ModuleNames.Reels) {
-                if (!module.args.length) {
-                    this.linkProblems.push("The reels module needs reel IDs, like reels:01,02");
-                }
-                for (const reelID of module.args) {
-                    if (!(reelID in TeddyReels)) {
-                        this.linkProblems.push(`There's no reel with ID ${reelID}`);
-                    }
+        const modulesText = params.get("modules") || "";
+        if (!modulesText) {
+            this.linkProblems.push("The link needs a modules parameter, like modules=videolog|sentence");
+        }
+        for (const moduleText of modulesText.split("|").filter(x => !!x)) {
+            const parts = moduleText.split(":");
+            const moduleName = parts[0].toLowerCase();
+            const args = (parts[1] || "").split(",").filter(x => !!x);
+            if (!Object.values(ModuleNames).includes(moduleName)) {
+                this.linkProblems.push(`There's no module called ${parts[0]}`);
+                continue;
+            }
+            this.modules.push(new ModuleParam(moduleName, args));
+            // Video log prompts and sentences are chosen at random when the link
+            // doesn't name them. Reels have to be named.
+            if (moduleName == ModuleNames.Reels && !args.length) {
+                this.linkProblems.push("The reels module needs reel IDs, like reels:01,02");
+            }
+            const known = {
+                [ModuleNames.Reels]: TeddyReels,
+                [ModuleNames.Sentence]: TeddySentences,
+                [ModuleNames.VideoLog]: TeddyVideoLogPrompts,
+            }[moduleName];
+            for (const id of args) {
+                if (!(id in known)) {
+                    this.linkProblems.push(`The ${moduleName} module has no item with ID ${id}`);
                 }
             }
         }
