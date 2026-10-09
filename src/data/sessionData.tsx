@@ -1,18 +1,8 @@
-import {removeItem} from "@/utils/utils.tsx";
-import {allowedNextURL, apiEndpoint, Config} from "@/data/config.ts";
+import {allowedNextURL} from "@/data/config.ts";
 import {TeddyReels} from "@/data/reels.ts";
-
-class EventLogItem {
-    timestamp: number;
-    event: string;
-    extras?: string;
-
-    constructor(event: string, extras?: string) {
-        this.timestamp = new Date().getTime();
-        this.event = event;
-        this.extras = extras;
-    }
-}
+import {TeddySentences} from "@/data/sentences.ts";
+import {TeddyVideoLogPrompts} from "@/data/videoLogPrompts.ts";
+import {sendEvent} from "@/data/pig.ts";
 
 const ModuleNames = {
     Reels: "reels",
@@ -30,110 +20,84 @@ class ModuleParam {
     }
 }
 
-class ReelsRating {
-    reelID: string;
-    rating: number;
-
-    constructor(reelID: string, rating: number) {
-        this.reelID = reelID;
-        this.rating = rating;
-    }
-}
-
-const previousServerUploads = []
-
+// The session's state. What happens in it goes to pig as events, through
+// logEvent(); the link's parameters reach pig when the run starts (see pig.ts).
 class SessionData {
-    participantID: string;
-    studyID: string;
-    sessionID: string;
     expirationTime?: number;
     nextURL: string | null;
-    getParams: string;
-
-    startTimestamp: number;
-    endTimestamp?: number;
-    timezone: string;
-    sessionUUID: string;
     isCompleted: boolean;
 
-    recordingUUIDs: string[];
-    events: EventLogItem[];
     modules: ModuleParam[];
     linkProblems: string[];
-    reelsRatings: ReelsRating[];
     currentModule: number;
+    // True on the calibration screen, which runs before the first module.
+    calibrating = false;
 
     constructor() {
-        const url = window.location;
-        const params = new URLSearchParams(url.search);
-        this.participantID = params.get("participantID") || "";
-        this.studyID = params.get("studyID") || "";
-        this.sessionID = params.get("sessionID") || "";
+        const params = new URLSearchParams(window.location.search);
         this.expirationTime = parseInt(params.get("expirationTime"));
         this.nextURL = allowedNextURL(params.get("nextURL"));
-        this.getParams = window.location.search;
-
-        this.startTimestamp = new Date().getTime();
-        this.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-        this.sessionUUID = crypto.randomUUID();
         this.isCompleted = false;
 
-        this.recordingUUIDs = [];
-        this.events = [];
         if (params.get("nextURL") && !this.nextURL) {
             console.warn("Ignoring nextURL; it isn't an allowed http(s) URL:", params.get("nextURL"));
             this.logEvent("nextURLRejected", params.get("nextURL"));
         }
         this.modules = [];
-        this.reelsRatings = [];
         this.currentModule = -1;
-
-        // Reels aren't in the default: which reels to play has to come from the link.
-        const modulesText = params.get("modules") || `${ModuleNames.Sentence}|${ModuleNames.VideoLog}`;
-        for (const moduleText of modulesText.split("|")) {
-            const parts = moduleText.split(":");
-            const moduleName = parts[0].toLowerCase();
-            if (Object.values(ModuleNames).includes(moduleName)) {
-                const argsString = parts[1] || "";
-                const args = argsString.split(",").filter(x => !!x);
-                this.modules.push(new ModuleParam(moduleName, args))
-            }
-        }
-        if (!this.modules.length) {
-            this.modules = [new ModuleParam("videolog", []), new ModuleParam("sentence", [])];
-        }
 
         // Problems with the link that mean the session can't run as asked.
         this.linkProblems = [];
-        for (const module of this.modules) {
-            if (module.module == ModuleNames.Reels) {
-                if (!module.args.length) {
-                    this.linkProblems.push("The reels module needs reel IDs, like reels:01,02");
-                }
-                for (const reelID of module.args) {
-                    if (!(reelID in TeddyReels)) {
-                        this.linkProblems.push(`There's no reel with ID ${reelID}`);
-                    }
+        const modulesText = params.get("modules") || "";
+        if (!modulesText) {
+            this.linkProblems.push("The link needs a modules parameter, like modules=videolog|sentence");
+        }
+        for (const moduleText of modulesText.split("|").filter(x => !!x)) {
+            const parts = moduleText.split(":");
+            const moduleName = parts[0].toLowerCase();
+            const args = (parts[1] || "").split(",").filter(x => !!x);
+            if (!Object.values(ModuleNames).includes(moduleName)) {
+                this.linkProblems.push(`There's no module called ${parts[0]}`);
+                continue;
+            }
+            this.modules.push(new ModuleParam(moduleName, args));
+            // Video log prompts and sentences are chosen at random when the link
+            // doesn't name them. Reels have to be named.
+            if (moduleName == ModuleNames.Reels && !args.length) {
+                this.linkProblems.push("The reels module needs reel IDs, like reels:01,02");
+            }
+            const known = {
+                [ModuleNames.Reels]: TeddyReels,
+                [ModuleNames.Sentence]: TeddySentences,
+                [ModuleNames.VideoLog]: TeddyVideoLogPrompts,
+            }[moduleName];
+            for (const id of args) {
+                if (!(id in known)) {
+                    this.linkProblems.push(`The ${moduleName} module has no item with ID ${id}`);
                 }
             }
         }
         if (this.linkProblems.length) {
             console.error("Problems with this link:", this.linkProblems);
-            this.logEvent("linkProblems", this.linkProblems.join("|"));
+            this.logEvent("linkProblems", {problems: this.linkProblems});
         }
         console.log("Starting session with modules", this.modules);
-
+        this.logEvent("sessionStarted", {modules: params.get("modules")});
     }
 
-    logEvent(eventName:string, extras?:string) : void {
-        this.events.push(new EventLogItem(
-            eventName,
-            extras,
-        ))
+    // Sends an event to pig. `type` says what happened; `detail` is anything
+    // else worth keeping. Each event also records which module was running, and
+    // pig's client adds the time.
+    logEvent(type: string, detail?: string | Record<string, unknown>): void {
+        const event: Record<string, unknown> = {type: type, module: this.currentModuleName()};
+        if (detail !== undefined) {
+            event.detail = detail;
+        }
+        sendEvent(event);
     }
 
     complete(): void {
-        this.endTimestamp = new Date().getTime();
+        this.logEvent("sessionComplete");
         this.isCompleted = true;
     }
 
@@ -146,8 +110,8 @@ class SessionData {
     }
 
     navigateToNextModule(navigate): void {
-        const oldModuleName = this.currentModule >= 0 ? this.modules[this.currentModule].module : "Calibration";
-        this.uploadToServer(oldModuleName + "Complete")
+        this.logEvent("moduleComplete");
+        this.calibrating = false;
         if (this.hasMoreModules()) {
             this.currentModule += 1;
             const moduleName = this.modules[this.currentModule].module;
@@ -157,51 +121,17 @@ class SessionData {
         }
     }
 
+    // The running module's name, "calibration" during calibration, or null
+    // before that (the intro).
+    currentModuleName(): string | null {
+        if (this.calibrating) {
+            return "calibration";
+        }
+        return this.currentModule >= 0 ? this.modules[this.currentModule].module : null;
+    }
+
     getCurrentModuleArgs(): string[] {
         return this.modules[this.currentModule].args
-    }
-
-    uploadToServer(uploadID:string, onComplete?:()=>void):void {
-        const uniqueID = `${this.currentModule}|${uploadID}`
-        if (!previousServerUploads.includes(uniqueID)) {
-            previousServerUploads.push(uniqueID);
-
-            if (Config.debug) {
-                console.log("Debug mode: skipping session upload", uploadID);
-                if (onComplete) {
-                    onComplete();
-                }
-                return;
-            }
-
-            fetch(apiEndpoint("save_session/"), {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({
-                        participantId: this.participantID,
-                        sessionData: this,
-                        sessionUUID: this.sessionUUID,
-                        uploadTimestamp: new Date().getTime(),
-                    }),
-                })
-                .then(function (response) {
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                    if (onComplete) {
-                        onComplete();
-                    }
-                })
-                .catch(function (error) {
-                    console.log(error);
-                    removeItem(previousServerUploads, uniqueID);
-                    CurrentSessionData.uploadToServer(uploadID, onComplete);
-                })
-        }
-    }
-
-    rateReel(reelID:string, rating:number): void {
-        this.reelsRatings.push(new ReelsRating(reelID, rating));
     }
 }
 

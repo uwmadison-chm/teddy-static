@@ -14,7 +14,6 @@ import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.ts
 import {CountdownTimer} from "@/components/CountdownTimer.tsx";
 import {Colors} from "@/utils/colors.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
-import {VideoUploader} from "@/data/videoUploader.tsx";
 import * as React from "react";
 import {TeddyReels} from "@/data/reels.ts";
 
@@ -121,9 +120,8 @@ export default function ReelsScreen() {
         setIsRecording(true);
         CurrentSessionData.logEvent("reelRatingRecordingStarted", reelIDs.current[currentReelIndex.current])
         const currentVideoID = reelIDs.current[currentReelIndex.current]
-        userVideoRef.current.record((blob)=> {
+        userVideoRef.current.record({kind: "reelRating", item: currentVideoID}, ()=> {
             CurrentSessionData.logEvent("reelRatingRecordingEnded", currentVideoID)
-            VideoUploader.upload(blob, "reelRating", currentVideoID)
 
             setIsRecording(false);
         }, MAX_RATING_RECORDING_DURATION)
@@ -133,8 +131,7 @@ export default function ReelsScreen() {
     const onRateCurrentReel = (rating:number) => {
 
         userVideoRef.current.stop()
-        CurrentSessionData.rateReel(reelIDs.current[currentReelIndex.current], rating)
-        CurrentSessionData.logEvent("ratedReel", reelIDs.current[currentReelIndex.current] + "|" + rating);
+        CurrentSessionData.logEvent("ratedReel", {reel: reelIDs.current[currentReelIndex.current], rating: rating});
         console.log("Rated reel", reelIDs.current[currentReelIndex.current], rating);
         currentReelIndex.current = currentReelIndex.current + 1;
         fadingPanelRef.current.showPanel(null);
@@ -155,9 +152,8 @@ export default function ReelsScreen() {
 
         CurrentSessionData.logEvent("reelRecordingStarted", reelIDs.current[currentReelIndex.current])
 
-        userVideoRef.current.record((blob)=> {
+        userVideoRef.current.record({kind: "reel", item: reelIDs.current[currentReelIndex.current]}, ()=> {
             CurrentSessionData.logEvent("reelRecordingEnded", reelIDs.current[currentReelIndex.current])
-            VideoUploader.upload(blob, "reel", reelIDs.current[currentReelIndex.current])
 
             setIsRecording(false);
 

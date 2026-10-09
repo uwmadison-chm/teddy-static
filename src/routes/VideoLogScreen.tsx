@@ -14,20 +14,13 @@ import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.ts
 import {CountdownTimer} from "@/components/CountdownTimer.tsx";
 import {Colors} from "@/utils/colors.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
-import {VideoUploader} from "@/data/videoUploader.tsx";
+import {TeddyVideoLogPrompts} from "@/data/videoLogPrompts.ts";
 import {PromptText, type PromptTextFunctions} from "@/components/PromptText.tsx";
 import * as React from "react";
 import {FaQuestion, FaQuestionCircle} from "react-icons/fa";
 
 const BUTTON_POPUP_DELAY = 5000;
 const MAX_RECORDING_DURATION = 90 * 1000;
-
-const TeddyVideoLogPrompts = {
-    "01": "What were you just doing and how are you feeling?",
-    "02": "Please, tell me about an emotional experience, pleasant or unpleasant, that you had in the last week. Describe how it made you feel.",
-    "03": "What are you looking forward to today?",
-    "04": "What are you looking forward to this week?",
-}
 
 export default function VideoLogScreen() {
 
@@ -154,9 +147,8 @@ export default function VideoLogScreen() {
         promptTextRef.current.startTimer();
 
         CurrentSessionData.logEvent("videoLogRecordingStarted", promptIDs.current[currentPromptIndex.current])
-        userVideoRef.current.record((blob)=> {
+        userVideoRef.current.record({kind: "videoLog", item: promptIDs.current[currentPromptIndex.current]}, ()=> {
             CurrentSessionData.logEvent("videoLogRecordingEnded", promptIDs.current[currentPromptIndex.current])
-            VideoUploader.upload(blob, "videoLog", promptIDs.current[currentPromptIndex.current])
 
             if (completeButtonDelayTimeout.current != null) {
                 clearTimeout(completeButtonDelayTimeout.current);

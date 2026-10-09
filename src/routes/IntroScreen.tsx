@@ -11,6 +11,8 @@ import {
 import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {useNavigate} from "react-router";
 import {getCameraStream} from "@/data/camera.ts";
+import * as pig from "@/data/pig.ts";
+import type {LinkProblemState} from "@/routes/LinkProblemScreen.tsx";
 import type {CameraHelpState} from "@/routes/CameraHelpScreen.tsx";
 
 
@@ -36,9 +38,20 @@ export default function IntroScreen() {
         teddyRef.current?.showTextSequence(TeddyAnimations.WAVE,
           ["Hello there! It's great to see you!", "We'd like you to do a quick interaction using the camera.", "It should take a couple minutes and should be done in one sitting."],
           () => {
-              fadingPanelRef.current.showStartPanel()
+              // pig refuses a run for a closed task or a link missing what the
+              // task needs. Better to find out now than after the recordings.
+              pig.startRun().then((failure) => {
+                  if (failure) {
+                      const state: LinkProblemState = {code: failure.code};
+                      navigate("linkproblem", {state});
+                  } else {
+                      fadingPanelRef.current.showStartPanel()
+                  }
+              });
           }
         );
+        // Start the run while Teddy talks, so it's usually ready by the time he's done.
+        pig.startRun();
     });
 
     useEffect(() => {
@@ -59,7 +72,6 @@ export default function IntroScreen() {
                     false,
                     () => {
                         CurrentSessionData.logEvent("introComplete")
-                        CurrentSessionData.uploadToServer("introComplete")
                         navigate("calibration");
                     }
                 );

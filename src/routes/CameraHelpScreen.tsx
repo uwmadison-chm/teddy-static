@@ -11,6 +11,7 @@ import {
 } from "@/components/FadingPanelSet.tsx";
 import {CurrentSessionData, setCanLeavePageSafely} from "@/data/sessionData.tsx";
 import {getCameraStream, stopCameraStream} from "@/data/camera.ts";
+import * as pig from "@/data/pig.ts";
 
 export interface CameraHelpState {
     // The name of the error getUserMedia failed with, like "NotAllowedError".
@@ -92,24 +93,27 @@ export default function CameraHelpScreen() {
 
     function giveUp() {
         CurrentSessionData.logEvent("cameraUnavailable", state.errorName);
-        CurrentSessionData.uploadToServer("cameraUnavailable");
         stopCameraStream();
-        setCanLeavePageSafely();
         fadingPanelRef.current?.showPanel(null);
+        // There's no recording to wait for, just a few events, so this is quick.
+        const sent = pig.finishRun(() => {}).catch((error) => {
+            console.error("Couldn't finish sending to pig:", error);
+        });
         const nextURL = CurrentSessionData.nextURL;
-        if (nextURL) {
-            teddyRef.current?.showTextSequence(TeddyAnimations.SLIGHTLY_HAPPY,
-                ["That's okay. Thanks for trying!", "Press the button to continue."],
-                () => {
-                    fadingPanelRef.current?.showStartPanel("continue");
+        teddyRef.current?.showTextSequence(TeddyAnimations.SLIGHTLY_HAPPY,
+            ["That's okay. Thanks for trying!"],
+            () => {
+                sent.then(() => {
+                    setCanLeavePageSafely();
+                    if (nextURL) {
+                        teddyRef.current?.showText(TeddyAnimations.SLIGHTLY_HAPPY, "Press the button to continue.", false, () => {
+                            fadingPanelRef.current?.showStartPanel("continue");
+                        });
+                    } else {
+                        teddyRef.current?.showText(TeddyAnimations.WAVE, "You can close this tab now.");
+                    }
                 });
-        } else {
-            teddyRef.current?.showTextSequence(TeddyAnimations.SLIGHTLY_HAPPY,
-                ["That's okay. Thanks for trying!", "You can close this tab now."],
-                () => {
-                    teddyRef.current?.playAnimation(TeddyAnimations.WAVE);
-                });
-        }
+            });
     }
 
     const onMount = useEffectEvent((removers: (() => void)[]) => {

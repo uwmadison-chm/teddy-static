@@ -14,7 +14,6 @@ import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.ts
 import {CountdownTimer} from "@/components/CountdownTimer.tsx";
 import {Colors} from "@/utils/colors.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
-import {VideoUploader} from "@/data/videoUploader.tsx";
 
 export default function CalibrationScreen() {
     const navigate = useAnimatedNavigate();
@@ -33,6 +32,10 @@ export default function CalibrationScreen() {
     const [tryingToDetectFace, setTryingToDetectFace] = useState<boolean>(true);
     const postDetectFaceTimeoutRef = useRef<number | null>(null);
 
+
+    useEffect(() => {
+        CurrentSessionData.calibrating = true;
+    }, [])
 
     useEffect(() => {
         teddyRef.current?.showTextSequence(TeddyAnimations.PEERING,
@@ -55,9 +58,8 @@ export default function CalibrationScreen() {
     }, [teddyRef])
 
     const onVideoInitialized = useCallback(() => {
-        userVideoRef.current.record((blob)=>{
+        userVideoRef.current.record({kind: "faceDetect"}, ()=>{
             CurrentSessionData.logEvent("faceDetectComplete")
-            VideoUploader.upload(blob, "faceDetect")
         }, 15000)
 
         CurrentSessionData.logEvent("faceDetectStart")
@@ -126,9 +128,8 @@ export default function CalibrationScreen() {
         teddyRef.current?.showText(TeddyAnimations.LISTEN, "Close your eyes and calm your face.", false, () => {
             calibrationPrepTimer.current.start()
         })
-        userVideoRef.current.record((blob)=>{
+        userVideoRef.current.record({kind: "faceCalibration"}, ()=>{
             CurrentSessionData.logEvent("calibrationRecordComplete")
-            VideoUploader.upload(blob, "faceCalibration")
         })
     }
     const onCalibrationPrepComplete = () => {
