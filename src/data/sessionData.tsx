@@ -1,5 +1,5 @@
 import {removeItem} from "@/utils/utils.tsx";
-import {apiEndpoint, Config} from "@/data/config.ts";
+import {allowedNextURL, apiEndpoint, Config} from "@/data/config.ts";
 
 class EventLogItem {
     timestamp: number;
@@ -46,7 +46,7 @@ class SessionData {
     studyID: string;
     sessionID: string;
     expirationTime?: number;
-    nextURL?: string;
+    nextURL: string | null;
     getParams: string;
 
     startTimestamp: number;
@@ -68,7 +68,7 @@ class SessionData {
         this.studyID = params.get("studyID") || "";
         this.sessionID = params.get("sessionID") || "";
         this.expirationTime = parseInt(params.get("expirationTime"));
-        this.nextURL = params.get("nextURL");
+        this.nextURL = allowedNextURL(params.get("nextURL"));
         this.getParams = window.location.search;
 
         this.startTimestamp = new Date().getTime();
@@ -78,6 +78,10 @@ class SessionData {
 
         this.recordingUUIDs = [];
         this.events = [];
+        if (params.get("nextURL") && !this.nextURL) {
+            console.warn("Ignoring nextURL; it isn't an allowed http(s) URL:", params.get("nextURL"));
+            this.logEvent("nextURLRejected", params.get("nextURL"));
+        }
         this.modules = [];
         this.reelsRatings = [];
         this.currentModule = -1;

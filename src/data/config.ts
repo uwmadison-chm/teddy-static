@@ -1,6 +1,7 @@
 interface TeddyConfig {
     apiUrl: string;
     debug: boolean;
+    nextUrlHosts: string[];
 }
 
 declare global {
@@ -16,6 +17,7 @@ const fileConfig = window.TEDDY_CONFIG || {};
 export const Config: TeddyConfig = {
     apiUrl: fileConfig.apiUrl || "",
     debug: !!fileConfig.debug,
+    nextUrlHosts: fileConfig.nextUrlHosts || [],
 };
 
 if (Config.debug) {
@@ -26,4 +28,26 @@ if (Config.debug) {
 
 export function apiEndpoint(path: string): string {
     return new URL(path, Config.apiUrl).toString();
+}
+
+// nextURL comes from the link, and the end screen sends the participant there.
+// Only http(s) URLs are allowed, so a javascript: URL can't run on this site, and
+// when nextUrlHosts lists any hosts, only those. Returns null for anything else.
+export function allowedNextURL(raw: string | null): string | null {
+    if (!raw) {
+        return null;
+    }
+    let url: URL;
+    try {
+        url = new URL(raw);
+    } catch {
+        return null;
+    }
+    if (url.protocol != "https:" && url.protocol != "http:") {
+        return null;
+    }
+    if (Config.nextUrlHosts.length && !Config.nextUrlHosts.includes(url.hostname)) {
+        return null;
+    }
+    return url.toString();
 }

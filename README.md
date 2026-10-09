@@ -20,6 +20,7 @@ The dev server doesn't proxy `/api/` requests anywhere, so session and video upl
 
 - `apiUrl`: base URL of pig's API, e.g. `https://pig.example.edu/`. If pig is on a different origin, it must send CORS headers allowing this site.
 - `debug`: when `true`, nothing is uploaded; uploads are logged to the console, and every screen shows a "Debug mode" banner. It can only be set here, not from a link, so a participant can't end up in a session that records nothing.
+- `nextUrlHosts`: the hosts that the `nextURL` link parameter may point to, e.g. `["redcap.example.edu"]`. Teddy only follows `http` and `https` URLs, and when this list isn't empty, only URLs on these hosts. Any other `nextURL` is ignored, and the end screen tells the participant they can close the tab.
 
 ## Linking to Teddy
 
