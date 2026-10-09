@@ -2,6 +2,10 @@ import * as React from "react";
 import {useCallback, useEffect, useEffectEvent, useImperativeHandle, useRef, useState} from "react";
 import * as events from "@/utils/events.tsx";
 import {getCameraStream, recorderOptions} from "@/data/camera.ts";
+import {useLocation} from "react-router";
+import {useAnimatedNavigate} from "@/utils/utils";
+import {CurrentSessionData} from "@/data/sessionData.tsx";
+import type {CameraHelpState} from "@/routes/CameraHelpScreen.tsx";
 
 export interface UserVideoProps {
     onInitialized?: () => void;
@@ -15,6 +19,8 @@ export interface UserVideoFunctions {
 
 export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((props, ref) => {
 
+    const navigate = useAnimatedNavigate();
+    const location = useLocation();
     const videoElementRef = useRef<HTMLVideoElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder>(null);
     const timeoutRef = useRef<number>(null);
@@ -32,7 +38,13 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
                 }
             })
             .catch((error) => {
-                console.log("Rejected!", error);
+                // The camera worked when the session started, so something has
+                // changed: a permission revoked, or a camera unplugged. Help the
+                // participant fix it, then start this screen over.
+                console.error("Couldn't get the camera", error);
+                CurrentSessionData.logEvent("cameraError", error.name);
+                const state: CameraHelpState = {errorName: error.name, returnTo: location.pathname};
+                navigate("/camerahelp", {state});
             });
     });
 
