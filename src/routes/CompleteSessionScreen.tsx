@@ -9,6 +9,7 @@ import {
     type FadingPanelFunctions,
     FadingPanelSet
 } from "@/components/FadingPanelSet.tsx";
+import {stopCameraStream} from "@/data/camera.ts";
 
 
 export default function CompleteSessionScreen() {
@@ -20,6 +21,7 @@ export default function CompleteSessionScreen() {
 
     useEffect(() => {
         CurrentSessionData.complete()
+        stopCameraStream()
         CurrentSessionData.uploadToServer("sessionComplete", ()=> {
             setSessionUploaded(true);
         })

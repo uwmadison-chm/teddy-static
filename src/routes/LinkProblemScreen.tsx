@@ -5,7 +5,10 @@ import {setCanLeavePageSafely} from "@/data/sessionData.tsx";
 import {stopCameraStream} from "@/data/camera.ts";
 
 
-export default function SessionExpiredScreen() {
+// Shown instead of the session when the link Teddy was opened with can't work.
+// What's wrong is in the console and the session data; the participant just
+// needs to know it isn't their fault and who to ask.
+export default function LinkProblemScreen() {
     const teddyRef = useRef<TeddyFunctions>(null);
 
     useEffect(() => {
@@ -13,10 +16,9 @@ export default function SessionExpiredScreen() {
         stopCameraStream()
         teddyRef.current?.showTextSequence(TeddyAnimations.SADNESS,
           [
-              "Oh no, this session has expired!",
-              "Please try to do your sessions during your given time windows.",
-              "If you need further help, please contact your study coordinator.",
-              "I'll see you in your next session!",
+              "Oh no, something's wrong with the link that brought you here!",
+              "It isn't anything you did.",
+              "Please contact your study coordinator and let them know.",
           ],
           () => {
               teddyRef.current?.playAnimation(TeddyAnimations.WAVE)

@@ -11,10 +11,13 @@ import { RuntimeLoader } from "@rive-app/react-webgl2";
 import riveWasmUrl from "@rive-app/webgl2/rive.wasm?url";
 import riveFallbackWasmUrl from "@rive-app/webgl2/rive_fallback.wasm?url";
 import SessionExpiredScreen from "@/routes/SessionExpiredScreen.tsx";
+import LinkProblemScreen from "@/routes/LinkProblemScreen.tsx";
+import CameraHelpScreen from "@/routes/CameraHelpScreen.tsx";
 import CompleteSessionScreen from "@/routes/CompleteSessionScreen.tsx";
 import VideoLogScreen from "@/routes/VideoLogScreen.tsx";
 import SentencesScreen from "@/routes/SentencesScreen.tsx";
 import ReelsScreen from "@/routes/ReelsScreen.tsx";
+import {Config} from "@/data/config.ts";
 
 // Serve Rive's WASM ourselves instead of from its default CDNs
 RuntimeLoader.setWasmUrl(riveWasmUrl);
@@ -51,8 +54,15 @@ createRoot(document.getElementById('root')!).render(
                       <Route path="/sessionexpired" element={
                           <SessionExpiredScreen />
                       } />
+                      <Route path="/camerahelp" element={
+                          <CameraHelpScreen />
+                      } />
+                      <Route path="/linkproblem" element={
+                          <LinkProblemScreen />
+                      } />
                   </Routes>
                   <RecordingNotification />
+                  {Config.debug && <div className={"debug-banner"}>Debug mode: nothing is uploaded</div>}
               </div>
           </div>
       </MemoryRouter>

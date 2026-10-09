@@ -66,3 +66,17 @@ body, #root {
   display: flex;
 }
 
+
+.debug-banner {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.5vh;
+  background-color: #b00020;
+  color: white;
+  font-size: 1.6vh;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1000;
+}

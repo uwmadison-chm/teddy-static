@@ -1,5 +1,6 @@
 import {removeItem} from "@/utils/utils.tsx";
-import {apiEndpoint, Config} from "@/data/config.ts";
+import {allowedNextURL, apiEndpoint, Config} from "@/data/config.ts";
+import {TeddyReels} from "@/data/reels.ts";
 
 class EventLogItem {
     timestamp: number;
@@ -46,7 +47,7 @@ class SessionData {
     studyID: string;
     sessionID: string;
     expirationTime?: number;
-    nextURL?: string;
+    nextURL: string | null;
     getParams: string;
 
     startTimestamp: number;
@@ -58,6 +59,7 @@ class SessionData {
     recordingUUIDs: string[];
     events: EventLogItem[];
     modules: ModuleParam[];
+    linkProblems: string[];
     reelsRatings: ReelsRating[];
     currentModule: number;
 
@@ -68,7 +70,7 @@ class SessionData {
         this.studyID = params.get("studyID") || "";
         this.sessionID = params.get("sessionID") || "";
         this.expirationTime = parseInt(params.get("expirationTime"));
-        this.nextURL = params.get("nextURL");
+        this.nextURL = allowedNextURL(params.get("nextURL"));
         this.getParams = window.location.search;
 
         this.startTimestamp = new Date().getTime();
@@ -78,11 +80,16 @@ class SessionData {
 
         this.recordingUUIDs = [];
         this.events = [];
+        if (params.get("nextURL") && !this.nextURL) {
+            console.warn("Ignoring nextURL; it isn't an allowed http(s) URL:", params.get("nextURL"));
+            this.logEvent("nextURLRejected", params.get("nextURL"));
+        }
         this.modules = [];
         this.reelsRatings = [];
         this.currentModule = -1;
 
-        const modulesText = params.get("modules") || `${ModuleNames.Reels}|${ModuleNames.Sentence}|${ModuleNames.VideoLog}`;
+        // Reels aren't in the default: which reels to play has to come from the link.
+        const modulesText = params.get("modules") || `${ModuleNames.Sentence}|${ModuleNames.VideoLog}`;
         for (const moduleText of modulesText.split("|")) {
             const parts = moduleText.split(":");
             const moduleName = parts[0].toLowerCase();
@@ -93,7 +100,26 @@ class SessionData {
             }
         }
         if (!this.modules.length) {
-            this.modules = [new ModuleParam("videolog", []), new ModuleParam("sentence", []), new ModuleParam("reels", [])];
+            this.modules = [new ModuleParam("videolog", []), new ModuleParam("sentence", [])];
+        }
+
+        // Problems with the link that mean the session can't run as asked.
+        this.linkProblems = [];
+        for (const module of this.modules) {
+            if (module.module == ModuleNames.Reels) {
+                if (!module.args.length) {
+                    this.linkProblems.push("The reels module needs reel IDs, like reels:01,02");
+                }
+                for (const reelID of module.args) {
+                    if (!(reelID in TeddyReels)) {
+                        this.linkProblems.push(`There's no reel with ID ${reelID}`);
+                    }
+                }
+            }
+        }
+        if (this.linkProblems.length) {
+            console.error("Problems with this link:", this.linkProblems);
+            this.logEvent("linkProblems", this.linkProblems.join("|"));
         }
         console.log("Starting session with modules", this.modules);
 
