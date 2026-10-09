@@ -10,11 +10,12 @@ declare global {
 }
 
 const fileConfig = window.TEDDY_CONFIG || {};
-const params = new URLSearchParams(window.location.search);
 
+// debug comes only from config.js. A URL parameter would let anyone with a link
+// turn off uploads for their session without anything on screen saying so.
 export const Config: TeddyConfig = {
     apiUrl: fileConfig.apiUrl || "",
-    debug: !!fileConfig.debug || params.get("debug") == "1",
+    debug: !!fileConfig.debug,
 };
 
 if (Config.debug) {

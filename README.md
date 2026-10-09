@@ -19,7 +19,7 @@ The dev server doesn't proxy `/api/` requests anywhere, so session and video upl
 `public/config.js` is copied to `dist/config.js` and loaded before the app. Edit it on the server to change settings without rebuilding:
 
 - `apiUrl`: base URL of pig's API, e.g. `https://pig.example.edu/`. If pig is on a different origin, it must send CORS headers allowing this site.
-- `debug`: when `true`, nothing is uploaded; uploads are logged to the console. Adding `?debug=1` to the URL also turns this on.
+- `debug`: when `true`, nothing is uploaded; uploads are logged to the console, and every screen shows a "Debug mode" banner. It can only be set here, not from a link, so a participant can't end up in a session that records nothing.
 
 ## Linking to Teddy
 

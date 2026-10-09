@@ -15,6 +15,7 @@ import CompleteSessionScreen from "@/routes/CompleteSessionScreen.tsx";
 import VideoLogScreen from "@/routes/VideoLogScreen.tsx";
 import SentencesScreen from "@/routes/SentencesScreen.tsx";
 import ReelsScreen from "@/routes/ReelsScreen.tsx";
+import {Config} from "@/data/config.ts";
 
 // Serve Rive's WASM ourselves instead of from its default CDNs
 RuntimeLoader.setWasmUrl(riveWasmUrl);
@@ -53,6 +54,7 @@ createRoot(document.getElementById('root')!).render(
                       } />
                   </Routes>
                   <RecordingNotification />
+                  {Config.debug && <div className={"debug-banner"}>Debug mode: nothing is uploaded</div>}
               </div>
           </div>
       </MemoryRouter>
