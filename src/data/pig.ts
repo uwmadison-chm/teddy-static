@@ -7,6 +7,8 @@
 
 import * as pig from "@/vendor/pig/pig.js";
 import {Config} from "@/data/config.ts";
+// Vite copies the worker into the build and gives us its URL.
+import workerUrl from "@/vendor/pig/pig-worker.js?url";
 
 export type Pending = pig.Pending;
 
@@ -40,8 +42,7 @@ async function start(): Promise<StartFailure | null> {
         return null;
     }
     try {
-        // The worker can't be bundled; it's served next to index.html.
-        pig.connect({workerUrl: new URL("pig-worker.js", document.baseURI)});
+        pig.connect({workerUrl: new URL(workerUrl, document.baseURI)});
         if (!(await pig.supported())) {
             return {code: "unsupported", message: "This browser can't store data the way Teddy needs."};
         }

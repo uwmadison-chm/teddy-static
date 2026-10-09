@@ -47,7 +47,7 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 ## Updating pig's client
 
-Pig's JavaScript client is copied into this repository: `src/vendor/pig/` (bundled into Teddy) and `public/pig-worker.js` (which has to be served from Teddy's own site). `src/vendor/pig/VERSION` says which client it is. To update it, run `scripts/update-pig-client.sh path/to/psych-ingestor` and commit the result.
+Pig's JavaScript client is copied into this repository, in `src/vendor/pig/`. Vite bundles it into Teddy, and copies `pig-worker.js` into the build as its own file, since a worker has to be loaded from Teddy's own site. `src/vendor/pig/VERSION` says which client it is. To update it, run `scripts/update-pig-client.sh path/to/psych-ingestor` and commit the result.
 
 ## Production Build
 
