@@ -2,6 +2,7 @@ import {useEffect, useRef} from "react";
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {setCanLeavePageSafely} from "@/data/sessionData.tsx";
+import {stopCameraStream} from "@/data/camera.ts";
 
 
 // Shown instead of the session when the link Teddy was opened with can't work.
@@ -12,6 +13,7 @@ export default function LinkProblemScreen() {
 
     useEffect(() => {
         setCanLeavePageSafely()
+        stopCameraStream()
         teddyRef.current?.showTextSequence(TeddyAnimations.SADNESS,
           [
               "Oh no, something's wrong with the link that brought you here!",

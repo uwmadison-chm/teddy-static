@@ -1,6 +1,7 @@
 import * as React from "react";
 import {useCallback, useEffect, useEffectEvent, useImperativeHandle, useRef, useState} from "react";
 import * as events from "@/utils/events.tsx";
+import {getCameraStream} from "@/data/camera.ts";
 
 export interface UserVideoProps {
     onInitialized?: () => void;
@@ -25,8 +26,7 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
 
 
     const startCamera = useEffectEvent(() => {
-        navigator.mediaDevices
-            .getUserMedia({ video: {facingMode: 'user', height: {ideal: 600}}, audio: true, })
+        getCameraStream()
             .then((localMediaStream) => {
                 videoElementRef.current.srcObject = localMediaStream;
 

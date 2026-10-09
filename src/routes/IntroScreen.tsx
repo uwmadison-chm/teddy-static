@@ -10,6 +10,7 @@ import {
 } from "@/components/FadingPanelSet.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {useNavigate} from "react-router";
+import {getCameraStream} from "@/data/camera.ts";
 
 
 export default function IntroScreen() {
@@ -55,8 +56,7 @@ export default function IntroScreen() {
                 false,
                 () => {
                     hasAskedForPermissions.current = true;
-                    navigator.mediaDevices
-                        .getUserMedia({ video: true, audio: true })
+                    getCameraStream()
                         .then((localMediaStream) => {
                             checkForCameraPermissions()
                         })
