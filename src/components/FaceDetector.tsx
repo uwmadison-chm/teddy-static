@@ -28,6 +28,7 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
         start: () => {
             setProgress(0)
             setIsShown(true);
+            setIsFadingOut(false);
             const videoInput = document.getElementById('userVideo')
             if (intervalRef.current != null) {
                 clearInterval(intervalRef.current);
@@ -62,9 +63,9 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
             setProgress(0)
         },
         hide: () => {
-            setInterval(()=>{
+            setTimeout(()=>{
                 setIsFadingOut(true)
-                setInterval(() => {
+                setTimeout(() => {
                     setIsShown(false)
                 }, 300)
             }, 300)
