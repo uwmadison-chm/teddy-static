@@ -19,11 +19,17 @@ export default function IntroScreen() {
     const hasAskedForPermissions = useRef(false)
 
     const hasExpired = CurrentSessionData.hasExpired();
+    const hasLinkProblems = CurrentSessionData.linkProblems.length > 0;
     const noFadeNavigate = useNavigate();
 
     const onMount = useEffectEvent(() => {
         if (hasExpired) {
             noFadeNavigate("sessionexpired");
+            return;
+        }
+        if (hasLinkProblems) {
+            noFadeNavigate("linkproblem");
+            return;
         }
 
         hasAskedForPermissions.current = false;
@@ -84,7 +90,7 @@ export default function IntroScreen() {
         }
     }
 
-    if (hasExpired) {
+    if (hasExpired || hasLinkProblems) {
         return (<div></div>)
     }
 

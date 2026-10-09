@@ -11,6 +11,7 @@ import { RuntimeLoader } from "@rive-app/react-webgl2";
 import riveWasmUrl from "@rive-app/webgl2/rive.wasm?url";
 import riveFallbackWasmUrl from "@rive-app/webgl2/rive_fallback.wasm?url";
 import SessionExpiredScreen from "@/routes/SessionExpiredScreen.tsx";
+import LinkProblemScreen from "@/routes/LinkProblemScreen.tsx";
 import CompleteSessionScreen from "@/routes/CompleteSessionScreen.tsx";
 import VideoLogScreen from "@/routes/VideoLogScreen.tsx";
 import SentencesScreen from "@/routes/SentencesScreen.tsx";
@@ -51,6 +52,9 @@ createRoot(document.getElementById('root')!).render(
                       } />
                       <Route path="/sessionexpired" element={
                           <SessionExpiredScreen />
+                      } />
+                      <Route path="/linkproblem" element={
+                          <LinkProblemScreen />
                       } />
                   </Routes>
                   <RecordingNotification />
