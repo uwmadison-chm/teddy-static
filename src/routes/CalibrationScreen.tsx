@@ -34,6 +34,10 @@ export default function CalibrationScreen() {
 
 
     useEffect(() => {
+        CurrentSessionData.calibrating = true;
+    }, [])
+
+    useEffect(() => {
         teddyRef.current?.showTextSequence(TeddyAnimations.PEERING,
             ["Checking to see if I can detect your face..."],
             () => {

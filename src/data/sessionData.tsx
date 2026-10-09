@@ -28,6 +28,8 @@ class SessionData {
     modules: ModuleParam[];
     linkProblems: string[];
     currentModule: number;
+    // True on the calibration screen, which runs before the first module.
+    calibrating = false;
 
     constructor() {
         const params = new URLSearchParams(window.location.search);
@@ -105,6 +107,7 @@ class SessionData {
 
     navigateToNextModule(navigate): void {
         this.logEvent("moduleComplete");
+        this.calibrating = false;
         if (this.hasMoreModules()) {
             this.currentModule += 1;
             const moduleName = this.modules[this.currentModule].module;
@@ -114,8 +117,12 @@ class SessionData {
         }
     }
 
-    // The running module's name, or null before the first (intro and calibration).
+    // The running module's name, "calibration" during calibration, or null
+    // before that (the intro).
     currentModuleName(): string | null {
+        if (this.calibrating) {
+            return "calibration";
+        }
         return this.currentModule >= 0 ? this.modules[this.currentModule].module : null;
     }
 

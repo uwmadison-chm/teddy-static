@@ -34,9 +34,9 @@ Teddy also reads `nextURL` (where the end screen sends the participant), `expira
 
 ## What Teddy sends to pig
 
-Each session is one pig run. It starts when the intro finishes, with every link parameter, and is finalized on the end screen once everything has been sent. A session the participant leaves early is finalized the next time this browser opens Teddy, or expires on pig's schedule.
+Each session is one pig run. It starts as soon as Teddy loads, with every link parameter, and is finalized on the end screen once everything has been sent. A session the participant leaves early is finalized the next time this browser opens Teddy, or expires on pig's schedule.
 
-Everything Teddy logs is a pig event: `type` says what happened, `module` which module was running, and `detail` holds anything else, such as the sentence ID. Pig's client adds the participant's clock time and `performance.now()` to each one.
+Everything Teddy logs is a pig event: `type` says what happened, `module` which module was running (`calibration` during calibration, and empty during the intro), and `detail` holds anything else, such as the sentence ID. Pig's client adds the participant's clock time and `performance.now()` to each one.
 
 Each recording is a media item, sent in 5-second parts as it records. Its event has `kind` (`faceDetect`, `faceCalibration`, `videoLog`, `sentence`, `reel`, or `reelRating`), `item` (the prompt, sentence, or reel ID), `module`, and `content_type`. It is stamped with the moment the recorder started, on the same `performance.now()` clock as the events, which is what lines recordings up with what happened. To get a playable file, join the parts in order:
 
