@@ -5,6 +5,8 @@
 // this one stream, so the camera isn't re-opened for each one, and every
 // recording comes from the same capture clock.
 
+import {Config} from "@/data/config.ts";
+
 let stream: MediaStream | null = null;
 let opening: Promise<MediaStream> | null = null;
 
@@ -22,7 +24,15 @@ export function getCameraStream(): Promise<MediaStream> {
     if (opening == null) {
         stopCameraStream();
         opening = navigator.mediaDevices
-            .getUserMedia({video: {facingMode: 'user', height: {ideal: 600}}, audio: true})
+            .getUserMedia({
+                video: {
+                    facingMode: "user",
+                    width: {ideal: Config.recording.width},
+                    height: {ideal: Config.recording.height},
+                    frameRate: {ideal: Config.recording.frameRate},
+                },
+                audio: true,
+            })
             .then((s) => {
                 stream = s;
                 return s;
@@ -42,4 +52,17 @@ export function stopCameraStream(): void {
         }
         stream = null;
     }
+}
+
+// Options for a MediaRecorder on the camera stream, from config.js.
+export function recorderOptions(): MediaRecorderOptions {
+    const options: MediaRecorderOptions = {
+        videoBitsPerSecond: Config.recording.videoBitsPerSecond,
+        audioBitsPerSecond: Config.recording.audioBitsPerSecond,
+    };
+    const mimeType = Config.recording.mimeTypes.find(t => MediaRecorder.isTypeSupported(t));
+    if (mimeType) {
+        options.mimeType = mimeType;
+    }
+    return options;
 }

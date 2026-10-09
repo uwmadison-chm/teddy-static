@@ -1,7 +1,7 @@
 import * as React from "react";
 import {useCallback, useEffect, useEffectEvent, useImperativeHandle, useRef, useState} from "react";
 import * as events from "@/utils/events.tsx";
-import {getCameraStream} from "@/data/camera.ts";
+import {getCameraStream, recorderOptions} from "@/data/camera.ts";
 
 export interface UserVideoProps {
     onInitialized?: () => void;
@@ -17,8 +17,6 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
 
     const videoElementRef = useRef<HTMLVideoElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder>(null);
-    const recordingChunksRef = useRef([]);
-    const onRecordingCompleteRef = useRef<(result:Blob)=>void>(null);
     const timeoutRef = useRef<number>(null);
 
     const [silhouetteShown, setSilhouetteShown] = useState<boolean>(localStorage.getItem("SilhouetteShown") == "true");
@@ -29,23 +27,6 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
         getCameraStream()
             .then((localMediaStream) => {
                 videoElementRef.current.srcObject = localMediaStream;
-
-                const options = { mimeType: MediaRecorder.isTypeSupported("video/webm") ? "video/webm" : "video/mp4" };
-                mediaRecorderRef.current = new MediaRecorder(localMediaStream, options);
-                mediaRecorderRef.current.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
-                        recordingChunksRef.current.push(event.data);
-                    }
-                }
-                mediaRecorderRef.current.onstop = (event) => {
-                    const recording = new Blob(recordingChunksRef.current, {
-                        type: "video/webm",
-                    });
-                    recordingChunksRef.current.length = 0;
-                    if (onRecordingCompleteRef.current != null) {
-                        onRecordingCompleteRef.current(recording)
-                    }
-                }
                 if (props.onInitialized != null) {
                     props.onInitialized()
                 }
@@ -59,18 +40,36 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
         startCamera()
     }, [])
 
+    // Each recording gets its own MediaRecorder, chunk list, and callback. A
+    // recorder delivers its last chunk and its stop event a moment after stop()
+    // is called, so anything shared between recordings could get the end of one
+    // mixed into the next.
     function startRecording(onComplete:(result:Blob)=>void, timeout?:number) {
-        recordingChunksRef.current.length = 0;
-        mediaRecorderRef.current.start();
-        onRecordingCompleteRef.current = onComplete;
+        if (isRecording.current) {
+            stopRecording();
+        }
+        const stream = videoElementRef.current.srcObject as MediaStream;
+        const recorder = new MediaRecorder(stream, recorderOptions());
+        const chunks: Blob[] = [];
+        recorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                chunks.push(event.data);
+            }
+        }
+        recorder.onstop = () => {
+            // recorder.mimeType is what was actually recorded, which isn't
+            // always what we asked for.
+            onComplete(new Blob(chunks, {type: recorder.mimeType}));
+        }
+        recorder.start();
+        mediaRecorderRef.current = recorder;
+
         if (timeoutRef.current != null) {
             clearTimeout(timeoutRef.current);
             timeoutRef.current = null;
         }
         if (timeout) {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-expect-error
-            timeoutRef.current = setTimeout(stopRecording, timeout);
+            timeoutRef.current = window.setTimeout(stopRecording, timeout);
         }
         events.emit("recordingnotificationstatus", true);
         isRecording.current = true;
@@ -85,6 +84,7 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
             timeoutRef.current = null;
         }
         mediaRecorderRef.current.stop();
+        mediaRecorderRef.current = null;
         events.emit("recordingnotificationstatus", false);
         isRecording.current = false;
     }

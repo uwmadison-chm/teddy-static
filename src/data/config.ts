@@ -1,14 +1,35 @@
+interface RecordingConfig {
+    // Tried in order; the first one the browser can record is used.
+    mimeTypes: string[];
+    videoBitsPerSecond: number;
+    audioBitsPerSecond: number;
+    // What we ask the camera for. The browser gets as close as the camera allows.
+    width: number;
+    height: number;
+    frameRate: number;
+}
+
 interface TeddyConfig {
     apiUrl: string;
     debug: boolean;
     nextUrlHosts: string[];
+    recording: RecordingConfig;
 }
 
 declare global {
     interface Window {
-        TEDDY_CONFIG?: Partial<TeddyConfig>;
+        TEDDY_CONFIG?: Partial<Omit<TeddyConfig, "recording"> & {recording: Partial<RecordingConfig>}>;
     }
 }
+
+const defaultRecording: RecordingConfig = {
+    mimeTypes: ["video/webm;codecs=vp8,opus", "video/webm", "video/mp4"],
+    videoBitsPerSecond: 1_000_000,
+    audioBitsPerSecond: 64_000,
+    width: 640,
+    height: 480,
+    frameRate: 30,
+};
 
 const fileConfig = window.TEDDY_CONFIG || {};
 
@@ -18,6 +39,7 @@ export const Config: TeddyConfig = {
     apiUrl: fileConfig.apiUrl || "",
     debug: !!fileConfig.debug,
     nextUrlHosts: fileConfig.nextUrlHosts || [],
+    recording: {...defaultRecording, ...fileConfig.recording},
 };
 
 if (Config.debug) {

@@ -44,11 +44,8 @@ class VideoUploaderClass {
 
         const data = new FormData();
 
-        // In UserVideo we default to webm unless it's not supported. Then we use MP4.
-        let extension = ".webm";
-        if (!MediaRecorder.isTypeSupported("video/webm")) {
-            extension = ".mp4";
-        }
+        // The blob's type is what the recorder actually produced.
+        const extension = video.type.includes("mp4") ? ".mp4" : ".webm";
 
         data.append('video', video, videoID + extension);
         data.append('data', JSON.stringify({
