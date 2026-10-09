@@ -5,14 +5,22 @@ import {getCameraStream, recorderOptions} from "@/data/camera.ts";
 import {useLocation} from "react-router";
 import {useAnimatedNavigate} from "@/utils/utils";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
+import * as pig from "@/data/pig.ts";
 import type {CameraHelpState} from "@/routes/CameraHelpScreen.tsx";
 
 export interface UserVideoProps {
     onInitialized?: () => void;
 }
 
+// What a recording is, stored as its media item's event. `kind` is the sort of
+// recording ("sentence", "reel", ...), `item` the sentence, reel, or prompt ID.
+export interface RecordingInfo {
+    kind: string;
+    item?: string;
+}
+
 export interface UserVideoFunctions {
-    record: (onComplete:(result:Blob) => void, timeout?:number) => void;
+    record: (info: RecordingInfo, onComplete:() => void, timeout?:number) => void;
     stop: () => void;
     getIsRecording: () => boolean;
 }
@@ -23,6 +31,7 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
     const location = useLocation();
     const videoElementRef = useRef<HTMLVideoElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder>(null);
+    const recordingInfoRef = useRef<RecordingInfo>(null);
     const timeoutRef = useRef<number>(null);
 
     const [silhouetteShown, setSilhouetteShown] = useState<boolean>(localStorage.getItem("SilhouetteShown") == "true");
@@ -52,29 +61,29 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
         startCamera()
     }, [])
 
-    // Each recording gets its own MediaRecorder, chunk list, and callback. A
-    // recorder delivers its last chunk and its stop event a moment after stop()
-    // is called, so anything shared between recordings could get the end of one
-    // mixed into the next.
-    function startRecording(onComplete:(result:Blob)=>void, timeout?:number) {
+    // Each recording gets its own MediaRecorder, which pig's client starts and
+    // sends to pig as one media item, in parts, as it records. A recorder
+    // delivers its last part and its stop event a moment after stop() is
+    // called, so nothing is shared between recordings.
+    function startRecording(info: RecordingInfo, onComplete:()=>void, timeout?:number) {
         if (isRecording.current) {
             stopRecording();
         }
         const stream = videoElementRef.current.srcObject as MediaStream;
         const recorder = new MediaRecorder(stream, recorderOptions());
-        const chunks: Blob[] = [];
-        recorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-                chunks.push(event.data);
-            }
-        }
-        recorder.onstop = () => {
-            // recorder.mimeType is what was actually recorded, which isn't
-            // always what we asked for.
-            onComplete(new Blob(chunks, {type: recorder.mimeType}));
-        }
-        recorder.start();
+        recorder.addEventListener("stop", () => {
+            CurrentSessionData.logEvent("recordingStopped", {...info});
+            onComplete();
+        });
+        // This starts the recorder before it returns; the media item's event is
+        // stamped with the moment the recorder says it started.
+        pig.record(recorder, {...info, module: CurrentSessionData.currentModuleName()})
+            .catch((error) => {
+                console.error("Couldn't record:", error);
+                CurrentSessionData.logEvent("recordingError", {...info, message: String(error)});
+            });
         mediaRecorderRef.current = recorder;
+        recordingInfoRef.current = info;
 
         if (timeoutRef.current != null) {
             clearTimeout(timeoutRef.current);
@@ -95,15 +104,20 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
             clearTimeout(timeoutRef.current);
             timeoutRef.current = null;
         }
-        mediaRecorderRef.current.stop();
+        // Logged when stop is asked for, which is when the participant was done;
+        // the recorder's own stop comes a little later.
+        CurrentSessionData.logEvent("recordingStopRequested", {...recordingInfoRef.current});
+        if (mediaRecorderRef.current.state != "inactive") {
+            mediaRecorderRef.current.stop();
+        }
         mediaRecorderRef.current = null;
         events.emit("recordingnotificationstatus", false);
         isRecording.current = false;
     }
 
     useImperativeHandle(ref, () => ({
-        record: (onComplete, timeout) => {
-            startRecording(onComplete, timeout);
+        record: (info, onComplete, timeout) => {
+            startRecording(info, onComplete, timeout);
         },
         stop: () => {
             stopRecording()

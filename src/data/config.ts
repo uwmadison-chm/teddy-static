@@ -10,7 +10,8 @@ interface RecordingConfig {
 }
 
 interface TeddyConfig {
-    apiUrl: string;
+    pigServer: string;
+    taskCode: string;
     debug: boolean;
     nextUrlHosts: string[];
     recording: RecordingConfig;
@@ -36,7 +37,8 @@ const fileConfig = window.TEDDY_CONFIG || {};
 // debug comes only from config.js. A URL parameter would let anyone with a link
 // turn off uploads for their session without anything on screen saying so.
 export const Config: TeddyConfig = {
-    apiUrl: fileConfig.apiUrl || "",
+    pigServer: fileConfig.pigServer || "",
+    taskCode: fileConfig.taskCode || "",
     debug: !!fileConfig.debug,
     nextUrlHosts: fileConfig.nextUrlHosts || [],
     recording: {...defaultRecording, ...fileConfig.recording},
@@ -44,12 +46,8 @@ export const Config: TeddyConfig = {
 
 if (Config.debug) {
     console.log("Debug mode: uploads are disabled");
-} else if (!Config.apiUrl) {
-    console.error("No apiUrl set in config.js; uploads will fail");
-}
-
-export function apiEndpoint(path: string): string {
-    return new URL(path, Config.apiUrl).toString();
+} else if (!Config.pigServer || !Config.taskCode) {
+    console.error("config.js needs pigServer and taskCode; nothing can be sent without them");
 }
 
 // nextURL comes from the link, and the end screen sends the participant there.

@@ -14,7 +14,6 @@ import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.ts
 import {CountdownTimer} from "@/components/CountdownTimer.tsx";
 import {Colors} from "@/utils/colors.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
-import {VideoUploader} from "@/data/videoUploader.tsx";
 import {PromptText, type PromptTextFunctions} from "@/components/PromptText.tsx";
 import * as React from "react";
 import {FaQuestion, FaQuestionCircle} from "react-icons/fa";
@@ -154,9 +153,8 @@ export default function VideoLogScreen() {
         promptTextRef.current.startTimer();
 
         CurrentSessionData.logEvent("videoLogRecordingStarted", promptIDs.current[currentPromptIndex.current])
-        userVideoRef.current.record((blob)=> {
+        userVideoRef.current.record({kind: "videoLog", item: promptIDs.current[currentPromptIndex.current]}, ()=> {
             CurrentSessionData.logEvent("videoLogRecordingEnded", promptIDs.current[currentPromptIndex.current])
-            VideoUploader.upload(blob, "videoLog", promptIDs.current[currentPromptIndex.current])
 
             if (completeButtonDelayTimeout.current != null) {
                 clearTimeout(completeButtonDelayTimeout.current);

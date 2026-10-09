@@ -14,7 +14,6 @@ import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.ts
 import {CountdownTimer} from "@/components/CountdownTimer.tsx";
 import {Colors} from "@/utils/colors.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
-import {VideoUploader} from "@/data/videoUploader.tsx";
 import {PromptText, type PromptTextFunctions} from "@/components/PromptText.tsx";
 
 const BUTTON_POPUP_DELAY = 5000;
@@ -214,9 +213,8 @@ export default function SentencesScreen() {
         }
         CurrentSessionData.logEvent("sentenceRecordingStarted", sentenceIDs.current[currentSentenceIndex.current])
 
-        userVideoRef.current.record((blob)=> {
+        userVideoRef.current.record({kind: "sentence", item: sentenceIDs.current[currentSentenceIndex.current]}, ()=> {
             CurrentSessionData.logEvent("sentenceRecordingEnded", sentenceIDs.current[currentSentenceIndex.current])
-            VideoUploader.upload(blob, "sentence", sentenceIDs.current[currentSentenceIndex.current])
 
             if (completeButtonDelayTimeout.current != null) {
                 clearTimeout(completeButtonDelayTimeout.current);

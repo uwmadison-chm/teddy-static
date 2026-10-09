@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
-import {VideoUploader} from "@/data/videoUploader.tsx";
+import * as pig from "@/data/pig.ts";
 import {CurrentSessionData, setCanLeavePageSafely} from "@/data/sessionData.tsx";
 import {
     FADING_PANEL_DEFAULT_LABEL,
@@ -16,23 +16,17 @@ export default function CompleteSessionScreen() {
     const teddyRef = useRef<TeddyFunctions>(null);
     const fadingPanelRef = useRef<FadingPanelFunctions>(null);
 
-    const [sessionUploaded, setSessionUploaded] = useState<boolean>(false);
-    const [waitingForVideoUploads, setWaitingForVideoUploads] = useState<boolean>(false);
-
-    useEffect(() => {
-        CurrentSessionData.complete()
-        stopCameraStream()
-        CurrentSessionData.uploadToServer("sessionComplete", ()=> {
-            setSessionUploaded(true);
-        })
-    }, [teddyRef]);
+    // Bytes still to send, and the most there have been, for the progress bar.
+    const [bytesLeft, setBytesLeft] = useState<number>(0);
+    const [bytesMost, setBytesMost] = useState<number>(0);
+    const [sending, setSending] = useState<boolean>(true);
+    const sentRef = useRef<Promise<void>>(null);
 
     function onVideosCompletedUploaded(didUpload:boolean) {
         const nextURL = CurrentSessionData.nextURL;
         if (!nextURL) {
             setCanLeavePageSafely()
         }
-        setWaitingForVideoUploads(false);
 
             const firstText = didUpload ?
                 ["Uploads complete! Hooray! Thank you for waiting."] :
@@ -55,35 +49,37 @@ export default function CompleteSessionScreen() {
     }
 
     useEffect(() => {
-        if (sessionUploaded) {
-            const needToWaitOnUploads = VideoUploader.hasRemainingUploads()
-            const teddyTexts = needToWaitOnUploads ?
-                [
-                    "We just have to wait for your video uploads to complete.",
-                    "Do not close this window before your uploads finish."
-                ] :
-                [
-                    "All of your data has been successfully uploaded!",
-                ]
+        CurrentSessionData.complete()
+        stopCameraStream()
+        sentRef.current = pig.finishRun((pending) => {
+            setBytesLeft(pending.bytes);
+            setBytesMost((most) => Math.max(most, pending.bytes));
+        }).catch((error) => {
+            console.error("Couldn't finish sending to pig:", error);
+        }).finally(() => {
+            setSending(false);
+        });
 
-            teddyRef.current?.showTextSequence(TeddyAnimations.SLIGHTLY_HAPPY,
-                [
-                    "You're all finished! Hooray!",
-                ].concat(teddyTexts),
-                () => {
-                    if (needToWaitOnUploads) {
-                        setWaitingForVideoUploads(true);
-                        VideoUploader.setOnComplete(()=> {
-                            onVideosCompletedUploaded(true)
-                        })
-                    }
-                    else {
-                        onVideosCompletedUploaded(false)
-                    }
-                }
-            );
-        }
-    }, [sessionUploaded]);
+        teddyRef.current?.showTextSequence(TeddyAnimations.SLIGHTLY_HAPPY,
+            ["You're all finished! Hooray!"],
+            () => {
+                let waited = false;
+                const timer = window.setTimeout(() => {
+                    // Still sending: say so, rather than go quiet.
+                    waited = true;
+                    teddyRef.current?.showTextSequence(TeddyAnimations.SLIGHTLY_HAPPY,
+                        [
+                            "We just have to wait for your videos to finish sending.",
+                            "Please don't close this window until they're done.",
+                        ]);
+                }, 500);
+                sentRef.current.then(() => {
+                    clearTimeout(timer);
+                    onVideosCompletedUploaded(waited);
+                });
+            }
+        );
+    }, [teddyRef]);
 
     return (
         <div className={"wrapper"}>
@@ -92,9 +88,13 @@ export default function CompleteSessionScreen() {
                 initialAnimation={TeddyAnimations.SLIGHTLY_HAPPY}
             />
 
-            <div className={"loader-wrapper"} style={{display: waitingForVideoUploads || !sessionUploaded ? "block" : "none"}}>
+            <div className={"loader-wrapper"} style={{display: sending ? "block" : "none"}}>
                 <div className="loader"></div>
-                Uploading...
+                Sending...
+                {bytesMost > 0 && <div className={"send-progress"}>
+                    <div className={"bar"} style={{width: (100 * (1 - bytesLeft / bytesMost)) + "%"}} />
+                </div>}
+                {bytesLeft > 0 && <div className={"send-progress-text"}>{(bytesLeft / 1e6).toFixed(1)} MB to go</div>}
             </div>
 
             <FadingPanelSet ref={fadingPanelRef}>
