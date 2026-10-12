@@ -22,6 +22,10 @@ cp "$client/dist/pig.js" "$here/src/vendor/pig/pig.js"
 cp -r "$client/dist/types" "$here/src/vendor/pig/types"
 printf 'export * from "./types/index.ts";\n' > "$here/src/vendor/pig/pig.d.ts"
 cp "$client/dist/pig-worker.js" "$here/src/vendor/pig/pig-worker.js"
+# The source maps aren't copied, so drop the comments pointing to them; Vite
+# warns about each missing map.
+sed -i.bak '/^\/\/# sourceMappingURL=/d' "$here/src/vendor/pig/pig.js" "$here/src/vendor/pig/pig-worker.js"
+rm "$here/src/vendor/pig/"*.bak
 
 version=$(node -p "require('$client/package.json').version")
 commit=$(git -C "$checkout" rev-parse --short HEAD)
