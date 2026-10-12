@@ -1,7 +1,5 @@
 import {allowedNextURL} from "@/data/config.ts";
-import {TeddyReels} from "@/data/reels.ts";
-import {TeddySentences} from "@/data/sentences.ts";
-import {TeddyVideoLogPrompts} from "@/data/videoLogPrompts.ts";
+import {reels, sentences, videoLogPrompts} from "virtual:teddy-study";
 import {sendEvent} from "@/data/pig.ts";
 
 const ModuleNames = {
@@ -48,10 +46,8 @@ class SessionData {
 
         // Problems with the link that mean the session can't run as asked.
         this.linkProblems = [];
+        // With no modules, the session is just the face check and calibration.
         const modulesText = params.get("modules") || "";
-        if (!modulesText) {
-            this.linkProblems.push("The link needs a modules parameter, like modules=videolog|sentence");
-        }
         for (const moduleText of modulesText.split("|").filter(x => !!x)) {
             const parts = moduleText.split(":");
             const moduleName = parts[0].toLowerCase();
@@ -61,15 +57,13 @@ class SessionData {
                 continue;
             }
             this.modules.push(new ModuleParam(moduleName, args));
-            // Video log prompts and sentences are chosen at random when the link
-            // doesn't name them. Reels have to be named.
-            if (moduleName == ModuleNames.Reels && !args.length) {
-                this.linkProblems.push("The reels module needs reel IDs, like reels:01,02");
+            if (!args.length) {
+                this.linkProblems.push(`The ${moduleName} module needs item IDs, like ${moduleName}:01,02`);
             }
             const known = {
-                [ModuleNames.Reels]: TeddyReels,
-                [ModuleNames.Sentence]: TeddySentences,
-                [ModuleNames.VideoLog]: TeddyVideoLogPrompts,
+                [ModuleNames.Reels]: reels,
+                [ModuleNames.Sentence]: sentences,
+                [ModuleNames.VideoLog]: videoLogPrompts,
             }[moduleName];
             for (const id of args) {
                 if (!(id in known)) {

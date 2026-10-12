@@ -68,16 +68,3 @@ export function interpolateColors(color1, color2, percent) {
     // Convert the interpolated RGB values back to a hex color
     return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
 }
-
-export function removeItem<T>(arr: Array<T>, value: T): Array<T> {
-    const index = arr.indexOf(value);
-    if (index > -1) {
-        arr.splice(index, 1);
-    }
-    return arr;
-}
-
-
-export function getRandomItem<T>(arr:Array<T>): T {
-    return arr[Math.floor(Math.random()*arr.length)];
-}

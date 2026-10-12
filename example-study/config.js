@@ -1,5 +1,5 @@
-// Deployment configuration. Edit this file on the server; no rebuild needed.
-window.TEDDY_CONFIG = {
+// Study settings. They're built into Teddy, so a change here needs a rebuild.
+export default {
     // Pig's address, e.g. "https://pig.example.edu"
     pigServer: "",
     // The task code this deployment of Teddy sends data to, as pig's configuration names it.

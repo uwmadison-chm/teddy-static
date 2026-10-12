@@ -1,3 +1,5 @@
+import {config as studyConfig} from "virtual:teddy-study";
+
 interface RecordingConfig {
     // Tried in order; the first one the browser can record is used.
     mimeTypes: string[];
@@ -17,12 +19,6 @@ interface TeddyConfig {
     recording: RecordingConfig;
 }
 
-declare global {
-    interface Window {
-        TEDDY_CONFIG?: Partial<Omit<TeddyConfig, "recording"> & {recording: Partial<RecordingConfig>}>;
-    }
-}
-
 const defaultRecording: RecordingConfig = {
     mimeTypes: ["video/webm;codecs=vp8,opus", "video/webm", "video/mp4"],
     videoBitsPerSecond: 1_000_000,
@@ -32,22 +28,19 @@ const defaultRecording: RecordingConfig = {
     frameRate: 30,
 };
 
-const fileConfig = window.TEDDY_CONFIG || {};
-
-// debug comes only from config.js. A URL parameter would let anyone with a link
+// The study's config.js, which the build checks (see vite-plugin-study.ts).
+// debug comes only from there. A URL parameter would let anyone with a link
 // turn off uploads for their session without anything on screen saying so.
 export const Config: TeddyConfig = {
-    pigServer: fileConfig.pigServer || "",
-    taskCode: fileConfig.taskCode || "",
-    debug: !!fileConfig.debug,
-    nextUrlHosts: fileConfig.nextUrlHosts || [],
-    recording: {...defaultRecording, ...fileConfig.recording},
+    pigServer: studyConfig.pigServer || "",
+    taskCode: studyConfig.taskCode || "",
+    debug: !!studyConfig.debug,
+    nextUrlHosts: studyConfig.nextUrlHosts || [],
+    recording: {...defaultRecording, ...studyConfig.recording},
 };
 
 if (Config.debug) {
     console.log("Debug mode: uploads are disabled");
-} else if (!Config.pigServer || !Config.taskCode) {
-    console.error("config.js needs pigServer and taskCode; nothing can be sent without them");
 }
 
 // nextURL comes from the link, and the end screen sends the participant there.

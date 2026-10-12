@@ -13,4 +13,4 @@ stats.html
 .eslintcache
 
 # Don't include reels in the repo
-/public/static/reels/
+/example-study/reels/
