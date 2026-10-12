@@ -1,5 +1,5 @@
 import {allowedNextURL} from "@/data/config.ts";
-import {reels, sentences, videoLogPrompts} from "virtual:teddy-study";
+import {modules, reels, sentences, videoLogPrompts} from "virtual:teddy-study";
 import {sendEvent} from "@/data/pig.ts";
 
 const ModuleNames = {
@@ -54,6 +54,10 @@ class SessionData {
             const args = (parts[1] || "").split(",").filter(x => !!x);
             if (!Object.values(ModuleNames).includes(moduleName)) {
                 this.linkProblems.push(`There's no module called ${parts[0]}`);
+                continue;
+            }
+            if (!modules.includes(moduleName)) {
+                this.linkProblems.push(`This study doesn't use the ${moduleName} module`);
                 continue;
             }
             this.modules.push(new ModuleParam(moduleName, args));

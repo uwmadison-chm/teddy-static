@@ -31,7 +31,9 @@ declare module "virtual:teddy-study" {
             frameRate: number;
         }>;
     }>;
-    // Items by ID.
+    // The modules this build has, by name.
+    export const modules: string[];
+    // Items by ID; empty for a module the build doesn't have.
     export const sentences: Record<string, TextItem>;
     export const videoLogPrompts: Record<string, TextItem>;
     export const reels: Record<string, ReelItem>;

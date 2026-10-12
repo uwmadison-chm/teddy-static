@@ -10,6 +10,14 @@ export default {
     // Hosts the end screen may send participants to with nextURL, e.g.
     // ["redcap.example.edu"]. Empty means any http or https URL.
     nextUrlHosts: [],
+    // Each module this study uses, and the CSV of its items, relative to this
+    // folder. Links can only name these modules. Reel files are found relative
+    // to the reels CSV.
+    modules: {
+        sentence: "sentence.csv",
+        videolog: "videolog.csv",
+        // reels: "reels/reels.csv",
+    },
     // How recordings are made. Leave any of these out to use the default shown.
     recording: {
         // Tried in order; the first one this browser can record is used.

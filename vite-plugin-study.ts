@@ -1,6 +1,6 @@
-// Builds a study into Teddy. A study is a folder holding config.js, a CSV of
-// items for each module (sentence.csv, videolog.csv, reels.csv), and the reel
-// videos in reels/. TEDDY_STUDY names the folder; it defaults to example-study/.
+// Builds a study into Teddy. A study is a folder holding config.js, which names
+// a CSV of items for each module the study uses, and the reel videos.
+// TEDDY_STUDY names the folder; it defaults to example-study/.
 //
 // The app imports all of it from "virtual:teddy-study". Anything wrong with the
 // study (a missing setting, a duplicate ID, a reel file that isn't there) stops
@@ -23,6 +23,7 @@ const CONFIG_KEYS: Record<string, string> = {
     debug: "boolean",
     nextUrlHosts: "string[]",
     recording: "object",
+    modules: "object",
 };
 const RECORDING_KEYS: Record<string, string> = {
     mimeTypes: "string[]",
@@ -33,12 +34,12 @@ const RECORDING_KEYS: Record<string, string> = {
     frameRate: "number",
 };
 
-// Each module's CSV and the columns it has to have. Other columns are allowed,
-// and come along with each item.
-const MODULE_FILES: Record<string, {file: string, columns: string[]}> = {
-    sentence: {file: "sentence.csv", columns: ["id", "text"]},
-    videolog: {file: "videolog.csv", columns: ["id", "text"]},
-    reels: {file: "reels.csv", columns: ["id", "file"]},
+// The columns each module's CSV has to have. Other columns are allowed, and
+// come along with each item.
+const MODULE_COLUMNS: Record<string, string[]> = {
+    sentence: ["id", "text"],
+    videolog: ["id", "text"],
+    reels: ["id", "file"],
 };
 
 type Row = Record<string, string>;
@@ -77,6 +78,10 @@ async function loadConfig(path: string): Promise<Record<string, unknown>> {
     if (typeOf(config.recording) == "object") {
         checkKeys("config.js recording", config.recording, RECORDING_KEYS, problems);
     }
+    if (typeOf(config.modules) == "object") {
+        const moduleKeys = Object.fromEntries(Object.keys(MODULE_COLUMNS).map(m => [m, "string"]));
+        checkKeys("config.js modules", config.modules, moduleKeys, problems);
+    }
     if (!config.debug && (!config.pigServer || !config.taskCode)) {
         problems.push("config.js needs pigServer and taskCode unless debug is true");
     }
@@ -88,7 +93,7 @@ async function loadConfig(path: string): Promise<Record<string, unknown>> {
 
 function loadItems(path: string, columns: string[]): Row[] {
     if (!existsSync(path)) {
-        return [];
+        throw new StudyError(`${path} doesn't exist`);
     }
     // Drop the byte-order mark Excel adds, and mixed line endings from hand edits.
     const text = readFileSync(path, "utf8").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
@@ -129,7 +134,8 @@ function loadItems(path: string, columns: string[]): Row[] {
 }
 
 // Where a reel goes in the build: assets/reels/, with a hash of its contents in
-// its name like the rest of assets/, so it can be cached for good.
+// its name like the rest of assets/, so it can be cached for good. file is
+// relative to reelsDir, the reels CSV's folder.
 function reelBuildPath(reelsDir: string, file: string): string {
     const hash = createHash("sha256").update(readFileSync(join(reelsDir, file)))
         .digest("base64url").slice(0, 8);
@@ -143,9 +149,10 @@ function isURL(file: string): boolean {
 
 export default function teddyStudy(): Plugin {
     const studyDir = resolve(process.env.TEDDY_STUDY || "example-study");
-    const reelsDir = join(studyDir, "reels");
     let viteConfig: ResolvedConfig;
-    // Reel files to copy into the build, from their path in reels/ to their
+    // The reels CSV's folder; reel files are found relative to it.
+    let reelsDir = studyDir;
+    // Reel files to copy into the build, from their path in reelsDir to their
     // path in the build.
     let reelFiles = new Map<string, string>();
 
@@ -175,16 +182,25 @@ export default function teddyStudy(): Plugin {
             this.addWatchFile(configPath);
             const config = await loadConfig(configPath);
 
+            // Only the modules config.js names are in this build; links that
+            // name any other module are refused.
+            const moduleFiles = (config.modules || {}) as Record<string, string>;
             const items: Record<string, Record<string, Row>> = {};
-            for (const [module, {file, columns}] of Object.entries(MODULE_FILES)) {
-                const path = join(studyDir, file);
+            for (const [module, columns] of Object.entries(MODULE_COLUMNS)) {
+                if (!moduleFiles[module]) {
+                    items[module] = {};
+                    continue;
+                }
+                const path = resolve(studyDir, moduleFiles[module]);
                 this.addWatchFile(path);
                 items[module] = Object.fromEntries(loadItems(path, columns).map(row => [row.id, row]));
             }
 
-            // Each reel gets a url to play it from. Files in reels/ are copied to
-            // assets/reels/ in the build; URLs are used as they are.
+            // Each reel gets a url to play it from. Files are found relative to
+            // the reels CSV and copied to assets/reels/ in the build; URLs are
+            // used as they are.
             const missing: string[] = [];
+            reelsDir = moduleFiles.reels ? dirname(resolve(studyDir, moduleFiles.reels)) : studyDir;
             reelFiles = new Map();
             for (const reel of Object.values(items.reels)) {
                 if (isURL(reel.file)) {
@@ -193,7 +209,7 @@ export default function teddyStudy(): Plugin {
                 }
                 const path = resolve(reelsDir, reel.file);
                 if (relative(reelsDir, path).startsWith("..")) {
-                    missing.push(`reel ${reel.id}: ${reel.file} isn't inside reels/`);
+                    missing.push(`reel ${reel.id}: ${reel.file} isn't inside ${reelsDir}`);
                 } else if (!existsSync(path)) {
                     missing.push(`reel ${reel.id}: ${path} doesn't exist`);
                 } else if (viteConfig.command == "serve") {
@@ -209,8 +225,10 @@ export default function teddyStudy(): Plugin {
                 throw new StudyError(missing.join("\n"));
             }
 
+            const {modules: _, ...settings} = config;
             return [
-                `export const config = ${JSON.stringify(config)};`,
+                `export const config = ${JSON.stringify(settings)};`,
+                `export const modules = ${JSON.stringify(Object.keys(moduleFiles))};`,
                 `export const sentences = ${JSON.stringify(items.sentence)};`,
                 `export const videoLogPrompts = ${JSON.stringify(items.videolog)};`,
                 `export const reels = ${JSON.stringify(items.reels)};`,
