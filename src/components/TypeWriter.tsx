@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useEffectEvent, useImperativeHandle, useRef, useState} from "react";
+import {useEffect, useEffectEvent, useImperativeHandle, useRef, useState} from "react";
 import * as React from "react";
 
 export interface TypeWriterFunctions {
@@ -17,47 +17,56 @@ export const TypeWriter = React.forwardRef<TypeWriterFunctions, Props>(({onTypin
     const [displayString, setDisplayString] = useState("");
     const intervalRef = useRef<number>(null);
     const currentProgressRef = useRef<number>(0);
+    // The interval reads the text from here, not from state, so it always sees
+    // the text it's typing rather than the one from the render that started it.
+    const textRef = useRef("");
+
+    function stopInterval() {
+        if (intervalRef.current != null) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+    }
 
     useEffect(() => {
-        return () => {
-            clearInterval(intervalRef.current || 0)
-        };
+        return stopInterval;
     }, []);
 
-    const onTypingChanged = useEffectEvent((isTyping: boolean) => {
-        if (isTyping) {
-            currentProgressRef.current = 0
-            intervalRef.current = window.setInterval(() => {
-                currentProgressRef.current += 1;
-                setCurrentProgress(currentProgressRef.current)
-                if (currentProgressRef.current >= displayString.length) {
-                    setIsTyping(false)
-                }
-            }, delayMS);
-
-        } else {
-            clearInterval(intervalRef.current)
-            onTypingComplete()
-        }
+    const onTypingStopped = useEffectEvent(() => {
+        onTypingComplete()
     });
 
     useEffect(() => {
-        onTypingChanged(isTyping);
+        if (!isTyping) {
+            onTypingStopped();
+        }
     }, [isTyping]);
 
-    const onSkipToEnd = useCallback(() => {
-        setIsTyping(false);
-        setCurrentProgress(Number.POSITIVE_INFINITY)
-    }, [])
-
+    // The interval is started and stopped right here, rather than from an effect
+    // after the next render. Otherwise a tick that was already queued could undo
+    // a skip, leaving the text cut off partway with typing marked as finished.
     useImperativeHandle(ref, () => ({
         showText: (newText) => {
-            setDisplayString(newText || "");
-            setCurrentProgress(0)
-            setIsTyping(true)
+            stopInterval();
+            textRef.current = newText || "";
+            currentProgressRef.current = 0;
+            setDisplayString(textRef.current);
+            setCurrentProgress(0);
+            setIsTyping(true);
+            intervalRef.current = window.setInterval(() => {
+                currentProgressRef.current += 1;
+                setCurrentProgress(currentProgressRef.current);
+                if (currentProgressRef.current >= textRef.current.length) {
+                    stopInterval();
+                    setIsTyping(false);
+                }
+            }, delayMS);
         },
         skipToEnd: () => {
-            onSkipToEnd()
+            stopInterval();
+            currentProgressRef.current = Number.POSITIVE_INFINITY;
+            setCurrentProgress(Number.POSITIVE_INFINITY);
+            setIsTyping(false);
         },
     }));
 

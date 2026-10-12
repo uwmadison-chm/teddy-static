@@ -33,6 +33,7 @@ export const CountdownTimer = React.forwardRef<CountdownTimerFunctions, Countdow
             setElapsedTime(0)
             setCircleProgress(0)
             setIsShown(true);
+            setIsFadingOut(false);
             startedTimestampRef.current = new Date().getTime()
             if (intervalRef.current != null) {
                 clearInterval(intervalRef.current);
@@ -61,9 +62,9 @@ export const CountdownTimer = React.forwardRef<CountdownTimerFunctions, Countdow
             setCircleProgress(0)
         },
         fadeOut: () => {
-            setInterval(()=>{
+            setTimeout(()=>{
                 setIsFadingOut(true)
-                setInterval(() => {
+                setTimeout(() => {
                     setIsShown(false)
                     setCircleProgress(0)
                 }, 300)

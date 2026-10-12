@@ -14,16 +14,11 @@ import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.ts
 import {CountdownTimer} from "@/components/CountdownTimer.tsx";
 import {Colors} from "@/utils/colors.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
-import {VideoUploader} from "@/data/videoUploader.tsx";
 import * as React from "react";
+import {TeddyReels} from "@/data/reels.ts";
 
 const MAX_RATING_RECORDING_DURATION = 15000;
 const MAX_RECORDING_DURATION = 120 * 1000;
-
-// FIXME populate with your reels and their associated IDs.
-const TeddyReels = {
-    '01': '01.mp4',
-}
 
 export default function ReelsScreen() {
 
@@ -49,13 +44,6 @@ export default function ReelsScreen() {
 
     useEffect(() => {
         if (teddyRef != null) {
-
-            if (!reelIDs.current.length) {
-                reelIDs.current.push(getRandomItem(Object.keys(TeddyReels)))
-                const remainingReels = Object.keys(TeddyReels).slice()
-                removeItem(remainingReels, reelIDs.current[0])
-                reelIDs.current.push(getRandomItem(remainingReels))
-            }
 
             if (!videoElementsRef.current.length) {
                 for (const reelID of reelIDs.current) {
@@ -132,9 +120,8 @@ export default function ReelsScreen() {
         setIsRecording(true);
         CurrentSessionData.logEvent("reelRatingRecordingStarted", reelIDs.current[currentReelIndex.current])
         const currentVideoID = reelIDs.current[currentReelIndex.current]
-        userVideoRef.current.record((blob)=> {
+        userVideoRef.current.record({kind: "reelRating", item: currentVideoID}, ()=> {
             CurrentSessionData.logEvent("reelRatingRecordingEnded", currentVideoID)
-            VideoUploader.upload(blob, "reelRating", currentVideoID)
 
             setIsRecording(false);
         }, MAX_RATING_RECORDING_DURATION)
@@ -144,8 +131,7 @@ export default function ReelsScreen() {
     const onRateCurrentReel = (rating:number) => {
 
         userVideoRef.current.stop()
-        CurrentSessionData.rateReel(reelIDs.current[currentReelIndex.current], rating)
-        CurrentSessionData.logEvent("ratedReel", reelIDs.current[currentReelIndex.current] + "|" + rating);
+        CurrentSessionData.logEvent("ratedReel", {reel: reelIDs.current[currentReelIndex.current], rating: rating});
         console.log("Rated reel", reelIDs.current[currentReelIndex.current], rating);
         currentReelIndex.current = currentReelIndex.current + 1;
         fadingPanelRef.current.showPanel(null);
@@ -166,9 +152,8 @@ export default function ReelsScreen() {
 
         CurrentSessionData.logEvent("reelRecordingStarted", reelIDs.current[currentReelIndex.current])
 
-        userVideoRef.current.record((blob)=> {
+        userVideoRef.current.record({kind: "reel", item: reelIDs.current[currentReelIndex.current]}, ()=> {
             CurrentSessionData.logEvent("reelRecordingEnded", reelIDs.current[currentReelIndex.current])
-            VideoUploader.upload(blob, "reel", reelIDs.current[currentReelIndex.current])
 
             setIsRecording(false);
 

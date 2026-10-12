@@ -21,7 +21,8 @@ const SpeechBubbleBlocker = () => {
         });
         return () => {
             off();
-            window.document.onclick = null;
+            window.document.body.onclick = null;
+            window.document.body.ontouchstart = null;
         };
     }, []);
 

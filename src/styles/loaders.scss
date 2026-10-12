@@ -39,3 +39,23 @@ $height: 3.5vh;
   font-size: 3vh;
   font-weight:200;
 }
+
+.send-progress {
+  margin: 2vh auto 0;
+  width: 60%;
+  height: 1.2vh;
+  border-radius: 0.6vh;
+  background-color: #ddd;
+  overflow: hidden;
+
+  .bar {
+    height: 100%;
+    background-color: colors.$uservideoBG;
+    transition: width 0.3s;
+  }
+}
+
+.send-progress-text {
+  margin-top: 1vh;
+  font-size: 2vh;
+}

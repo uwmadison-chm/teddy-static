@@ -2,6 +2,7 @@ import {useEffect, useRef} from "react";
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {setCanLeavePageSafely} from "@/data/sessionData.tsx";
+import {stopCameraStream} from "@/data/camera.ts";
 
 
 export default function SessionExpiredScreen() {
@@ -9,6 +10,7 @@ export default function SessionExpiredScreen() {
 
     useEffect(() => {
         setCanLeavePageSafely()
+        stopCameraStream()
         teddyRef.current?.showTextSequence(TeddyAnimations.SADNESS,
           [
               "Oh no, this session has expired!",
