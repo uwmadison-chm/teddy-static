@@ -10,7 +10,7 @@ To run the dev server, first make sure you have Node and NPM installed and updat
 
 First, run `npm install` to install all requirements.
 
-Run `npx vite` to start the development server. The page should be running and available at http://localhost:9000/. Static files are served from `public/`.
+Run `npx vite` to start the development server. The page should be running and available at http://localhost:9000/.
 
 The dev server and the build use the study in `example-study/` unless `TEDDY_STUDY` names another (see below).
 
@@ -47,7 +47,7 @@ Each module's CSV has a header row and one item per row. `id` is what a link use
 
 - `sentence.csv`: `text`, the sentence to read aloud.
 - `videolog.csv`: `text`, the prompt.
-- `reels.csv`: `file`, the video's path inside the study's `reels/` folder, or an `http(s)` URL to play it from somewhere else. The build copies each listed file to `static/reels/`; files in `reels/` that `reels.csv` doesn't list are left out.
+- `reels.csv`: `file`, the video's path inside the study's `reels/` folder, or an `http(s)` URL to play it from somewhere else. The build copies each listed file to `assets/reels/`, with a hash in its name; files in `reels/` that `reels.csv` doesn't list are left out.
 
 Other columns are allowed and are kept with each item. A module with no CSV has no items. Excel's UTF-8 CSV export works; use "CSV UTF-8" so curly quotes and accents survive.
 
@@ -78,7 +78,9 @@ Pig's JavaScript client is copied into this repository, in `src/vendor/pig/`. Vi
 
 ## Production Build
 
-To build the production bundle, run `TEDDY_STUDY=path/to/my-study npm run build`. Without `TEDDY_STUDY`, it builds `example-study/`, which has `debug` on. Copy the contents of `dist/` to the web server; reels are included.
+To build the production bundle, run `TEDDY_STUDY=path/to/my-study npm run build`. Without `TEDDY_STUDY`, it builds `example-study/`, which has `debug` on. Copy the contents of `dist/` to the web server; reels are included. For example, `rsync -a --delete dist/ server:/var/www/teddy/`.
+
+Everything in `assets/` has a hash of its contents in its name, so it can be cached indefinitely. `index.html` doesn't, and needs to be served with `Cache-Control: no-cache` so browsers pick up new builds.
 
 ## Formatting videos
 

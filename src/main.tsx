@@ -10,6 +10,8 @@ import * as faceapi from 'face-api.js';
 import { RuntimeLoader } from "@rive-app/react-webgl2";
 import riveWasmUrl from "@rive-app/webgl2/rive.wasm?url";
 import riveFallbackWasmUrl from "@rive-app/webgl2/rive_fallback.wasm?url";
+import faceModelManifest from "@/assets/facemodels/tiny_face_detector_model-weights_manifest.json";
+import faceModelWeightsUrl from "@/assets/facemodels/tiny_face_detector_model-shard1.shard?url";
 import SessionExpiredScreen from "@/routes/SessionExpiredScreen.tsx";
 import LinkProblemScreen from "@/routes/LinkProblemScreen.tsx";
 import CameraHelpScreen from "@/routes/CameraHelpScreen.tsx";
@@ -23,9 +25,15 @@ import {Config} from "@/data/config.ts";
 RuntimeLoader.setWasmUrl(riveWasmUrl);
 RuntimeLoader.setWasmFallbackUrl(riveFallbackWasmUrl);
 
-faceapi.nets.tinyFaceDetector.loadFromUri('static/facemodels/').then(r => {
-    console.log("Loaded Face Detector Model");
-})
+// Loaded from the bundle's hashed URLs instead of with loadFromUri, which finds
+// the weights file by its unhashed name in the manifest.
+fetch(faceModelWeightsUrl)
+    .then(response => response.arrayBuffer())
+    .then(weights => {
+        faceapi.nets.tinyFaceDetector.loadFromWeightMap(
+            faceapi.tf.io.decodeWeights(weights, faceModelManifest[0].weights as faceapi.tf.io.WeightsManifestEntry[]));
+        console.log("Loaded Face Detector Model");
+    })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

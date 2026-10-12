@@ -6,8 +6,9 @@
 // study (a missing setting, a duplicate ID, a reel file that isn't there) stops
 // the build, rather than turning up for a participant.
 
+import {createHash} from "node:crypto";
 import {cpSync, existsSync, mkdirSync, readFileSync} from "node:fs";
-import {dirname, join, relative, resolve} from "node:path";
+import {dirname, extname, join, relative, resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import Papa from "papaparse";
 import {searchForWorkspaceRoot, type Plugin, type ResolvedConfig} from "vite";
@@ -127,6 +128,15 @@ function loadItems(path: string, columns: string[]): Row[] {
     return parsed.data;
 }
 
+// Where a reel goes in the build: assets/reels/, with a hash of its contents in
+// its name like the rest of assets/, so it can be cached for good.
+function reelBuildPath(reelsDir: string, file: string): string {
+    const hash = createHash("sha256").update(readFileSync(join(reelsDir, file)))
+        .digest("base64url").slice(0, 8);
+    const ext = extname(file);
+    return `assets/reels/${file.slice(0, file.length - ext.length)}-${hash}${ext}`;
+}
+
 function isURL(file: string): boolean {
     return /^https?:\/\//i.test(file);
 }
@@ -135,7 +145,9 @@ export default function teddyStudy(): Plugin {
     const studyDir = resolve(process.env.TEDDY_STUDY || "example-study");
     const reelsDir = join(studyDir, "reels");
     let viteConfig: ResolvedConfig;
-    let reelFiles: string[] = [];
+    // Reel files to copy into the build, from their path in reels/ to their
+    // path in the build.
+    let reelFiles = new Map<string, string>();
 
     return {
         name: "teddy-study",
@@ -171,9 +183,9 @@ export default function teddyStudy(): Plugin {
             }
 
             // Each reel gets a url to play it from. Files in reels/ are copied to
-            // static/reels/ in the build; URLs are used as they are.
+            // assets/reels/ in the build; URLs are used as they are.
             const missing: string[] = [];
-            reelFiles = [];
+            reelFiles = new Map();
             for (const reel of Object.values(items.reels)) {
                 if (isURL(reel.file)) {
                     reel.url = reel.file;
@@ -184,10 +196,14 @@ export default function teddyStudy(): Plugin {
                     missing.push(`reel ${reel.id}: ${reel.file} isn't inside reels/`);
                 } else if (!existsSync(path)) {
                     missing.push(`reel ${reel.id}: ${path} doesn't exist`);
+                } else if (viteConfig.command == "serve") {
+                    reel.url = "/@fs" + path;
+                } else {
+                    if (!reelFiles.has(reel.file)) {
+                        reelFiles.set(reel.file, reelBuildPath(reelsDir, reel.file));
+                    }
+                    reel.url = reelFiles.get(reel.file)!;
                 }
-                reelFiles.push(reel.file);
-                reel.url = viteConfig.command == "serve" ?
-                    "/@fs" + path : "static/reels/" + reel.file;
             }
             if (missing.length) {
                 throw new StudyError(missing.join("\n"));
@@ -216,9 +232,9 @@ export default function teddyStudy(): Plugin {
         },
 
         writeBundle() {
-            const outDir = resolve(viteConfig.root, viteConfig.build.outDir, "static", "reels");
-            for (const file of reelFiles) {
-                const target = join(outDir, file);
+            const outDir = resolve(viteConfig.root, viteConfig.build.outDir);
+            for (const [file, buildPath] of reelFiles) {
+                const target = join(outDir, buildPath);
                 mkdirSync(dirname(target), {recursive: true});
                 cpSync(join(reelsDir, file), target);
             }

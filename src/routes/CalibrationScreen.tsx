@@ -1,4 +1,5 @@
 import {saveBlob, useAnimatedNavigate} from "@/utils/utils"
+import timerCompleteUrl from "@/assets/audio/timer_complete.mp3";
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {
@@ -68,7 +69,7 @@ export default function CalibrationScreen() {
         microphoneIndicatorRef.current.start()
 
         if (timerCompleteAudioRef.current == null) {
-            timerCompleteAudioRef.current = new Audio("static/audio/timer_complete.mp3")
+            timerCompleteAudioRef.current = new Audio(timerCompleteUrl)
         }
     }, [])
 
