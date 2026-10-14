@@ -185,7 +185,7 @@ export default function CalibrationScreen() {
 
             <FaceDetector
                 ref={faceDetectorRef}
-                          detectionDuration={3000}
+                          detectionDuration={1000}
                           onDetected={() => {
                 setTryingToDetectFace(false)
             }} />
