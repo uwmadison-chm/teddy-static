@@ -7,7 +7,7 @@
 // the build, rather than turning up for a participant.
 
 import {createHash} from "node:crypto";
-import {cpSync, existsSync, mkdirSync, readFileSync} from "node:fs";
+import {closeSync, cpSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, readSync} from "node:fs";
 import {dirname, extname, join, relative, resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import Papa from "papaparse";
@@ -143,6 +143,48 @@ function reelBuildPath(reelsDir: string, file: string): string {
     return `assets/reels/${file.slice(0, file.length - ext.length)}-${hash}${ext}`;
 }
 
+// Whether an MP4 has its index (the moov box) after the video data (mdat), so
+// a browser has to download the whole file before it can start playing it.
+// Reads only the top-level box headers. Files that aren't MP4 are false.
+function indexAtEnd(path: string): boolean {
+    const fd = openSync(path, "r");
+    try {
+        const fileSize = fstatSync(fd).size;
+        const header = Buffer.alloc(16);
+        let offset = 0;
+        let first = true;
+        while (offset + 8 <= fileSize) {
+            readSync(fd, header, 0, 16, offset);
+            const type = header.toString("latin1", 4, 8);
+            if (first && type != "ftyp") {
+                return false;
+            }
+            first = false;
+            if (type == "moov") {
+                return false;
+            }
+            if (type == "mdat") {
+                return true;
+            }
+            // A size of 1 means a 64-bit size follows; 0 means the box runs
+            // to the end of the file.
+            let size = header.readUInt32BE(0);
+            if (size == 1) {
+                size = Number(header.readBigUInt64BE(8));
+            } else if (size == 0) {
+                return false;
+            }
+            if (size < 8) {
+                return false;
+            }
+            offset += size;
+        }
+        return false;
+    } finally {
+        closeSync(fd);
+    }
+}
+
 function isURL(file: string): boolean {
     return /^https?:\/\//i.test(file);
 }
@@ -233,6 +275,12 @@ export default function teddyStudy(): Plugin {
             }
             if (missing.length) {
                 throw new StudyError(missing.join("\n"));
+            }
+            for (const file of new Set(Object.values(items.reels).filter(r => !isURL(r.file)).map(r => r.file))) {
+                if (indexAtEnd(resolve(reelsDir, file))) {
+                    this.warn(`${file} has its index at the end, so it won't start playing until it has all downloaded. ` +
+                        `To move the index to the start without re-encoding: ffmpeg -i INPUT -c copy -movflags +faststart OUTPUT`);
+                }
             }
 
             const {modules: _, ...settings} = config;
