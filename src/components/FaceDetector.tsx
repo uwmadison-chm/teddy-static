@@ -1,7 +1,8 @@
 import * as React from "react";
 import {useImperativeHandle, useRef} from "react";
 import * as faceapi from 'face-api.js';
-import {buildStyles, CircularProgressbar, CircularProgressbarWithChildren} from "react-circular-progressbar";
+import {buildStyles, CircularProgressbarWithChildren} from "react-circular-progressbar";
+import {FaCheck, FaUser} from "react-icons/fa";
 import {interpolateColors} from "@/utils/utils.tsx";
 import {Colors} from "@/utils/colors.tsx";
 
@@ -63,14 +64,17 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
             setProgress(0)
         },
         hide: () => {
+            // Leave the checkmark up long enough to read as confirmation
             setTimeout(()=>{
                 setIsFadingOut(true)
                 setTimeout(() => {
                     setIsShown(false)
                 }, 300)
-            }, 300)
+            }, 1200)
         }
     }));
+
+    const detected = progress >= 1;
 
     return (
         <div className={"face-detector"}
@@ -93,7 +97,7 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
                 <div
                     className={"circle-progress-text"}
                     style={{color: interpolateColors(Colors.primary, Colors.primaryDark, progress)}}
-                >{Math.ceil(props.detectionDuration*(1-progress)/1000)}</div>
+                >{detected ? <FaCheck /> : <FaUser style={{opacity: 0.4}} />}</div>
             </CircularProgressbarWithChildren>
         </div>
     )
