@@ -143,23 +143,23 @@ function reelBuildPath(reelsDir: string, file: string): string {
     return `assets/reels/${file.slice(0, file.length - ext.length)}-${hash}${ext}`;
 }
 
-// Whether an MP4 has its index (the moov box) after the video data (mdat), so
-// a browser has to download the whole file before it can start playing it.
-// Reads only the top-level box headers. Files that aren't MP4 are false.
-function indexAtEnd(path: string): boolean {
+// Whether a reel is an MP4 without its index (the moov box) ahead of the video
+// data (mdat). A browser has to download all of such a file before it can
+// start playing it. Reads only the top-level box headers. Anything it can't
+// confirm, such as a truncated file, counts as slow; files that aren't MP4
+// (WebM, say) don't.
+function slowToStart(path: string): boolean {
     const fd = openSync(path, "r");
     try {
         const fileSize = fstatSync(fd).size;
         const header = Buffer.alloc(16);
         let offset = 0;
-        let first = true;
         while (offset + 8 <= fileSize) {
             readSync(fd, header, 0, 16, offset);
             const type = header.toString("latin1", 4, 8);
-            if (first && type != "ftyp") {
+            if (offset == 0 && type != "ftyp") {
                 return false;
             }
-            first = false;
             if (type == "moov") {
                 return false;
             }
@@ -171,15 +171,13 @@ function indexAtEnd(path: string): boolean {
             let size = header.readUInt32BE(0);
             if (size == 1) {
                 size = Number(header.readBigUInt64BE(8));
-            } else if (size == 0) {
-                return false;
             }
             if (size < 8) {
-                return false;
+                return true;
             }
             offset += size;
         }
-        return false;
+        return offset > 0;
     } finally {
         closeSync(fd);
     }
@@ -277,8 +275,8 @@ export default function teddyStudy(): Plugin {
                 throw new StudyError(missing.join("\n"));
             }
             for (const file of new Set(Object.values(items.reels).filter(r => !isURL(r.file)).map(r => r.file))) {
-                if (indexAtEnd(resolve(reelsDir, file))) {
-                    this.warn(`${file} has its index at the end, so it won't start playing until it has all downloaded. ` +
+                if (slowToStart(resolve(reelsDir, file))) {
+                    this.warn(`${file} doesn't have its index at the start, so it won't start playing until it has all downloaded. ` +
                         `To move the index to the start without re-encoding: ffmpeg -i INPUT -c copy -movflags +faststart OUTPUT`);
                 }
             }
