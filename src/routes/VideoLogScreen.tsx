@@ -1,4 +1,4 @@
-import {getRandomItem, removeItem, saveBlob, useAnimatedNavigate} from "@/utils/utils"
+import {saveBlob, useAnimatedNavigate} from "@/utils/utils"
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {
@@ -14,7 +14,7 @@ import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.ts
 import {CountdownTimer} from "@/components/CountdownTimer.tsx";
 import {Colors} from "@/utils/colors.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
-import {TeddyVideoLogPrompts} from "@/data/videoLogPrompts.ts";
+import {videoLogPrompts} from "virtual:teddy-study";
 import {PromptText, type PromptTextFunctions} from "@/components/PromptText.tsx";
 import * as React from "react";
 import {FaQuestion, FaQuestionCircle} from "react-icons/fa";
@@ -46,13 +46,6 @@ export default function VideoLogScreen() {
 
     useEffect(() => {
         if (teddyRef != null) {
-
-            if (!promptIDs.current.length) {
-                promptIDs.current.push(getRandomItem(Object.keys(TeddyVideoLogPrompts)))
-                const remainingPrompts = Object.keys(TeddyVideoLogPrompts).slice()
-                removeItem(remainingPrompts, promptIDs.current[0])
-                promptIDs.current.push(getRandomItem(remainingPrompts))
-            }
 
             console.log("Starting videoLog module with prompts:", promptIDs.current)
 
@@ -129,11 +122,12 @@ export default function VideoLogScreen() {
             clearTimeout(completeButtonDelayTimeout.current);
             completeButtonDelayTimeout.current = null
         }
-        CurrentSessionData.logEvent("videoLogPromptShown", promptIDs.current[currentPromptIndex.current])
+        const prompt = videoLogPrompts[promptIDs.current[currentPromptIndex.current]];
+        CurrentSessionData.logEvent("videoLogPromptShown", {id: prompt.id, text: prompt.text})
 
         teddyRef.current.showText(TeddyAnimations.IDLE, "Please think about the following prompt and press the button when you're ready.")
 
-        promptTextRef.current.showText(TeddyVideoLogPrompts[promptIDs.current[currentPromptIndex.current]], MAX_RECORDING_DURATION)
+        promptTextRef.current.showText(prompt.text, MAX_RECORDING_DURATION)
 
         fadingPanelRef.current?.showPanel(null)
         setTimeout(()=>{

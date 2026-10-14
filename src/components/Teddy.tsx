@@ -1,4 +1,5 @@
 import * as React from "react";
+import teddyRivUrl from "@/assets/rive/teddy.riv?url";
 import {useCallback, useEffect, useImperativeHandle, useRef} from "react";
 import {
     Fit,
@@ -35,7 +36,7 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
     const speechBubbleRef = useRef<SpeechBubbleFunctions>(null)
 
     const { RiveComponent, rive, canvas } = useRive({
-        src: "static/rive/teddy.riv",
+        src: teddyRivUrl,
         stateMachines: 'teddy',
         layout: new Layout({
             fit: Fit.Fill, // Specify Fit.Layout to automatically resize the artboard.

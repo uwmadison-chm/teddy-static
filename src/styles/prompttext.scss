@@ -24,7 +24,7 @@ $timer-size:5vh;
     width:100%;
     height:100%;
     position:relative;
-    mask-image: url("/static/images/hourglass.svg");
+    mask-image: url("../assets/images/hourglass.svg");
     mask-size: cover;
     background-color: colors.$primaryColor2;
 

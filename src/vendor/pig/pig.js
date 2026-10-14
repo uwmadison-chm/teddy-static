@@ -405,4 +405,3 @@ export {
   supported,
   CLIENT_VERSION as version
 };
-//# sourceMappingURL=pig.js.map

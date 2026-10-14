@@ -1,5 +1,5 @@
-// Deployment configuration. Edit this file on the server; no rebuild needed.
-window.TEDDY_CONFIG = {
+// Study settings. They're built into Teddy, so a change here needs a rebuild.
+export default {
     // Pig's address, e.g. "https://pig.example.edu"
     pigServer: "",
     // The task code this deployment of Teddy sends data to, as pig's configuration names it.
@@ -10,6 +10,14 @@ window.TEDDY_CONFIG = {
     // Hosts the end screen may send participants to with nextURL, e.g.
     // ["redcap.example.edu"]. Empty means any http or https URL.
     nextUrlHosts: [],
+    // Each module this study uses, and the CSV of its items, relative to this
+    // folder. Links can only name these modules. Reel files are found relative
+    // to the reels CSV.
+    modules: {
+        sentence: "sentence.csv",
+        videolog: "videolog.csv",
+        // reels: "reels/reels.csv",
+    },
     // How recordings are made. Leave any of these out to use the default shown.
     recording: {
         // Tried in order; the first one this browser can record is used.

@@ -1,4 +1,4 @@
-import {getRandomItem, removeItem, saveBlob, useAnimatedNavigate} from "@/utils/utils"
+import {saveBlob, useAnimatedNavigate} from "@/utils/utils"
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {
@@ -15,7 +15,7 @@ import {CountdownTimer} from "@/components/CountdownTimer.tsx";
 import {Colors} from "@/utils/colors.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
 import * as React from "react";
-import {TeddyReels} from "@/data/reels.ts";
+import {reels} from "virtual:teddy-study";
 
 const MAX_RATING_RECORDING_DURATION = 15000;
 const MAX_RECORDING_DURATION = 120 * 1000;
@@ -48,7 +48,7 @@ export default function ReelsScreen() {
             if (!videoElementsRef.current.length) {
                 for (const reelID of reelIDs.current) {
                     const videoElement = document.createElement('video');
-                    videoElement.setAttribute('src', "static/reels/" + TeddyReels[reelID]);
+                    videoElement.setAttribute('src', reels[reelID].url);
                     videoElement.load()
                     videoElement.addEventListener("playing", ()=> {
                         CurrentSessionData.logEvent("reelPlaying", reelID);
@@ -168,6 +168,8 @@ export default function ReelsScreen() {
         fadingPanelRef.current?.showPanel(null, ()=>{});
 
         setVideoWrapperShown(true);
+        const reel = reels[reelIDs.current[currentReelIndex.current]];
+        CurrentSessionData.logEvent("reelShown", {id: reel.id, file: reel.file})
         const currentReel = videoElementsRef.current[currentReelIndex.current];
         currentReel.setAttribute("playsinline", true);
         currentReel.setAttribute("autoplay", true);

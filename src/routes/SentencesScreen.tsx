@@ -1,4 +1,4 @@
-import {getRandomItem, removeItem, saveBlob, useAnimatedNavigate} from "@/utils/utils"
+import {saveBlob, useAnimatedNavigate} from "@/utils/utils"
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {
@@ -14,7 +14,7 @@ import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.ts
 import {CountdownTimer} from "@/components/CountdownTimer.tsx";
 import {Colors} from "@/utils/colors.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
-import {TeddySentences} from "@/data/sentences.ts";
+import {sentences} from "virtual:teddy-study";
 import {PromptText, type PromptTextFunctions} from "@/components/PromptText.tsx";
 
 const BUTTON_POPUP_DELAY = 5000;
@@ -44,10 +44,6 @@ export default function SentencesScreen() {
 
     useEffect(() => {
         if (teddyRef != null) {
-
-            if (!sentenceIDs.current.length) {
-                sentenceIDs.current.push(getRandomItem(Object.keys(TeddySentences)))
-            }
 
             console.log("Starting sentence module with sentences:", sentenceIDs.current)
 
@@ -152,7 +148,9 @@ export default function SentencesScreen() {
         teddyRef.current.showText(TeddyAnimations.LISTEN, "Please read this sentence out loud then press the button.", true)
         fadingPanelRef.current?.showPanel(null, ()=>{});
 
-        promptTextRef.current.showText(TeddySentences[sentenceIDs.current[currentSentenceIndex.current]], MAX_RECORDING_DURATION)
+        const sentence = sentences[sentenceIDs.current[currentSentenceIndex.current]];
+        CurrentSessionData.logEvent("sentenceShown", {id: sentence.id, text: sentence.text})
+        promptTextRef.current.showText(sentence.text, MAX_RECORDING_DURATION)
         promptTextRef.current.startTimer();
     }
 

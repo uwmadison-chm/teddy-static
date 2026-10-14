@@ -1336,4 +1336,3 @@
     return typeof part === "string" ? part : JSON.stringify(part);
   }
 })();
-//# sourceMappingURL=pig-worker.js.map

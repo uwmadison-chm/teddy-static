@@ -10,19 +10,59 @@ To run the dev server, first make sure you have Node and NPM installed and updat
 
 First, run `npm install` to install all requirements.
 
-Run `npx vite` to start the development server. The page should be running and available at http://localhost:9000/. Static files are served from `public/`.
+Run `npx vite` to start the development server. The page should be running and available at http://localhost:9000/.
 
-To send data while developing, run a pig (`pig serve` in a psych-ingestor checkout) with a task that has `media = true`, and point `pigServer` and `taskCode` in `public/config.js` at it, with `debug: false`. Pig allows cross-origin requests by default.
+The dev server and the build use the study in `example-study/` unless `TEDDY_STUDY` names another (see below).
 
-## Deployment configuration
+To send data while developing, run a pig (`pig serve` in a psych-ingestor checkout) with a task that has `media = true`, and point `pigServer` and `taskCode` in the study's `config.js` at it, with `debug: false`. Pig allows cross-origin requests by default.
 
-`public/config.js` is copied to `dist/config.js` and loaded before the app. Edit it on the server to change settings without rebuilding:
+## Studies
+
+A study is a folder with Teddy's settings and the items each module can show. It's built into Teddy, so changing anything in it means rebuilding. The folder can live anywhere, such as its own repository; `example-study/` is a starting point.
+
+```
+my-study/
+  config.js       settings
+  sentence.csv    sentences for the sentence module
+  videolog.csv    prompts for the videolog module
+  reels/
+    reels.csv     reels for the reels module
+    *.mp4         the reel videos
+```
+
+Only `config.js` has a fixed name; it says where everything else is.
+
+One way to set this up is a repository per study with this one as a git submodule, which pins the version of Teddy the study runs:
+
+```
+my-study/
+  config.js, CSVs, reels/
+  teddy/          this repository, as a submodule
+  deploy.sh       cd teddy && npm ci && TEDDY_STUDY=.. npm run build && rsync -a --delete dist/ server:/var/www/teddy/
+```
+
+Build with `TEDDY_STUDY=path/to/my-study npm run build`, or run the dev server the same way with `npx vite`. The build checks the study and stops with a list of problems if anything's wrong: an unknown or mistyped setting, a missing `pigServer` or `taskCode` (unless `debug` is on), a module CSV that isn't there, is missing a column, or has an empty value or a repeated ID, or a reel file that isn't there.
+
+### config.js
+
+`config.js` exports its settings: `export default {pigServer: "...", ...}`.
 
 - `pigServer`: pig's address, e.g. `https://pig.example.edu`. If pig's task configuration restricts which sites may send to it, this site has to be one of them.
 - `taskCode`: the task this deployment sends data to, as pig's configuration names it. The task needs `media = true`.
 - `debug`: when `true`, nothing is sent to pig; events are logged to the console, and every screen shows a "Debug mode" banner. It can only be set here, not from a link, so a participant can't end up in a session that records nothing.
 - `nextUrlHosts`: the hosts that the `nextURL` link parameter may point to, e.g. `["redcap.example.edu"]`. Teddy only follows `http` and `https` URLs, and when this list isn't empty, only URLs on these hosts. Any other `nextURL` is ignored, and the end screen tells the participant they can close the tab.
+- `modules`: the modules this study uses, and the CSV of items for each, relative to the study folder: `{sentence: "sentence.csv", reels: "reels/reels.csv"}`. A module left out isn't in this build, and a link that names it gets the "something's wrong with this link" screen. With no `modules`, links can only run the face check and calibration.
 - `recording`: how recordings are made. `mimeTypes` is tried in order and the first one the browser can record wins, so WebM is preferred and Safari falls back to MP4. `videoBitsPerSecond` and `audioBitsPerSecond` set the size: the defaults (1 Mbps and 64 kbps) come to about 8 MB a minute. `width`, `height`, and `frameRate` are what Teddy asks the camera for. Any of these can be left out to use the default.
+
+### Item CSVs
+
+Each module's CSV has a header row and one item per row. `id` is what a link uses to name the item; IDs are text, so `01` and `1` are different. The other required columns:
+
+- `sentence`: `text`, the sentence to read aloud.
+- `videolog`: `text`, the prompt.
+- `reels`: `file`, the video's path relative to the reels CSV (and inside its folder), or an `http(s)` URL to play it from somewhere else. The build copies each listed file to `assets/reels/`, with a hash in its name; files that the CSV doesn't list are left out.
+
+Other columns are allowed and are kept with each item. Excel's UTF-8 CSV export works; use "CSV UTF-8" so curly quotes and accents survive.
 
 ## Linking to Teddy
 
@@ -30,13 +70,13 @@ Teddy passes every parameter in its link to pig when it starts the run. Which on
 
 Teddy also reads `nextURL` (where the end screen sends the participant), `expirationTime` (a time in milliseconds after which the link no longer works), and `modules`.
 
-`modules` is required. It lists the activities to run, in order, separated by `|`. Each can name its items after a colon: `modules=videolog:01,03|sentence:02|reels:01,02`. Video log prompts and sentences are chosen at random when the link doesn't name them; reels have to be named. The IDs are in `src/data/videoLogPrompts.ts`, `src/data/sentences.ts`, and `src/data/reels.ts`. A link with no `modules`, a module Teddy doesn't know, or an ID that isn't there gets the "something's wrong with this link" screen.
+`modules` lists the activities to run, in order, separated by `|`. Each names its items, from the study's CSVs, after a colon: `modules=videolog:01,03|sentence:02|reels:01,02`. A module with no items, a module Teddy doesn't know or the study doesn't use, or an ID that isn't there gets the "something's wrong with this link" screen. A link with no `modules` runs the face check and calibration, then ends.
 
 ## What Teddy sends to pig
 
 Each session is one pig run. It starts as soon as Teddy loads, with every link parameter, and is finalized on the end screen once everything has been sent. A session the participant leaves early is finalized the next time this browser opens Teddy, or expires on pig's schedule.
 
-Everything Teddy logs is a pig event: `type` says what happened, `module` which module was running (`calibration` during calibration, and empty during the intro), and `detail` holds anything else, such as the sentence ID. Pig's client adds the participant's clock time and `performance.now()` to each one.
+Everything Teddy logs is a pig event: `type` says what happened, `module` which module was running (`calibration` during calibration, and empty during the intro), and `detail` holds anything else, such as the sentence ID. When an item is shown, its event says what it was: `sentenceShown` and `videoLogPromptShown` have the item's `id` and `text`, and `reelShown` has its `id` and `file`. Pig's client adds the participant's clock time and `performance.now()` to each one.
 
 Each recording is a media item, sent in 5-second parts as it records. Its event has `kind` (`faceDetect`, `faceCalibration`, `videoLog`, `sentence`, `reel`, or `reelRating`), `item` (the prompt, sentence, or reel ID), `module`, and `content_type`. It is stamped with the moment the recorder started, on the same `performance.now()` clock as the events, which is what lines recordings up with what happened. To get a playable file, join the parts in order:
 
@@ -51,7 +91,9 @@ Pig's JavaScript client is copied into this repository, in `src/vendor/pig/`. Vi
 
 ## Production Build
 
-To build the production bundle, run this command: `npx vite build`
+To build the production bundle, run `TEDDY_STUDY=path/to/my-study npm run build`. Without `TEDDY_STUDY`, it builds `example-study/`, which has `debug` on. Copy the contents of `dist/` to the web server; reels are included. For example, `rsync -a --delete dist/ server:/var/www/teddy/`.
+
+Everything in `assets/` has a hash of its contents in its name, so it can be cached indefinitely. `index.html` doesn't, and needs to be served with `Cache-Control: no-cache` so browsers pick up new builds.
 
 ## Formatting videos
 
