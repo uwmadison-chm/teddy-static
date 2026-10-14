@@ -32,6 +32,15 @@ my-study/
 
 Only `config.js` has a fixed name; it says where everything else is.
 
+One way to set this up is a repository per study with this one as a git submodule, which pins the version of Teddy the study runs:
+
+```
+my-study/
+  config.js, CSVs, reels/
+  teddy/          this repository, as a submodule
+  deploy.sh       cd teddy && npm ci && TEDDY_STUDY=.. npm run build && rsync -a --delete dist/ server:/var/www/teddy/
+```
+
 Build with `TEDDY_STUDY=path/to/my-study npm run build`, or run the dev server the same way with `npx vite`. The build checks the study and stops with a list of problems if anything's wrong: an unknown or mistyped setting, a missing `pigServer` or `taskCode` (unless `debug` is on), a module CSV that isn't there, is missing a column, or has an empty value or a repeated ID, or a reel file that isn't there.
 
 ### config.js

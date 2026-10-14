@@ -11,7 +11,7 @@ import {cpSync, existsSync, mkdirSync, readFileSync} from "node:fs";
 import {dirname, extname, join, relative, resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import Papa from "papaparse";
-import {searchForWorkspaceRoot, type Plugin, type ResolvedConfig} from "vite";
+import {searchForWorkspaceRoot, type Plugin, type ResolvedConfig, type ViteDevServer} from "vite";
 
 const VIRTUAL_ID = "virtual:teddy-study";
 const RESOLVED_ID = "\0" + VIRTUAL_ID;
@@ -155,6 +155,16 @@ export default function teddyStudy(): Plugin {
     // Reel files to copy into the build, from their path in reelsDir to their
     // path in the build.
     let reelFiles = new Map<string, string>();
+    // config.js and the CSVs, which the dev server reloads the page for. Only
+    // these are watched, since the study folder may hold a lot else (even this
+    // checkout, as a submodule).
+    const studyFiles = new Set<string>();
+    let server: ViteDevServer | undefined;
+
+    function watch(path: string) {
+        studyFiles.add(path);
+        server?.watcher.add(path);
+    }
 
     return {
         name: "teddy-study",
@@ -179,7 +189,7 @@ export default function teddyStudy(): Plugin {
                 return null;
             }
             const configPath = join(studyDir, "config.js");
-            this.addWatchFile(configPath);
+            watch(configPath);
             const config = await loadConfig(configPath);
 
             // Only the modules config.js names are in this build; links that
@@ -192,7 +202,7 @@ export default function teddyStudy(): Plugin {
                     continue;
                 }
                 const path = resolve(studyDir, moduleFiles[module]);
-                this.addWatchFile(path);
+                watch(path);
                 items[module] = Object.fromEntries(loadItems(path, columns).map(row => [row.id, row]));
             }
 
@@ -235,16 +245,16 @@ export default function teddyStudy(): Plugin {
             ].join("\n");
         },
 
-        configureServer(server) {
-            // Reload the page when anything in the study changes.
-            server.watcher.add(studyDir);
-            server.watcher.on("change", file => {
-                if (!relative(studyDir, file).startsWith("..")) {
-                    const module = server.moduleGraph.getModuleById(RESOLVED_ID);
+        configureServer(devServer) {
+            server = devServer;
+            devServer.watcher.add([...studyFiles]);
+            devServer.watcher.on("change", file => {
+                if (studyFiles.has(file)) {
+                    const module = devServer.moduleGraph.getModuleById(RESOLVED_ID);
                     if (module) {
-                        server.moduleGraph.invalidateModule(module);
+                        devServer.moduleGraph.invalidateModule(module);
                     }
-                    server.ws.send({type: "full-reload"});
+                    devServer.ws.send({type: "full-reload"});
                 }
             });
         },
