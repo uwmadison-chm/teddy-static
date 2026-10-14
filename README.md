@@ -95,6 +95,14 @@ To build the production bundle, run `TEDDY_STUDY=path/to/my-study npm run build`
 
 Everything in `assets/` has a hash of its contents in its name, so it can be cached indefinitely. `index.html` doesn't, and needs to be served with `Cache-Control: no-cache` so browsers pick up new builds.
 
+The build also writes a gzip (`.gz`) and a brotli (`.br`) copy of each file that compresses well (JavaScript, CSS, WebAssembly, the Rive animation, the face model), next to the original. Images, audio and video don't get one. Copy them to the server along with everything else, and have the server send them to browsers that accept them. With nginx:
+
+```nginx
+gzip_static on;
+brotli_static on;  # needs the ngx_brotli module
+gzip_vary on;      # sends Vary: Accept-Encoding, so caches keep the copies apart
+```
+
 ## Formatting videos
 
 Video format matters a lot. As of September 2026, we generally recommend H.264 encoding for video with AAC for audio. Putting the index at the beginning of the file is extremely important to get files to start playing quickly.
