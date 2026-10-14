@@ -107,7 +107,7 @@ gzip_vary on;      # sends Vary: Accept-Encoding, so caches keep the copies apar
 
 Video format matters a lot. As of September 2026, we generally recommend H.264 encoding for video with AAC for audio. Putting the index at the beginning of the file is extremely important to get files to start playing quickly.
 
-This `ffmpeg` command will put the index at the start of a video without changing any data:
+The build warns about any MP4 reel whose index isn't at the start. This `ffmpeg` command will put the index at the start of a video without changing any data:
 
 ```
 ffmpeg -i INPUT_FILE -c copy -movflags +faststart OUTPUT_FILE
