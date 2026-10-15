@@ -1,11 +1,11 @@
 import * as React from "react";
 import {useImperativeHandle, useRef} from "react";
-import * as faceapi from 'face-api.js';
 import {buildStyles, CircularProgressbarWithChildren} from "react-circular-progressbar";
 import {FaCheck, FaUser} from "react-icons/fa";
 import {interpolateColors} from "@/utils/utils.tsx";
 import {Colors} from "@/utils/colors.tsx";
 import * as events from "@/utils/events.tsx";
+import {loadFaceApi} from "@/utils/faceApi.ts";
 
 export interface FaceDetectorProps {
     onDetected: () => void;
@@ -36,6 +36,7 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
                 clearInterval(intervalRef.current);
             }
             intervalRef.current = setInterval(async () => {
+                const faceapi = await loadFaceApi()
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-expect-error
                 const detection = await faceapi.detectSingleFace(videoInput, new faceapi.TinyFaceDetectorOptions({inputSize:224}))
