@@ -171,7 +171,8 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
         <div
             className={"speechbubble " + (hasNextText ? "has-next-text" : "")}
             style={{
-                display: isVisible ? "flex" : "none",
+                // Hidden but still taking its space, so nothing below moves
+                visibility: isVisible ? "visible" : "hidden",
             }}>
             <div className="speechbubble_tail_parent">
                 <div className={"speechbubble_tail"}></div>

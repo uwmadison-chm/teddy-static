@@ -1,0 +1,10 @@
+// Text sizes. Most of the layout scales with the window's height, but text
+// sized in vh alone doesn't grow with browser zoom (WCAG 1.4.4), so each size
+// has a floor in rem. The floor matches the vh size in a window 800px tall:
+// text grows with zoom in windows up to that height, and keeps scaling with
+// the window in taller ones.
+$remPerVh: 0.5;
+
+@function text($vh) {
+  @return max($vh * 1vh, $vh * $remPerVh * 1rem);
+}
