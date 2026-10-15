@@ -58,7 +58,7 @@ createRoot(document.getElementById('root')!).render(
                       <Route path="/reels" element={ // reels
                           <ReelsScreen />
                       } />
-                      <Route path="/q" element={ // questionnaire
+                      <Route path="/questions" element={ // questions
                           <QuestionnaireScreen />
                       } />
                       <Route path="/end" element={

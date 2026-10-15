@@ -3,7 +3,7 @@ import {modules, questions, reels, sentences, videoLogPrompts} from "virtual:ted
 import {sendEvent} from "@/data/pig.ts";
 
 const ModuleNames = {
-    Questionnaire: "q",
+    Questions: "questions",
     Reels: "reels",
     Sentence: "sentence",
     VideoLog: "videolog",
@@ -66,7 +66,7 @@ class SessionData {
                 this.linkProblems.push(`The ${moduleName} module needs item IDs, like ${moduleName}:01,02`);
             }
             const known = {
-                [ModuleNames.Questionnaire]: questions,
+                [ModuleNames.Questions]: questions,
                 [ModuleNames.Reels]: reels,
                 [ModuleNames.Sentence]: sentences,
                 [ModuleNames.VideoLog]: videoLogPrompts,

@@ -16,7 +16,7 @@ export default {
     modules: {
         sentence: "sentence.csv",
         videolog: "videolog.csv",
-        q: "questionnaire.csv",
+        questions: "questionnaire.csv",
         // reels: "reels/reels.csv",
     },
     // How recordings are made. Leave any of these out to use the default shown.

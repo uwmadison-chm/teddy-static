@@ -25,7 +25,7 @@ my-study/
   config.js           settings
   sentence.csv        sentences for the sentence module
   videolog.csv        prompts for the videolog module
-  questionnaire.csv   questions for the questionnaire module (q)
+  questionnaire.csv   questions for the questions module
   reels/
     reels.csv         reels for the reels module
     *.mp4             the reel videos
@@ -61,7 +61,7 @@ Each module's CSV has a header row and one item per row. `id` is what a link use
 
 - `sentence`: `text`, the sentence to read aloud.
 - `videolog`: `text`, the prompt.
-- `q` (the questionnaire): `text`, the question, and `responses`, its answers in REDCap's choice format: `0, Not at all | 1, Slightly | 2, Very`. Each answer is a code, a comma, and the label shown on its button; labels may have commas of their own. The build stops if an answer has no code or label, or if a code is used twice in one question.
+- `questions`: `text`, the question, and `responses`, its answers in REDCap's choice format: `0, Not at all | 1, Slightly | 2, Very`. Each answer is a code, a comma, and the label shown on its button; labels may have commas of their own. The build stops if an answer has no code or label, or if a code is used twice in one question.
 - `reels`: `file`, the video's path relative to the reels CSV (and inside its folder), or an `http(s)` URL to play it from somewhere else. The build copies each listed file to `assets/reels/`, with a hash in its name; files that the CSV doesn't list are left out.
 
 Other columns are allowed and are kept with each item. Excel's UTF-8 CSV export works; use "CSV UTF-8" so curly quotes and accents survive.

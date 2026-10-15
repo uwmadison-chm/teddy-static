@@ -41,7 +41,7 @@ const MODULE_COLUMNS: Record<string, string[]> = {
     sentence: ["id", "text"],
     videolog: ["id", "text"],
     reels: ["id", "file"],
-    q: ["id", "text", "responses"],
+    questions: ["id", "text", "responses"],
 };
 
 type Row = Record<string, string>;
@@ -313,7 +313,7 @@ export default function teddyStudy(): Plugin {
 
             // Each question gets its responses parsed into choices.
             const badResponses: string[] = [];
-            const questions = Object.fromEntries(Object.values(items.q).map(question => {
+            const questions = Object.fromEntries(Object.values(items.questions).map(question => {
                 const {choices, problems} = parseResponses(question.responses);
                 badResponses.push(...problems.map(p => `question ${question.id} responses: ${p}`));
                 return [question.id, {...question, choices}];
