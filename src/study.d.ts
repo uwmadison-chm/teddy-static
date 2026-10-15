@@ -17,6 +17,19 @@ declare module "virtual:teddy-study" {
         url: string;
     }
 
+    // One choice of a question's responses.
+    export interface Choice {
+        code: string;
+        label: string;
+    }
+
+    export interface QuestionItem extends StudyItem {
+        text: string;
+        // As the CSV has them, in REDCap's format: "1, Not at all | 2, Slightly"
+        responses: string;
+        choices: Choice[];
+    }
+
     export const config: Partial<{
         pigServer: string;
         taskCode: string;
@@ -29,6 +42,7 @@ declare module "virtual:teddy-study" {
             width: number;
             height: number;
             frameRate: number;
+            maxSeconds: number;
         }>;
     }>;
     // The modules this build has, by name.
@@ -37,4 +51,5 @@ declare module "virtual:teddy-study" {
     export const sentences: Record<string, TextItem>;
     export const videoLogPrompts: Record<string, TextItem>;
     export const reels: Record<string, ReelItem>;
+    export const questions: Record<string, QuestionItem>;
 }
