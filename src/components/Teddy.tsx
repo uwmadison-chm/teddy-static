@@ -8,7 +8,7 @@ import {
     StateMachineInputType,
     useRive,
     useStateMachineInput
-} from "@rive-app/react-webgl2";
+} from "@rive-app/react-canvas-lite";
 import {SpeechBubble, type SpeechBubbleFunctions} from "@/components/SpeechBubble.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {prefersReducedMotion} from "@/utils/utils.tsx";
