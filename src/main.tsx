@@ -20,6 +20,7 @@ import CompleteSessionScreen from "@/routes/CompleteSessionScreen.tsx";
 import VideoLogScreen from "@/routes/VideoLogScreen.tsx";
 import SentencesScreen from "@/routes/SentencesScreen.tsx";
 import ReelsScreen from "@/routes/ReelsScreen.tsx";
+import QuestionnaireScreen from "@/routes/QuestionnaireScreen.tsx";
 import {Config} from "@/data/config.ts";
 
 // Serve Rive's WASM ourselves instead of from its default CDNs
@@ -56,6 +57,9 @@ createRoot(document.getElementById('root')!).render(
                       } />
                       <Route path="/reels" element={ // reels
                           <ReelsScreen />
+                      } />
+                      <Route path="/questions" element={ // questions
+                          <QuestionnaireScreen />
                       } />
                       <Route path="/end" element={
                           <CompleteSessionScreen />

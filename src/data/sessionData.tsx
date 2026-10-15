@@ -1,8 +1,9 @@
 import {allowedNextURL} from "@/data/config.ts";
-import {modules, reels, sentences, videoLogPrompts} from "virtual:teddy-study";
+import {modules, questions, reels, sentences, videoLogPrompts} from "virtual:teddy-study";
 import {sendEvent} from "@/data/pig.ts";
 
 const ModuleNames = {
+    Questions: "questions",
     Reels: "reels",
     Sentence: "sentence",
     VideoLog: "videolog",
@@ -65,6 +66,7 @@ class SessionData {
                 this.linkProblems.push(`The ${moduleName} module needs item IDs, like ${moduleName}:01,02`);
             }
             const known = {
+                [ModuleNames.Questions]: questions,
                 [ModuleNames.Reels]: reels,
                 [ModuleNames.Sentence]: sentences,
                 [ModuleNames.VideoLog]: videoLogPrompts,

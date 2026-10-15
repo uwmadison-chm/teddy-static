@@ -22,12 +22,13 @@ A study is a folder with Teddy's settings and the items each module can show. It
 
 ```
 my-study/
-  config.js       settings
-  sentence.csv    sentences for the sentence module
-  videolog.csv    prompts for the videolog module
+  config.js           settings
+  sentence.csv        sentences for the sentence module
+  videolog.csv        prompts for the videolog module
+  questions.csv       questions for the questions module
   reels/
-    reels.csv     reels for the reels module
-    *.mp4         the reel videos
+    reels.csv         reels for the reels module
+    *.mp4             the reel videos
 ```
 
 Only `config.js` has a fixed name; it says where everything else is.
@@ -52,7 +53,7 @@ Build with `TEDDY_STUDY=path/to/my-study npm run build`, or run the dev server t
 - `debug`: when `true`, nothing is sent to pig; events are logged to the console, and every screen shows a "Debug mode" banner. It can only be set here, not from a link, so a participant can't end up in a session that records nothing.
 - `nextUrlHosts`: the hosts that the `nextURL` link parameter may point to, e.g. `["redcap.example.edu"]`. Teddy only follows `http` and `https` URLs, and when this list isn't empty, only URLs on these hosts. Any other `nextURL` is ignored, and the end screen tells the participant they can close the tab.
 - `modules`: the modules this study uses, and the CSV of items for each, relative to the study folder: `{sentence: "sentence.csv", reels: "reels/reels.csv"}`. A module left out isn't in this build, and a link that names it gets the "something's wrong with this link" screen. With no `modules`, links can only run the face check and calibration.
-- `recording`: how recordings are made. `mimeTypes` is tried in order and the first one the browser can record wins, so WebM is preferred and Safari falls back to MP4. `videoBitsPerSecond` and `audioBitsPerSecond` set the size: the defaults (1 Mbps and 64 kbps) come to about 8 MB a minute. `width`, `height`, and `frameRate` are what Teddy asks the camera for. Any of these can be left out to use the default.
+- `recording`: how recordings are made. `mimeTypes` is tried in order and the first one the browser can record wins, so WebM is preferred and Safari falls back to MP4. `videoBitsPerSecond` and `audioBitsPerSecond` set the size: the defaults (1 Mbps and 64 kbps) come to about 8 MB a minute. `width`, `height`, and `frameRate` are what Teddy asks the camera for. `maxSeconds` is the longest any one recording can run (default 600, ten minutes), so a session left open doesn't keep recording; modules may stop their recordings sooner. Any of these can be left out to use the default.
 
 ### Item CSVs
 
@@ -60,6 +61,7 @@ Each module's CSV has a header row and one item per row. `id` is what a link use
 
 - `sentence`: `text`, the sentence to read aloud.
 - `videolog`: `text`, the prompt.
+- `questions`: `text`, the question, and `responses`, its answers in REDCap's choice format: `0, Not at all | 1, Slightly | 2, Very`. Each answer is a code, a comma, and the label shown on its button; labels may have commas of their own. The build stops if an answer has no code or label, or if a code is used twice in one question.
 - `reels`: `file`, the video's path relative to the reels CSV (and inside its folder), or an `http(s)` URL to play it from somewhere else. The build copies each listed file to `assets/reels/`, with a hash in its name; files that the CSV doesn't list are left out.
 
 Other columns are allowed and are kept with each item. Excel's UTF-8 CSV export works; use "CSV UTF-8" so curly quotes and accents survive.
@@ -76,9 +78,9 @@ Teddy also reads `nextURL` (where the end screen sends the participant), `expira
 
 Each session is one pig run. It starts as soon as Teddy loads, with every link parameter, and is finalized on the end screen once everything has been sent. A session the participant leaves early is finalized the next time this browser opens Teddy, or expires on pig's schedule.
 
-Everything Teddy logs is a pig event: `type` says what happened, `module` which module was running (`calibration` during calibration, and empty during the intro), and `detail` holds anything else, such as the sentence ID. When an item is shown, its event says what it was: `sentenceShown` and `videoLogPromptShown` have the item's `id` and `text`, and `reelShown` has its `id` and `file`. Pig's client adds the participant's clock time and `performance.now()` to each one.
+Everything Teddy logs is a pig event: `type` says what happened, `module` which module was running (`calibration` during calibration, and empty during the intro), and `detail` holds anything else, such as the sentence ID. When an item is shown, its event says what it was: `sentenceShown` and `videoLogPromptShown` have the item's `id` and `text`, `reelShown` has its `id` and `file`, and `questionShown` has the question's `id`, `text`, `responses` (as the CSV has them), and `choices` (the same, parsed into a list of `code` and `label`). `questionAnswered` has all of that, plus the `code` and `label` the participant picked. A recording that runs to its time limit logs `recordingTimedOut`. Pig's client adds the participant's clock time and `performance.now()` to each one.
 
-Each recording is a media item, sent in 5-second parts as it records. Its event has `kind` (`faceDetect`, `faceCalibration`, `videoLog`, `sentence`, `reel`, or `reelRating`), `item` (the prompt, sentence, or reel ID), `module`, and `content_type`. It is stamped with the moment the recorder started, on the same `performance.now()` clock as the events, which is what lines recordings up with what happened. To get a playable file, join the parts in order:
+Each recording is a media item, sent in 5-second parts as it records. Its event has `kind` (`faceDetect`, `faceCalibration`, `videoLog`, `sentence`, `reel`, `reelRating`, or `questionnaire`), `item` (the prompt, sentence, or reel ID; for the questionnaire, which is one recording for the whole module, its question IDs separated by commas), `module`, and `content_type`. It is stamped with the moment the recorder started, on the same `performance.now()` clock as the events, which is what lines recordings up with what happened. To get a playable file, join the parts in order:
 
 ```
 cat media/00003/*.part > recording.webm

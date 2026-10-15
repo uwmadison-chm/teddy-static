@@ -32,6 +32,7 @@ const RECORDING_KEYS: Record<string, string> = {
     width: "number",
     height: "number",
     frameRate: "number",
+    maxSeconds: "number",
 };
 
 // The columns each module's CSV has to have. Other columns are allowed, and
@@ -40,6 +41,7 @@ const MODULE_COLUMNS: Record<string, string[]> = {
     sentence: ["id", "text"],
     videolog: ["id", "text"],
     reels: ["id", "file"],
+    questions: ["id", "text", "responses"],
 };
 
 type Row = Record<string, string>;
@@ -77,6 +79,10 @@ async function loadConfig(path: string): Promise<Record<string, unknown>> {
     checkKeys("config.js", config, CONFIG_KEYS, problems);
     if (typeOf(config.recording) == "object") {
         checkKeys("config.js recording", config.recording, RECORDING_KEYS, problems);
+        const maxSeconds = config.recording.maxSeconds;
+        if (typeof maxSeconds == "number" && !(maxSeconds > 0)) {
+            problems.push("config.js recording: maxSeconds should be more than 0");
+        }
     }
     if (typeOf(config.modules) == "object") {
         const moduleKeys = Object.fromEntries(Object.keys(MODULE_COLUMNS).map(m => [m, "string"]));
@@ -183,6 +189,30 @@ function slowToStart(path: string): boolean {
     }
 }
 
+// Parses a question's responses, in REDCap's choice format:
+// "1, Not at all | 2, Slightly". Each choice is a code, a comma, and a label;
+// the label may have commas of its own. Returns the problems it finds, if any.
+function parseResponses(responses: string): {choices: {code: string, label: string}[], problems: string[]} {
+    const choices: {code: string, label: string}[] = [];
+    const problems: string[] = [];
+    const codes = new Set<string>();
+    for (const choice of responses.split("|")) {
+        const comma = choice.indexOf(",");
+        const code = (comma < 0 ? choice : choice.slice(0, comma)).trim();
+        const label = comma < 0 ? "" : choice.slice(comma + 1).trim();
+        if (!code || !label) {
+            problems.push(`"${choice.trim()}" needs to be a code and a label, like "1, Not at all"`);
+            continue;
+        }
+        if (codes.has(code)) {
+            problems.push(`code ${code} is used more than once`);
+        }
+        codes.add(code);
+        choices.push({code, label});
+    }
+    return {choices, problems};
+}
+
 function isURL(file: string): boolean {
     return /^https?:\/\//i.test(file);
 }
@@ -281,6 +311,17 @@ export default function teddyStudy(): Plugin {
                 }
             }
 
+            // Each question gets its responses parsed into choices.
+            const badResponses: string[] = [];
+            const questions = Object.fromEntries(Object.values(items.questions).map(question => {
+                const {choices, problems} = parseResponses(question.responses);
+                badResponses.push(...problems.map(p => `question ${question.id} responses: ${p}`));
+                return [question.id, {...question, choices}];
+            }));
+            if (badResponses.length) {
+                throw new StudyError(badResponses.join("\n"));
+            }
+
             const {modules: _, ...settings} = config;
             return [
                 `export const config = ${JSON.stringify(settings)};`,
@@ -288,6 +329,7 @@ export default function teddyStudy(): Plugin {
                 `export const sentences = ${JSON.stringify(items.sentence)};`,
                 `export const videoLogPrompts = ${JSON.stringify(items.videolog)};`,
                 `export const reels = ${JSON.stringify(items.reels)};`,
+                `export const questions = ${JSON.stringify(questions)};`,
             ].join("\n");
         },
 

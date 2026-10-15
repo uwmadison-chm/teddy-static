@@ -16,6 +16,7 @@ export default {
     modules: {
         sentence: "sentence.csv",
         videolog: "videolog.csv",
+        questions: "questions.csv",
         // reels: "reels/reels.csv",
     },
     // How recordings are made. Leave any of these out to use the default shown.
@@ -28,5 +29,8 @@ export default {
         width: 640,
         height: 480,
         frameRate: 30,
+        // The longest any one recording can run, in seconds, so a session left
+        // open doesn't record for hours. Modules may stop their recordings sooner.
+        maxSeconds: 600,
     },
 };

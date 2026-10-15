@@ -9,6 +9,9 @@ interface RecordingConfig {
     width: number;
     height: number;
     frameRate: number;
+    // The longest any one recording can run, so a session left open can't
+    // record for hours. A module may stop its recordings sooner.
+    maxSeconds: number;
 }
 
 interface TeddyConfig {
@@ -26,6 +29,7 @@ const defaultRecording: RecordingConfig = {
     width: 640,
     height: 480,
     frameRate: 30,
+    maxSeconds: 600,
 };
 
 // The study's config.js, which the build checks (see vite-plugin-study.ts).

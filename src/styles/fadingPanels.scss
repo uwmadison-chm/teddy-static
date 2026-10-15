@@ -74,5 +74,13 @@
                 background-color: colors.$primaryColor5;
             }
         }
+        // Longer answer scales, past five
+        &:nth-child(n+6) {
+            background-color: colors.$primaryColor5;
+
+            &:active {
+                background-color: colors.$primaryColor4;
+            }
+        }
     }
 }

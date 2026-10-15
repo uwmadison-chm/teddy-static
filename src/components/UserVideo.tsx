@@ -2,6 +2,7 @@ import * as React from "react";
 import {useCallback, useEffect, useEffectEvent, useImperativeHandle, useRef, useState} from "react";
 import * as events from "@/utils/events.tsx";
 import {getCameraStream, recorderOptions} from "@/data/camera.ts";
+import {Config} from "@/data/config.ts";
 import {useLocation} from "react-router";
 import {useAnimatedNavigate} from "@/utils/utils";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
@@ -89,9 +90,12 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
             clearTimeout(timeoutRef.current);
             timeoutRef.current = null;
         }
-        if (timeout) {
-            timeoutRef.current = window.setTimeout(stopRecording, timeout);
-        }
+        // No recording runs past the study's limit, whatever the module asks for.
+        const limit = Math.min(timeout || Infinity, Config.recording.maxSeconds * 1000);
+        timeoutRef.current = window.setTimeout(() => {
+            CurrentSessionData.logEvent("recordingTimedOut", {...info, seconds: limit / 1000});
+            stopRecording();
+        }, limit);
         events.emit("recordingnotificationstatus", true);
         isRecording.current = true;
     }
