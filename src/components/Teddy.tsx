@@ -171,7 +171,9 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
                 <RiveComponent
                     className='teddy-canvas' />
             </div>
-            <SpeechBubble ref={speechBubbleRef} {...textBubblesProps} />
+            <div className={"speechbubble-slot"}>
+                <SpeechBubble ref={speechBubbleRef} {...textBubblesProps} />
+            </div>
 
         </div>
     )

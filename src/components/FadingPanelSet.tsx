@@ -43,6 +43,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
     // Set when a panel is shown, so its first button gets focus once it's done
     // animating in. Keyboard and screen reader users would otherwise be left on
     // the button they just pressed, which is now hidden.
+    // Focusing it also scrolls it into view, if the screen is scrolled.
     const focusPendingRef = useRef(false);
 
     useEffect(() => {
@@ -52,7 +53,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
         focusPendingRef.current = false;
         const shown = Array.from(animatedRef.current?.children ?? []) as HTMLElement[];
         const panel = shown.find((child) => child.style.display != "none");
-        panel?.querySelector("button")?.focus({preventScroll: true});
+        panel?.querySelector("button")?.focus();
     }, [isAnimating]);
 
     const showStartPanel = (panelName) => {
@@ -144,7 +145,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
     // Inert while animating, so a second press of Enter can't go through
     // the way pointer-events: none keeps a second tap from going through.
     return <div className={"fade-panel-set" + (isAnimating ? " uninteractive" : "")} inert={isAnimating} style={{display:isDisplayed ? "flex" : "none"}}>
-            <div ref={animatedRef} className={"animated"} style={{position:"absolute",bottom:0,left:0,right:0}}>
+            <div ref={animatedRef} className={"animated"}>
 
 
 

@@ -1,4 +1,5 @@
 @use "./colors.scss";
+@use "./sizes.scss";
 
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,100..900;1,100..900');
 
@@ -38,9 +39,20 @@ body, #root {
   line-height:1.5;
 }
 
+// Each screen stacks top to bottom (Teddy, his speech bubble, whatever the
+// screen shows, then its buttons), so bigger text pushes things down rather
+// than covering them. When it doesn't all fit, as when zoomed in, the screen
+// scrolls.
 .wrapper {
-  height:100%;
-  width:100%;
+  width: 100%;
+  min-height: 100%;
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  // Clips the button panels as they bounce in from below, rather than letting
+  // them make the screen scrollable while they do.
+  overflow: clip;
 }
 
 .uninteractive {
@@ -56,8 +68,12 @@ body, #root {
   height:100%;
   margin:0 auto;
   display: flex;
-  max-width: 60vh;
-  overflow: hidden;
+  // So the screen can grow past the window and scroll
+  align-items: flex-start;
+  // Wider when zoomed in, so bigger text still has room
+  max-width: max(60vh, 30rem);
+  overflow-x: hidden;
+  overflow-y: auto;
   position: relative;
 }
 
@@ -75,7 +91,7 @@ body, #root {
   padding: 0.5vh;
   background-color: #b00020;
   color: white;
-  font-size: 1.6vh;
+  font-size: sizes.text(1.6);
   text-align: center;
   pointer-events: none;
   z-index: 1000;

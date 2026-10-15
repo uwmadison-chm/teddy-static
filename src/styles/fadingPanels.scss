@@ -1,10 +1,16 @@
 @use "./colors.scss";
+@use "./sizes.scss";
 
 .fade-panel-set {
-    position: absolute;
-    bottom: 7%;
-    left: 12%;
-    right:12%;
+    position: relative;
+    flex-shrink: 0;
+    // At the bottom of the screen, or below everything else if that's taller
+    margin: auto 12% 7vh;
+    padding-top: 2vh;
+
+    .animated {
+        flex: 1;
+    }
 
     .fade-panel {
         flex-direction:column;
@@ -15,7 +21,7 @@
     button {
         width: 100%;
         margin-top: .2vh;
-        font-size: 2.6vh;
+        font-size: sizes.text(2.6);
         padding: 1.8vh 5vh;
         height: auto;
         font-weight: 400;
