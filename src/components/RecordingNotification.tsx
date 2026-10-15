@@ -8,6 +8,7 @@ const RecordingNotification = () => {
     useEffect(() => {
         const off = events.on("recordingnotificationstatus", (isShown) => {
             setIsUp(isShown);
+            events.announce(isShown ? "Recording started" : "Recording stopped");
         });
         return () => {
             off();
@@ -19,7 +20,7 @@ const RecordingNotification = () => {
 
     return (
         <div className={"recording-notification"}>
-            <IoVideocam />
+            <IoVideocam aria-hidden={true} />
             Recording
     </div>
 );

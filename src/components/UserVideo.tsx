@@ -136,9 +136,11 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
                 <div className={"bg"} />
             </div>
             <div className={"silhouette-controls"}>
-                <div className={"icon outline-icon"} />
+                <div className={"icon outline-icon"} aria-hidden={true} />
                 <label className="switch">
                     <input type="checkbox"
+                           role="switch"
+                           aria-label="Show a silhouette over your video"
                            checked={silhouetteShown}
                            onChange={(e) => {
                                setSilhouetteShown(e.target.checked)
@@ -146,7 +148,7 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
                            }}/>
                     <span className="handle"></span>
                 </label>
-                <div className={"icon"} />
+                <div className={"icon"} aria-hidden={true} />
             </div>
         </div>
     )

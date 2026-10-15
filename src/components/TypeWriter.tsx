@@ -1,5 +1,6 @@
 import {useEffect, useEffectEvent, useImperativeHandle, useRef, useState} from "react";
 import * as React from "react";
+import {prefersReducedMotion} from "@/utils/utils.tsx";
 
 export interface TypeWriterFunctions {
     showText: (text: string) => void;
@@ -54,7 +55,8 @@ export const TypeWriter = React.forwardRef<TypeWriterFunctions, Props>(({onTypin
             setCurrentProgress(0);
             setIsTyping(true);
             intervalRef.current = window.setInterval(() => {
-                currentProgressRef.current += 1;
+                // With reduced motion, the whole line appears on the first tick.
+                currentProgressRef.current += prefersReducedMotion() ? textRef.current.length : 1;
                 setCurrentProgress(currentProgressRef.current);
                 if (currentProgressRef.current >= textRef.current.length) {
                     stopInterval();

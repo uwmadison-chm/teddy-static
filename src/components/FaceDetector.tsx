@@ -5,6 +5,7 @@ import {buildStyles, CircularProgressbarWithChildren} from "react-circular-progr
 import {FaCheck, FaUser} from "react-icons/fa";
 import {interpolateColors} from "@/utils/utils.tsx";
 import {Colors} from "@/utils/colors.tsx";
+import * as events from "@/utils/events.tsx";
 
 export interface FaceDetectorProps {
     onDetected: () => void;
@@ -46,6 +47,7 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
                     const elapsed = new Date().getTime() - faceFirstSeenTimestampRef.current
                     setProgress(elapsed / props.detectionDuration)
                     if (elapsed > props.detectionDuration) {
+                        events.announce("Face found")
                         props.onDetected()
                         clearInterval(intervalRef.current)
                         setProgress(1)
@@ -97,7 +99,7 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
                 <div
                     className={"circle-progress-text"}
                     style={{color: interpolateColors(Colors.primary, Colors.primaryDark, progress)}}
-                >{detected ? <FaCheck /> : <FaUser style={{opacity: 0.4}} />}</div>
+                >{detected ? <FaCheck aria-hidden={true} /> : <FaUser aria-hidden={true} style={{opacity: 0.4}} />}</div>
             </CircularProgressbarWithChildren>
         </div>
     )

@@ -184,7 +184,7 @@ export default function VideoLogScreen() {
             <PromptText ref={promptTextRef}
                         className={"prompt-text videolog-prompt"}
                         children={<div className="prompt-icon">
-                            <FaQuestionCircle />
+                            <FaQuestionCircle aria-hidden={true} />
                         </div>}
                         >
             </PromptText>

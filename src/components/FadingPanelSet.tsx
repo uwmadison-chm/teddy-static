@@ -1,5 +1,6 @@
 import * as React from "react";
 import {useEffect, useImperativeHandle, useRef, useState} from "react";
+import {prefersReducedMotion} from "@/utils/utils.tsx";
 
 export const FadingPanel = ({label, ...props}) => {
     return <div className={"fade-panel"} {...props} />;
@@ -25,18 +26,41 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
 
     const animatedRef = useRef(null)
 
+    // Panels bounce up from below and drop away, or with reduced motion, fade.
     function generateBounceKeyframes(initial:number, end:number) {
+        if (prefersReducedMotion()) {
+            return [
+                {opacity: initial == 0 ? 1 : 0, offset:0},
+                {opacity: end == 0 ? 1 : 0, offset:1},
+            ]
+        }
         return [
             {transform:`translateY(${initial}px)`, offset:0},
             {transform:`translateY(${end}px)`, offset:1},
         ]
     }
 
+    // Set when a panel is shown, so its first button gets focus once it's done
+    // animating in. Keyboard and screen reader users would otherwise be left on
+    // the button they just pressed, which is now hidden.
+    const focusPendingRef = useRef(false);
+
+    useEffect(() => {
+        if (!focusPendingRef.current || isAnimating) {
+            return;
+        }
+        focusPendingRef.current = false;
+        const shown = Array.from(animatedRef.current?.children ?? []) as HTMLElement[];
+        const panel = shown.find((child) => child.style.display != "none");
+        panel?.querySelector("button")?.focus({preventScroll: true});
+    }, [isAnimating]);
+
     const showStartPanel = (panelName) => {
         const animateDuration = 600
         setIsAnimating(true);
         setIsDisplayed(true);
         setShownPanelkey(panelName || FADING_PANEL_DEFAULT_LABEL);
+        focusPendingRef.current = true;
         animatedRef.current!.animate(generateBounceKeyframes(1000, 0),
             {
                 duration: animateDuration,
@@ -62,6 +86,9 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
         setTimeout(()=> {
 
             setShownPanelkey(panelLabel);
+            if (panelLabel != null) {
+                focusPendingRef.current = true;
+            }
 
             animatedRef.current!.animate([{opacity:0}, {opacity:1}],
                 {
@@ -84,6 +111,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
         setIsAnimating(true);
         setIsDisplayed(true);
         setShownPanelkey(FADING_PANEL_DEFAULT_LABEL);
+        focusPendingRef.current = false;
         animatedRef.current!.animate(generateBounceKeyframes(0, 1000),
             {
                 duration: animateDuration,
@@ -113,7 +141,9 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
 
     }));
 
-    return <div className={"fade-panel-set" + (isAnimating ? " uninteractive" : "")} style={{display:isDisplayed ? "flex" : "none"}}>
+    // Inert while animating, so a second press of Enter can't go through
+    // the way pointer-events: none keeps a second tap from going through.
+    return <div className={"fade-panel-set" + (isAnimating ? " uninteractive" : "")} inert={isAnimating} style={{display:isDisplayed ? "flex" : "none"}}>
             <div ref={animatedRef} className={"animated"} style={{position:"absolute",bottom:0,left:0,right:0}}>
 
 
