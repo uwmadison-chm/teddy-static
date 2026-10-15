@@ -213,25 +213,25 @@ export default function ReelsScreen() {
                             onClick={(_e) => {
                                 onRateCurrentReel(4)
                             }}>
-                        🤣 Really Funny
+                        <span aria-hidden={true}>🤣</span> Really Funny
                     </button>
                     <button
                         onClick={(_e) => {
                             onRateCurrentReel(3)
                         }}>
-                        😄 Pretty Funny
+                        <span aria-hidden={true}>😄</span> Pretty Funny
                     </button>
                     <button
                         onClick={(_e) => {
                             onRateCurrentReel(2)
                         }}>
-                        🫤 Not Funny
+                        <span aria-hidden={true}>🫤</span> Not Funny
                     </button>
                     <button
                         onClick={(_e) => {
                             onRateCurrentReel(1)
                         }}>
-                        😠 Hated It
+                        <span aria-hidden={true}>😠</span> Hated It
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"nextModule"}>

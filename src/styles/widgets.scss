@@ -45,8 +45,9 @@ $height: 2.4vh;
     background-color: colors.$primaryColor;
   }
 
-  input:focus + .handle {
-    box-shadow: 0 0 1px colors.$primaryColor;
+  input:focus-visible + .handle {
+    outline: 2px solid colors.$primaryColor3;
+    outline-offset: 2px;
   }
 
   input:checked + .handle:before {

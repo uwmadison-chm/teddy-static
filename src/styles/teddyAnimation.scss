@@ -70,11 +70,21 @@
     }
     .speechbubble_next {
         display:none;
+        background: none;
+        border: none;
+        color: inherit;
+        cursor: pointer;
         position: absolute;
         bottom:.6vh;
         right:2vh;
         font-size:1.5vh;
         line-height:1.4em;
+
+        &:focus-visible {
+            outline: 2px solid colors.$primaryColor3;
+            outline-offset: 2px;
+            border-radius: 2px;
+        }
 
         .arrow {
             padding-left:3px;

@@ -91,7 +91,12 @@ export default function CompleteSessionScreen() {
             <div className={"loader-wrapper"} style={{display: sending ? "block" : "none"}}>
                 <div className="loader"></div>
                 Sending...
-                {bytesMost > 0 && <div className={"send-progress"}>
+                {bytesMost > 0 && <div className={"send-progress"}
+                                       role={"progressbar"}
+                                       aria-label={"Upload progress"}
+                                       aria-valuemin={0}
+                                       aria-valuemax={100}
+                                       aria-valuenow={Math.round(100 * (1 - bytesLeft / bytesMost))}>
                     <div className={"bar"} style={{width: (100 * (1 - bytesLeft / bytesMost)) + "%"}} />
                 </div>}
                 {bytesLeft > 0 && <div className={"send-progress-text"}>{(bytesLeft / 1e6).toFixed(1)} MB to go</div>}

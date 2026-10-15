@@ -32,6 +32,7 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
     const [timeoutId, setTimeoutId] = useState<number | null>(null);
     const [didTimeout, setDidTimeout] = useState(false);
     const typeWriterRef = useRef(null);
+    const continueButtonRef = useRef<HTMLButtonElement>(null);
 
     const onBlockerClicked = useEffectEvent(() => {
         blockerTapped();
@@ -42,6 +43,7 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
             setIsTyping(true);
             setText(props.initialText);
             typeWriterRef.current.showText(props.initialText);
+            events.announce(props.initialText);
         }
     });
 
@@ -81,6 +83,7 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
                 const newText = queuedText.shift() as unknown as string
                 setText(newText);
                 typeWriterRef.current.showText(newText);
+                events.announce(newText);
                 setIsTyping(true);
                 setQueuedText([...queuedText]);
             } else {
@@ -119,6 +122,7 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
         showText: (newText, skipAnimation=false, callback, maxTextDuration) => {
             setText(newText);
             typeWriterRef.current.showText(newText);
+            events.announce(newText);
             if (skipAnimation) {
                 typeWriterRef.current.skipToEnd();
             }
@@ -131,6 +135,7 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
             const newText = textArray.shift() as string
             setText(newText);
             typeWriterRef.current.showText(newText);
+            events.announce(newText);
             setOnAnimationFinishCallback(() => callback);
             setMaxTextDuration(maxTextDuration);
             setIsTyping(true);
@@ -152,16 +157,29 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
         }
     }));
 
+    const hasNextText = queuedText.length > 0 && !!text;
+
+    // Put keyboard and screen reader users on the continue button as soon as
+    // there's more to read, the way a tap anywhere works for everyone else.
+    useEffect(() => {
+        if (hasNextText) {
+            continueButtonRef.current?.focus({preventScroll: true});
+        }
+    }, [hasNextText]);
+
     return (
         <div
-            className={"speechbubble " + (queuedText.length > 0 && text ? "has-next-text" : "")}
+            className={"speechbubble " + (hasNextText ? "has-next-text" : "")}
             style={{
                 display: isVisible ? "flex" : "none",
             }}>
             <div className="speechbubble_tail_parent">
                 <div className={"speechbubble_tail"}></div>
             </div>
-            <div>
+            {/* Screen readers get each line whole, rather than as it types. The
+                Announcer reads it out; this is for reading it again. */}
+            <div className={"visually-hidden"}>{text}</div>
+            <div aria-hidden={true}>
                 <TypeWriter
                     ref={typeWriterRef}
                     onTypingComplete={useCallback(()=> {
@@ -176,10 +194,14 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions, SpeechBubble
                     delayMS={40}
                     />
             </div>
-            <div className={"speechbubble_next"}>
+            {/* Taps and clicks anywhere are handled by SpeechBubbleBlocker, which
+                leaves this button's own to it, so keys and screen readers work too. */}
+            <button className={"speechbubble_next"}
+                    ref={continueButtonRef}
+                    onClick={() => events.emit("speechbubbleblockerclicked")}>
                     Tap to Continue
-                <div className={"arrow"}><FaPlay /></div>
-            </div>
+                <div className={"arrow"}><FaPlay aria-hidden={true} /></div>
+            </button>
         </div>
     );
 });

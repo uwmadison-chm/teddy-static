@@ -9,6 +9,8 @@ export function useAnimatedNavigate() {
         const fadeInDuration = 200
         const rootElement = document.getElementById("screen-fader")
         rootElement.className = "wrapper uninteractive"
+        // Keys too: a second Enter on the button that started this would navigate again
+        rootElement.inert = true
         rootElement.animate([{opacity:1}, {opacity:0}],
             {
                 duration: fadeOutDuration,
@@ -27,6 +29,7 @@ export function useAnimatedNavigate() {
                 })
             setTimeout(()=> {
                 rootElement.className = "wrapper"
+                rootElement.inert = false
 
             }, fadeInDuration)
         }, fadeOutDuration + 10)
@@ -34,6 +37,11 @@ export function useAnimatedNavigate() {
     }
 
     return betterNavigate;
+}
+
+// Whether the participant has asked their device for less motion.
+export function prefersReducedMotion(): boolean {
+    return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
 
 export const saveBlob = (function () {

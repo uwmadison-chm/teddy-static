@@ -5,6 +5,7 @@ import { MemoryRouter, Routes, Route } from "react-router";
 import CalibrationScreen from "@/routes/CalibrationScreen.tsx";
 import IntroScreen from "@/routes/IntroScreen.tsx";
 import SpeechBubbleBlocker from "@/components/SpeechBubbleBlocker.tsx";
+import Announcer from "@/components/Announcer.tsx";
 import RecordingNotification from "@/components/RecordingNotification.tsx";
 import * as faceapi from 'face-api.js';
 import { RuntimeLoader } from "@rive-app/react-webgl2";
@@ -38,7 +39,7 @@ fetch(faceModelWeightsUrl)
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
       <MemoryRouter>
-          <div className={"phone-screen-wrapper"}>
+          <main className={"phone-screen-wrapper"}>
               <div className={"wrapper"} id={"screen-fader"}>
                   <Routes>
                       <Route path="/" element={
@@ -72,8 +73,9 @@ createRoot(document.getElementById('root')!).render(
                   <RecordingNotification />
                   {Config.debug && <div className={"debug-banner"}>Debug mode: nothing is uploaded</div>}
               </div>
-          </div>
+          </main>
       </MemoryRouter>
       <SpeechBubbleBlocker />
+      <Announcer />
   </StrictMode>,
 )

@@ -3,6 +3,7 @@ import {useImperativeHandle, useRef} from "react";
 import {buildStyles, CircularProgressbar, CircularProgressbarWithChildren} from "react-circular-progressbar";
 import {interpolateColors} from "@/utils/utils.tsx";
 import {Colors} from "@/utils/colors.tsx";
+import * as events from "@/utils/events.tsx";
 
 export interface PromptTextProps {
     className?: string;
@@ -31,6 +32,7 @@ export const PromptText = React.forwardRef<PromptTextFunctions, PromptTextProps>
             timerRef.current.className = timerRef.current.className.replace("filled","");
             setIsShown(true);
             setText(text)
+            events.announce(text)
 
             // Use a ref here in case we call startTimer before the next render
             durationRef.current = duration || 0;

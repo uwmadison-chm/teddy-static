@@ -11,6 +11,12 @@ import {
 } from "@rive-app/react-webgl2";
 import {SpeechBubble, type SpeechBubbleFunctions} from "@/components/SpeechBubble.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
+import {prefersReducedMotion} from "@/utils/utils.tsx";
+
+// With reduced motion, Teddy holds still this long after starting an
+// animation. Motion that runs longer than 5 seconds next to other content
+// needs a way to stop it (WCAG 2.2.2).
+const REDUCED_MOTION_PLAY_MS = 4000;
 
 export interface TeddyProps {
     initialAnimation?: string,
@@ -46,6 +52,36 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
     })
     const initialStateMachineInput = useStateMachineInput(rive, "teddy", initialAnimation)
 
+    const riveRef = useRef<typeof rive>(null)
+    const stillTimeoutRef = useRef<number | null>(null)
+
+    // Lets an animation play, then, with reduced motion, stops Teddy shortly after.
+    const playThenHoldStill = useCallback(() => {
+        const r = riveRef.current;
+        if (r == null || !prefersReducedMotion()) {
+            return;
+        }
+        if (stillTimeoutRef.current != null) {
+            clearTimeout(stillTimeoutRef.current);
+        }
+        r.play();
+        stillTimeoutRef.current = window.setTimeout(() => {
+            stillTimeoutRef.current = null;
+            r.pause();
+        }, REDUCED_MOTION_PLAY_MS);
+    }, [])
+
+    useEffect(() => {
+        riveRef.current = rive;
+        playThenHoldStill();
+        return () => {
+            if (stillTimeoutRef.current != null) {
+                clearTimeout(stillTimeoutRef.current);
+                stillTimeoutRef.current = null;
+            }
+        };
+    }, [rive, playThenHoldStill])
+
     function resetAnimationState(animationName) {
         if (stateMachineAnimations.current[animationName] != null) {
 
@@ -54,6 +90,7 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
     }
 
     const playAnimation = useCallback((animationName:string|null) => {
+        playThenHoldStill()
         resetAnimationState(TeddyAnimations.PEERING)
         resetAnimationState(TeddyAnimations.WATCH_MOVIE)
         resetAnimationState(TeddyAnimations.LISTEN)
@@ -68,7 +105,7 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
         } else {
             animationTrigger?.fire()
         }
-    }, [])
+    }, [playThenHoldStill])
 
     useEffect(() => {
         const allAnimations: { [id: string]: StateMachineInput; } = {}
@@ -130,7 +167,7 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
 
     return (
         <div className={"teddy " + (isSmallTeddy ? "small" : "")}>
-            <div className={"teddy-frame"}>
+            <div className={"teddy-frame"} aria-hidden={true}>
                 <RiveComponent
                     className='teddy-canvas' />
             </div>
