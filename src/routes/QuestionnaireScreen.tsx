@@ -7,6 +7,7 @@ import {
     type FadingPanelFunctions,
     FadingPanelSet
 } from "@/components/FadingPanelSet.tsx";
+import * as React from "react";
 import {useCallback, useEffect, useRef, useState} from "react";
 import {UserVideo, type UserVideoFunctions} from "@/components/UserVideo.tsx";
 import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.tsx";
@@ -130,6 +131,32 @@ export default function QuestionnaireScreen() {
         }
     }
 
+    // Up and down arrows move between the answers, wrapping around; Enter or
+    // Space picks the focused one, as with any button.
+    function onAnswersKeyDown(e: React.KeyboardEvent<HTMLElement>) {
+        const buttons = Array.from(e.currentTarget.querySelectorAll("button"));
+        const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+        let next: number;
+        switch (e.key) {
+            case "ArrowDown":
+                next = (index + 1) % buttons.length;
+                break;
+            case "ArrowUp":
+                next = index < 0 ? buttons.length - 1 : (index - 1 + buttons.length) % buttons.length;
+                break;
+            case "Home":
+                next = 0;
+                break;
+            case "End":
+                next = buttons.length - 1;
+                break;
+            default:
+                return;
+        }
+        e.preventDefault();
+        buttons[next]?.focus();
+    }
+
     return (
         <div className={"wrapper"}>
             <Teddy
@@ -155,6 +182,7 @@ export default function QuestionnaireScreen() {
                     answer. */}
                 <FadingPanel label={"answers"}
                              role={"group"}
+                             onKeyDown={onAnswersKeyDown}
                              aria-label={shown ?
                                  `Question ${shown.number} of ${shown.of}: ${shown.question.text}` :
                                  undefined}>
