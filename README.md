@@ -25,7 +25,7 @@ my-study/
   config.js           settings
   sentence.csv        sentences for the sentence module
   videolog.csv        prompts for the videolog module
-  questionnaire.csv   questions for the questions module
+  questions.csv       questions for the questions module
   reels/
     reels.csv         reels for the reels module
     *.mp4             the reel videos
