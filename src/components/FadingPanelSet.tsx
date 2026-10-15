@@ -46,6 +46,12 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
     // Focusing it also scrolls it into view, if the screen is scrolled.
     const focusPendingRef = useRef(false);
 
+    // Counts panel changes, so when one starts before the last has finished,
+    // as when Enter skips Teddy's typing just after an answer, only the latest
+    // one's timers change what's shown or end the animation. Otherwise the
+    // earlier one ends it first, and the focus above never happens.
+    const changeRef = useRef(0);
+
     useEffect(() => {
         if (!focusPendingRef.current || isAnimating) {
             return;
@@ -57,6 +63,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
     }, [isAnimating]);
 
     const showStartPanel = (panelName) => {
+        const change = ++changeRef.current;
         const animateDuration = 600
         setIsAnimating(true);
         setIsDisplayed(true);
@@ -69,12 +76,14 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
                 fill: "both",
             })
         setTimeout(()=> {
-            setIsAnimating(false)
+            if (change == changeRef.current) {
+                setIsAnimating(false)
+            }
         }, animateDuration)
 
     };
     const showPanel = async (panelLabel:string, callback:(()=>void)|null=null) => {
-
+        const change = ++changeRef.current;
         const fadeOutDuration = 300
         const fadeInDuration = 200
         setIsAnimating(true);
@@ -85,6 +94,10 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
                 fill: "both",
             })
         setTimeout(()=> {
+            if (change != changeRef.current) {
+                callback?.()
+                return
+            }
 
             setShownPanelkey(panelLabel);
             if (panelLabel != null) {
@@ -98,7 +111,9 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
                     fill: "both",
                 })
             setTimeout(()=> {
-                setIsAnimating(false)
+                if (change == changeRef.current) {
+                    setIsAnimating(false)
+                }
                 if (callback != null) {
                     callback()
                 }
@@ -107,7 +122,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
         }, fadeOutDuration)
     };
     const hide = async (callback:(()=>void)|null=null) => {
-
+        const change = ++changeRef.current;
         const animateDuration = 600
         setIsAnimating(true);
         setIsDisplayed(true);
@@ -120,9 +135,11 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
                 fill: "both",
             })
         setTimeout(()=> {
-            setIsAnimating(false)
-            setShownPanelkey(null);
-            setIsDisplayed(false);
+            if (change == changeRef.current) {
+                setIsAnimating(false)
+                setShownPanelkey(null);
+                setIsDisplayed(false);
+            }
             if (callback != null) {
                 callback()
             }
