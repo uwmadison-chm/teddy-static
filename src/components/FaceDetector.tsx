@@ -7,6 +7,7 @@ import {Colors} from "@/utils/colors.tsx";
 import * as events from "@/utils/events.tsx";
 import {loadFaceApi} from "@/utils/faceApi.ts";
 import {abortable, Aborted, sleep} from "@/utils/script.ts";
+import {CurrentSessionData, errorFields} from "@/data/sessionData.tsx";
 
 // A face counts when the detector is at least this sure of it.
 const FACE_SCORE = 0.5;
@@ -16,6 +17,9 @@ const GUESS_SCORE = 0.2;
 const TROUBLE_AFTER_MS = 2000;
 // Checks that fail this many times in a row mean the detector doesn't work here.
 const MAX_FAILED_CHECKS = 3;
+// The most face_detector_error events one check sends, in case checks keep
+// failing now and then without ever failing MAX_FAILED_CHECKS in a row.
+const MAX_ERROR_EVENTS = 10;
 // Mean brightness, 0-255, that a face (or the middle of the picture, if there's
 // no face to measure) should fall between.
 const MIN_LIGHT = 60;
@@ -26,9 +30,9 @@ export interface FaceDetectorProps {
 }
 
 // How detect() ended: a face held in view, or the detector couldn't run here.
+// The errors are logged as face_detector_error events as they happen.
 export interface FaceCheckResult {
     found: boolean;
-    error?: unknown;
 }
 
 // What the checks found, for the event log.
@@ -131,7 +135,8 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
                 throw error;
             }
             console.error("Couldn't load the face detector:", error);
-            return {found: false, error};
+            CurrentSessionData.logEvent("face_detector_error", {stage: "load", ...errorFields(error)});
+            return {found: false};
         }
         const detectorOptions = new faceapi.TinyFaceDetectorOptions({inputSize: 224, scoreThreshold: GUESS_SCORE});
 
@@ -139,6 +144,7 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
         // Since when we've been looking without holding a face.
         let lookingSince = Date.now();
         let failedChecks = 0;
+        let errorEvents = 0;
         for (;;) {
             await sleep(100, signal);
             let detection: {score: number, box: Box} | undefined;
@@ -153,8 +159,11 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
                     throw error;
                 }
                 console.error("Couldn't check for a face:", error);
+                if (++errorEvents <= MAX_ERROR_EVENTS) {
+                    CurrentSessionData.logEvent("face_detector_error", {stage: "detect", ...errorFields(error)});
+                }
                 if (++failedChecks >= MAX_FAILED_CHECKS) {
-                    return {found: false, error};
+                    return {found: false};
                 }
                 continue;
             }

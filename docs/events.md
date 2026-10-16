@@ -98,12 +98,13 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 | field | |
 |---|---|
-| `result` | `found`: a face was in view for a second. `bypassed`: no face was found, and the participant pressed "Let's Continue Anyhow". `unavailable`: the face detector couldn't load or run, so the check ended without telling the participant |
+| `result` | `found`: a face was in view for a second. `bypassed`: no face was found, and the participant pressed "Let's Continue Anyhow". `unavailable`: the face detector couldn't load or run, so the check ended without telling the participant; see `face_detector_error` |
 | `best_score` | the face detector's highest score for a face during the check, 0 to 1; `null` if it never saw one scoring at least 0.2. A face counts as found above 0.5 |
 | `centered` | whether the last check saw a face in the middle of the camera preview |
 | `light_ok` | whether the last check found the face (or the middle of the picture, without one) neither too dark nor washed out |
 | `tips_shown` | whether the tips had come up |
-| `name`, `message`, `stack` | for `unavailable`, the error |
+
+**`face_detector_error`**: the face detector failed. `stage`: `load` (face-api or its model wouldn't load; the check ends as `unavailable`) or `detect` (one check of the camera failed; three in a row end the check as `unavailable`). `name`, `message`, and `stack` (its first few lines). At most 10 per face check.
 
 **`eyes_closed_countdown_started`**: the countdown before the eyes-closed period started; the participant should be closing their eyes.
 

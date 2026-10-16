@@ -14,7 +14,7 @@ import {FaceDetector, type FaceDetectorFunctions} from "@/components/FaceDetecto
 import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.tsx";
 import {CountdownTimer, type CountdownTimerFunctions} from "@/components/CountdownTimer.tsx";
 import {Colors} from "@/utils/colors.tsx";
-import {CurrentSessionData, errorFields} from "@/data/sessionData.tsx";
+import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {abortable, firstOf, sleep, useChoice, useScript} from "@/utils/script.ts";
 
 export default function CalibrationScreen() {
@@ -53,9 +53,8 @@ export default function CalibrationScreen() {
                         teddy.say(TeddyAnimations.PEERING, "I can't quite see you yet. These might help.");
                     },
                 });
-                CurrentSessionData.logEvent("face_check_result", result.found ?
-                    {result: "found", ...faceDetectorRef.current.summary()} :
-                    {result: "unavailable", ...faceDetectorRef.current.summary(), ...errorFields(result.error)})
+                CurrentSessionData.logEvent("face_check_result",
+                    {result: result.found ? "found" : "unavailable", ...faceDetectorRef.current.summary()})
             },
             async (signal) => {
                 await sleep(6000, signal);
