@@ -132,6 +132,14 @@
   width: sizes.text(20);
   height: sizes.text(20);
 }
+.face-detector.small {
+  width: sizes.text(8);
+  height: sizes.text(8);
+
+  .circle-progress-text {
+    font-size: sizes.text(3);
+  }
+}
 .circle-progress-text {
   cursor: default;
   font-size: sizes.text(6);

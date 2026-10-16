@@ -94,18 +94,16 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 **`face_check_tips_shown`**: no face had been held in view for 2 seconds, so tips for being seen (centering, lighting, background, a clean camera) came up.
 
-**`face_detected`**: a face was in view for a second.
-
-**`face_check_bypassed`**: no face was found, and the participant pressed "Let's Continue Anyhow" to move on.
+**`face_check_result`**: the face check ended.
 
 | field | |
 |---|---|
+| `result` | `found`: a face was in view for a second. `bypassed`: no face was found, and the participant pressed "Let's Continue Anyhow". `unavailable`: the face detector couldn't load or run, so the check ended without telling the participant |
 | `best_score` | the face detector's highest score for a face during the check, 0 to 1; `null` if it never saw one scoring at least 0.2. A face counts as found above 0.5 |
 | `centered` | whether the last check saw a face in the middle of the camera preview |
 | `light_ok` | whether the last check found the face (or the middle of the picture, without one) neither too dark nor washed out |
 | `tips_shown` | whether the tips had come up |
-
-**`face_check_unavailable`**: the face detector couldn't load or run, so the check was skipped without telling the participant. Has the error's `name`, `message`, and `stack`.
+| `name`, `message`, `stack` | for `unavailable`, the error |
 
 **`eyes_closed_countdown_started`**: the countdown before the eyes-closed period started; the participant should be closing their eyes.
 
@@ -169,4 +167,4 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 ## Changelog
 
 - **1.0**: the first version.
-- **1.1**: added `face_check_tips_shown` and `face_check_unavailable`, and fields on `face_check_bypassed`.
+- **1.1**: added `face_check_tips_shown`. `face_check_result` replaces `face_detected` and `face_check_bypassed`; no data had been collected under 1.0.

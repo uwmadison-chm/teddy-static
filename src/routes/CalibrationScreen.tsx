@@ -53,17 +53,15 @@ export default function CalibrationScreen() {
                         teddy.say(TeddyAnimations.PEERING, "I can't quite see you yet. These might help.");
                     },
                 });
-                if (result.found) {
-                    CurrentSessionData.logEvent("face_detected")
-                } else {
-                    CurrentSessionData.logEvent("face_check_unavailable", errorFields(result.error))
-                }
+                CurrentSessionData.logEvent("face_check_result", result.found ?
+                    {result: "found", ...faceDetectorRef.current.summary()} :
+                    {result: "unavailable", ...faceDetectorRef.current.summary(), ...errorFields(result.error)})
             },
             async (signal) => {
                 await sleep(6000, signal);
                 panels.showStartPanel();
                 await bypass.next(signal);
-                CurrentSessionData.logEvent("face_check_bypassed", faceDetectorRef.current.summary())
+                CurrentSessionData.logEvent("face_check_result", {result: "bypassed", ...faceDetectorRef.current.summary()})
             });
 
         panels.showPanel(null);

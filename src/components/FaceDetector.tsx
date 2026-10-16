@@ -218,7 +218,8 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
 
     return (
         <>
-            <div className={"face-detector"}
+            {/* Smaller once the tips are up, to leave them room */}
+            <div className={"face-detector" + (tipsShown ? " small" : "")}
             style={{
                 display:isShown ? 'block' : 'none',
                 opacity:isFadingOut? 0 : 1,
