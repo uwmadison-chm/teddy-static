@@ -65,16 +65,34 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
     const [silhouetteShown, setSilhouetteShown] = useState<boolean>(localStorage.getItem("SilhouetteShown") == "true");
 
 
-    const startCamera = useEffectEvent(() => {
+    // `stopped` fires when this screen goes away, so nothing here acts on the
+    // camera after that.
+    const startCamera = useEffectEvent((stopped: AbortSignal) => {
         getCameraStream()
             .then((localMediaStream) => {
+                if (stopped.aborted) {
+                    return;
+                }
                 videoElementRef.current.srcObject = localMediaStream;
+                // A track that ends on its own (a permission revoked, a camera
+                // unplugged, another app taking it) leaves nothing to record.
+                // Help the participant fix it, then start this screen over.
+                const onEnded = () => {
+                    const state: CameraHelpState = {errorName: "ended", returnTo: location.pathname};
+                    navigate("/camerahelp", {state});
+                };
+                for (const track of localMediaStream.getTracks()) {
+                    track.addEventListener("ended", onEnded, {once: true, signal: stopped});
+                }
                 ready.resolve();
                 if (props.onInitialized != null) {
                     props.onInitialized()
                 }
             })
             .catch((error) => {
+                if (stopped.aborted) {
+                    return;
+                }
                 // The camera worked when the session started, so something has
                 // changed: a permission revoked, or a camera unplugged. Help the
                 // participant fix it, then start this screen over.
@@ -85,9 +103,13 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
     });
 
     useEffect(() => {
-        startCamera()
-        // Nothing records past its screen.
-        return () => currentRef.current?.stop("left_screen");
+        const stopped = new AbortController();
+        startCamera(stopped.signal)
+        return () => {
+            stopped.abort();
+            // Nothing records past its screen.
+            currentRef.current?.stop("left_screen");
+        };
     }, [])
 
     // Each recording gets its own MediaRecorder, which pig's client starts and

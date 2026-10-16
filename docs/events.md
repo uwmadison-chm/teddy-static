@@ -1,6 +1,6 @@
 # Teddy's events
 
-Event schema **1.0**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event.
+Event schema **1.1**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event.
 
 ## Versioning
 
@@ -76,11 +76,15 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 **`camera_error`**: the browser wouldn't give Teddy the camera. `name` (like `NotAllowedError`), `message`, and `constraint` (the setting the camera couldn't meet, for an `OverconstrainedError`; otherwise `null`).
 
-**`camera_ended`**: a camera or microphone track stopped on its own, such as when a camera was unplugged or permission was revoked mid-session. `track`: `video` or `audio`.
+**`camera_missing`**: before asking for the camera, Teddy found that the device has no camera or no microphone, and went straight to the camera help screen without asking. `video_inputs`, `audio_inputs`: how many of each the browser listed.
 
-**`camera_help_shown`**: the camera help screen started, after a `camera_error`. `name`: the error.
+**`camera_ended`**: a camera or microphone track stopped on its own, such as when a camera was unplugged or permission was revoked mid-session. `track`: `video` or `audio`. If it happens on a screen showing the camera, the camera help screen follows.
+
+**`camera_help_shown`**: the camera help screen started. `name`: the error, `NotFoundError` after a `camera_missing`, or `ended` after a `camera_ended`.
 
 **`camera_given_up`**: the participant gave up on the camera help screen; the session ends there. `name`: the last error.
+
+**`camera_unusable`**: the camera help screen found nothing to try again, because the device has no camera or microphone (`NotFoundError`, `OverconstrainedError`) or the browser can't use one (`NotSupportedError`); the session ends there. `name`: the error.
 
 ### Modules
 
@@ -158,3 +162,4 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 ## Changelog
 
 - **1.0**: the first version.
+- **1.1**: added `camera_missing` and `camera_unusable`, and `ended` as a `camera_help_shown` name.

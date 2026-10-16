@@ -16,10 +16,41 @@ function isLive(s: MediaStream): boolean {
     return tracks.length > 0 && tracks.every(t => t.readyState == "live");
 }
 
+// Resolves to true when this device plainly has no camera or no microphone, so
+// there's no point asking for them. Before the participant allows the camera,
+// browsers still list one of each kind of device the device has (without its
+// name), so an empty kind means there isn't one. An empty list, or a browser
+// that can't list devices, proves nothing, and resolves to false: asking for
+// the stream will tell.
+export async function lacksCamera(): Promise<boolean> {
+    if (!navigator.mediaDevices?.getUserMedia) {
+        return true;
+    }
+    let devices: MediaDeviceInfo[];
+    try {
+        devices = await navigator.mediaDevices.enumerateDevices();
+    } catch {
+        return false;
+    }
+    if (devices.length == 0) {
+        return false;
+    }
+    const kinds = new Set(devices.map(d => d.kind));
+    const missing = !kinds.has("videoinput") || !kinds.has("audioinput");
+    if (missing) {
+        CurrentSessionData.logEvent("camera_missing", {
+            video_inputs: devices.filter(d => d.kind == "videoinput").length,
+            audio_inputs: devices.filter(d => d.kind == "audioinput").length,
+        });
+    }
+    return missing;
+}
+
 // Resolves to the stream, opening it if it isn't open. Rejects with
-// getUserMedia's error if the browser won't give us the camera and microphone.
-// Each time it asks the browser, it logs camera_requested, then camera_started
-// or camera_error.
+// getUserMedia's error if the browser won't give us the camera and microphone,
+// or with a NotSupportedError if this browser can't use a camera at all (an
+// old browser, or a page not served over https). Each time it asks the
+// browser, it logs camera_requested, then camera_started or camera_error.
 export function getCameraStream(): Promise<MediaStream> {
     if (stream != null && isLive(stream)) {
         return Promise.resolve(stream);
@@ -27,8 +58,8 @@ export function getCameraStream(): Promise<MediaStream> {
     if (opening == null) {
         stopCameraStream();
         CurrentSessionData.logEvent("camera_requested");
-        opening = navigator.mediaDevices
-            .getUserMedia({
+        const request = navigator.mediaDevices?.getUserMedia ?
+            navigator.mediaDevices.getUserMedia({
                 video: {
                     facingMode: "user",
                     width: {ideal: Config.recording.width},
@@ -36,7 +67,9 @@ export function getCameraStream(): Promise<MediaStream> {
                     frameRate: {ideal: Config.recording.frameRate},
                 },
                 audio: true,
-            })
+            }) :
+            Promise.reject(new DOMException("This browser can't use a camera here", "NotSupportedError"));
+        opening = request
             .then((s) => {
                 stream = s;
                 const video = s.getVideoTracks()[0]?.getSettings() ?? {};

@@ -10,7 +10,7 @@ import {
 } from "@/components/FadingPanelSet.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {useNavigate} from "react-router";
-import {getCameraStream} from "@/data/camera.ts";
+import {getCameraStream, lacksCamera} from "@/data/camera.ts";
 import * as pig from "@/data/pig.ts";
 import type {LinkProblemState} from "@/routes/LinkProblemScreen.tsx";
 import type {CameraHelpState} from "@/routes/CameraHelpScreen.tsx";
@@ -44,6 +44,9 @@ export default function IntroScreen() {
         // done. pig refuses a run for a closed task or a link missing what the
         // task needs. Better to find out now than after the recordings.
         const started = pig.startRun();
+        // A device with no camera can't do the session, so it shouldn't get
+        // as far as the permission prompt.
+        const noCamera = lacksCamera();
         await teddy.say(TeddyAnimations.WAVE,
             ["Hello there! It's great to see you!", "We'd like you to do a quick interaction using the camera.", "It should take a couple minutes and should be done in one sitting."],
             signal);
@@ -51,6 +54,11 @@ export default function IntroScreen() {
         if (failure) {
             const state: LinkProblemState = {code: failure.code};
             navigate("linkproblem", {state});
+            return;
+        }
+        if (await abortable(noCamera, signal)) {
+            const state: CameraHelpState = {errorName: "NotFoundError", returnTo: "/calibration"};
+            navigate("camerahelp", {state});
             return;
         }
         panels.showStartPanel();
