@@ -19,6 +19,9 @@ interface TeddyConfig {
     taskCode: string;
     debug: boolean;
     nextUrlHosts: string[];
+    // Whether the camera help screen offers to continue to nextURL when the
+    // camera can't be used. Otherwise the session ends there.
+    nextUrlAfterCameraFailure: boolean;
     recording: RecordingConfig;
 }
 
@@ -40,6 +43,7 @@ export const Config: TeddyConfig = {
     taskCode: studyConfig.taskCode || "",
     debug: !!studyConfig.debug,
     nextUrlHosts: studyConfig.nextUrlHosts || [],
+    nextUrlAfterCameraFailure: !!studyConfig.nextUrlAfterCameraFailure,
     recording: {...defaultRecording, ...studyConfig.recording},
 };
 

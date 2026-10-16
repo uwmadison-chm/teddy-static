@@ -12,47 +12,69 @@ import {
 import {CurrentSessionData, setCanLeavePageSafely} from "@/data/sessionData.tsx";
 import {getCameraStream, stopCameraStream} from "@/data/camera.ts";
 import * as pig from "@/data/pig.ts";
+import {Config} from "@/data/config.ts";
 import {abortable, Aborted, useChoice, useScript} from "@/utils/script.ts";
 
 export interface CameraHelpState {
-    // The name of the error getUserMedia failed with, like "NotAllowedError".
+    // The name of the error getUserMedia failed with, like "NotAllowedError";
+    // "NotFoundError" when the device has no camera or microphone; or "ended"
+    // when the camera stopped partway through a screen.
     errorName: string;
     // Where to go once the camera works.
     returnTo: string;
 }
 
+interface Explanation {
+    lines: string[];
+    // Whether trying again could help. When it can't, the participant goes
+    // straight to the way out.
+    canRetry: boolean;
+}
+
 // What to tell the participant, by the name of getUserMedia's error.
-function explanation(errorName: string): string[] {
+function explanation(errorName: string): Explanation {
     switch (errorName) {
         case "NotAllowedError":
         case "SecurityError":
-            return [
+            return {canRetry: true, lines: [
                 "It looks like your browser is blocking the camera or microphone.",
                 "Look for a camera or lock icon next to the web address, and set both the camera and the microphone to allow.",
                 "Then tap \"Try Again\". If that doesn't work, reloading the page can help.",
-            ];
-        case "NotFoundError":
-        case "OverconstrainedError":
-            return [
-                "I can't find a camera or microphone on this device.",
-                "If one is plugged in or turned off, check it, then tap \"Try Again\".",
-            ];
+            ]};
         case "NotReadableError":
         case "AbortError":
-            return [
+            return {canRetry: true, lines: [
                 "Your camera or microphone seems to be busy.",
                 "Close any other apps or tabs that might be using it, then tap \"Try Again\".",
-            ];
+            ]};
+        case "ended":
+            return {canRetry: true, lines: [
+                "Your camera or microphone stopped working.",
+                "Check that it's still plugged in and allowed in your browser, then tap \"Try Again\".",
+            ]};
+        case "NotFoundError":
+        case "OverconstrainedError":
+            return {canRetry: false, lines: [
+                "I can't find a camera and microphone on this device.",
+            ]};
+        case "NotSupportedError":
+            return {canRetry: false, lines: [
+                "This browser can't use a camera here.",
+                "If you opened the link inside another app, opening it in your regular web browser might work.",
+            ]};
         default:
-            return [
+            return {canRetry: true, lines: [
                 "I'm having trouble starting your camera and microphone.",
                 "Tap \"Try Again\" to give it another go.",
-            ];
+            ]};
     }
 }
 
-// Walks the participant through getting the camera and microphone working,
-// and lets them move on without it if they can't.
+// Walks the participant through getting the camera and microphone working.
+// The session can't go on without them, so when they can't get it working, or
+// the device has no camera at all, it tells them to use their link on another
+// device or to ask the study for help, and the session ends there (or goes on
+// to nextURL, when config.js says to).
 export default function CameraHelpScreen() {
     const navigate = useAnimatedNavigate();
     const location = useLocation();
@@ -65,28 +87,36 @@ export default function CameraHelpScreen() {
         const teddy = teddyRef.current;
         const panels = fadingPanelRef.current;
 
-        // Where the browser can tell us, try again on our own as soon as the
-        // participant allows the camera and microphone in the browser's settings.
-        for (const name of ["camera", "microphone"]) {
-            navigator.permissions?.query({name: name as PermissionName})
-                .then((status) => {
-                    const onChange = () => {
-                        if (status.state == "granted") {
-                            help.pick("retry");
-                        }
-                    };
-                    status.addEventListener("change", onChange);
-                    signal.addEventListener("abort", () => status.removeEventListener("change", onChange));
-                })
-                .catch(() => {
-                    // This browser can't report this permission. The button still works.
-                });
-        }
-
         let errorName = state.errorName;
         CurrentSessionData.logEvent("camera_help_shown", {name: errorName});
+
+        // Where the browser can tell us, try again on our own as soon as the
+        // participant allows the camera and microphone in the browser's settings.
+        if (explanation(errorName).canRetry) {
+            for (const name of ["camera", "microphone"]) {
+                navigator.permissions?.query({name: name as PermissionName})
+                    .then((status) => {
+                        const onChange = () => {
+                            if (status.state == "granted") {
+                                help.pick("retry");
+                            }
+                        };
+                        status.addEventListener("change", onChange);
+                        signal.addEventListener("abort", () => status.removeEventListener("change", onChange));
+                    })
+                    .catch(() => {
+                        // This browser can't report this permission. The button still works.
+                    });
+            }
+        }
+
+        let gaveUp = false;
         for (let isRetry = false; ; isRetry = true) {
-            const lines = explanation(errorName);
+            const {lines, canRetry} = explanation(errorName);
+            if (!canRetry) {
+                await teddy.say(TeddyAnimations.SADNESS, lines, signal);
+                break;
+            }
             if (isRetry) {
                 lines.unshift("Hmm, that still didn't work.");
             }
@@ -95,6 +125,7 @@ export default function CameraHelpScreen() {
             teddy.say(TeddyAnimations.SADNESS, lines, signal)
                 .then(() => panels.showStartPanel(), () => {});
             if (await chosen == "giveUp") {
+                gaveUp = true;
                 break;
             }
             panels.showPanel(null);
@@ -112,17 +143,21 @@ export default function CameraHelpScreen() {
             return;
         }
 
-        CurrentSessionData.logEvent("camera_given_up", {name: errorName});
+        CurrentSessionData.logEvent(gaveUp ? "camera_given_up" : "camera_unusable", {name: errorName});
         stopCameraStream();
         panels.showPanel(null);
         // There's no recording to wait for, just a few events, so this is quick.
         const sent = pig.finishRun(() => {}).catch((error) => {
             console.error("Couldn't finish sending to pig:", error);
         });
-        await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY, "That's okay. Thanks for trying!", signal);
+        await teddy.say(TeddyAnimations.SADNESS, [
+            "This activity needs a working camera and microphone.",
+            "Please try again on another device with a camera, like a phone, using the same link the study sent you.",
+            "If you need help, please contact your study coordinator.",
+        ], signal);
         await abortable(sent, signal);
         setCanLeavePageSafely();
-        if (CurrentSessionData.nextURL) {
+        if (Config.nextUrlAfterCameraFailure && CurrentSessionData.nextURL) {
             await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY, "Press the button to continue.", signal);
             panels.showStartPanel("continue");
         } else {
