@@ -212,6 +212,7 @@ export default function CalibrationScreen() {
                     <button
                             onClick={(_e) => {
                                 CurrentSessionData.logEvent("faceDetectBypassed")
+                                faceDetectorRef.current.stop()
                                 setTryingToDetectFace(false)
                             }}>
                         I'm Here!

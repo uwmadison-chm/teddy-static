@@ -148,6 +148,7 @@ export default function ReelsScreen() {
     }
 
     function startReel() {
+        const currentReel = videoElementsRef.current[currentReelIndex.current];
         setIsRecording(true)
 
         CurrentSessionData.logEvent("reelRecordingStarted", reelIDs.current[currentReelIndex.current])
@@ -157,6 +158,10 @@ export default function ReelsScreen() {
 
             setIsRecording(false);
 
+            // The recording can hit its time limit before a long reel ends.
+            // Stop the reel too, so it isn't heard behind the rating, and so its
+            // end doesn't stop the rating's recording.
+            currentReel.pause();
             setVideoWrapperShown(false);
 
             rateReel();
@@ -170,7 +175,6 @@ export default function ReelsScreen() {
         setVideoWrapperShown(true);
         const reel = reels[reelIDs.current[currentReelIndex.current]];
         CurrentSessionData.logEvent("reelShown", {id: reel.id, file: reel.file})
-        const currentReel = videoElementsRef.current[currentReelIndex.current];
         currentReel.setAttribute("playsinline", true);
         currentReel.setAttribute("autoplay", true);
         videoElementWrapperRef.current.innerHTML = "";
