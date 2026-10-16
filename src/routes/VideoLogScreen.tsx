@@ -72,13 +72,11 @@ export default function VideoLogScreen() {
             panels.showStartPanel();
             await ready.next(signal);
 
-            // The prompt, and a moment to think about it before recording.
+            // The prompt, and as long as they like to think about it before recording.
             const prompt = videoLogPrompts[id];
             CurrentSessionData.logEvent("item_shown", {item: prompt.id, text: prompt.text})
             teddy.say(TeddyAnimations.IDLE, "Please think about the following prompt and press the button when you're ready.")
             promptTextRef.current.showText(prompt.text, MAX_RECORDING_DURATION)
-            panels.showPanel(null)
-            await sleep(2000, signal);
             panels.showPanel("startRecordingButton");
             await startRecording.next(signal);
 
