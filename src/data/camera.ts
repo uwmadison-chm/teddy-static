@@ -6,6 +6,7 @@
 // recording comes from the same capture clock.
 
 import {Config} from "@/data/config.ts";
+import {CurrentSessionData, errorFields} from "@/data/sessionData.tsx";
 
 let stream: MediaStream | null = null;
 let opening: Promise<MediaStream> | null = null;
@@ -17,12 +18,15 @@ function isLive(s: MediaStream): boolean {
 
 // Resolves to the stream, opening it if it isn't open. Rejects with
 // getUserMedia's error if the browser won't give us the camera and microphone.
+// Each time it asks the browser, it logs camera_requested, then camera_started
+// or camera_error.
 export function getCameraStream(): Promise<MediaStream> {
     if (stream != null && isLive(stream)) {
         return Promise.resolve(stream);
     }
     if (opening == null) {
         stopCameraStream();
+        CurrentSessionData.logEvent("camera_requested");
         opening = navigator.mediaDevices
             .getUserMedia({
                 video: {
@@ -35,7 +39,27 @@ export function getCameraStream(): Promise<MediaStream> {
             })
             .then((s) => {
                 stream = s;
+                const video = s.getVideoTracks()[0]?.getSettings() ?? {};
+                CurrentSessionData.logEvent("camera_started", {
+                    width: video.width ?? null,
+                    height: video.height ?? null,
+                    frame_rate: video.frameRate ?? null,
+                });
+                // A track ends on its own when the camera is unplugged or the
+                // permission is taken away; stopCameraStream() doesn't count.
+                for (const track of s.getTracks()) {
+                    track.addEventListener("ended", () => {
+                        CurrentSessionData.logEvent("camera_ended", {track: track.kind});
+                    }, {once: true});
+                }
                 return s;
+            }, (error) => {
+                CurrentSessionData.logEvent("camera_error", {
+                    ...errorFields(error),
+                    // Which setting the camera couldn't meet, for an OverconstrainedError.
+                    constraint: error?.constraint ?? null,
+                });
+                throw error;
             })
             .finally(() => {
                 opening = null;

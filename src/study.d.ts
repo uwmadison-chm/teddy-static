@@ -45,6 +45,11 @@ declare module "virtual:teddy-study" {
             maxSeconds: number;
         }>;
     }>;
+    // What this build is. Commits and dirty are null outside git.
+    export const build: {
+        teddy: {version: string, commit: string | null, dirty: boolean | null};
+        study: {commit: string | null, dirty: boolean | null, hash: string};
+    };
     // The modules this build has, by name.
     export const modules: string[];
     // Items by ID; empty for a module the build doesn't have.

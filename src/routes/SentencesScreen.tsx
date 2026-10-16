@@ -42,7 +42,7 @@ export default function SentencesScreen() {
         const sentenceIDs = CurrentSessionData.getCurrentModuleArgs();
 
         console.log("Starting sentence module with sentences:", sentenceIDs)
-        CurrentSessionData.logEvent("sentenceScreenStarted", sentenceIDs.toString())
+        CurrentSessionData.startModule()
 
         const sentenceDescription = sentenceIDs.length == 1 ?
             "a sentence" : "a couple sentences";
@@ -68,14 +68,13 @@ export default function SentencesScreen() {
             panels.showStartPanel();
             await start.next(signal);
 
-            CurrentSessionData.logEvent("sentenceRecordingStarted", id)
             const recording = userVideoRef.current.record({kind: "sentence", item: id},
                 {timeout: MAX_RECORDING_DURATION, signal});
             teddy.say(TeddyAnimations.LISTEN, "Please read this sentence out loud then press the button.",
                 undefined, {skipAnimation: true});
             panels.showPanel(null);
             const sentence = sentences[id];
-            CurrentSessionData.logEvent("sentenceShown", {id: sentence.id, text: sentence.text})
+            CurrentSessionData.logEvent("item_shown", {item: sentence.id, text: sentence.text})
             promptTextRef.current.showText(sentence.text, MAX_RECORDING_DURATION)
             promptTextRef.current.startTimer();
 
@@ -87,11 +86,9 @@ export default function SentencesScreen() {
                     await sleep(BUTTON_POPUP_DELAY, signal);
                     panels.showStartPanel("completeRecordingButton");
                     await done.next(signal);
-                    CurrentSessionData.logEvent("completeSentenceButton", id)
-                    recording.stop();
+                    recording.stop("done_button");
                     await recording.done;
                 });
-            CurrentSessionData.logEvent("sentenceRecordingEnded", id)
             panels.showPanel(null);
             promptTextRef.current.hide()
         }
@@ -102,7 +99,6 @@ export default function SentencesScreen() {
             ["Amazing job!",
                 hasMoreModules ? "Shall we go to the next module?" : "It's time to finish up our session."],
             signal);
-        CurrentSessionData.logEvent(hasMoreModules ? "sentenceScreenNextModule" : "sentenceScreenFinishSession")
         panels.showStartPanel(hasMoreModules ? "nextModule" : "finishSession");
         await next.next(signal);
         CurrentSessionData.navigateToNextModule(navigate);

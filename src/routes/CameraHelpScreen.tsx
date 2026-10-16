@@ -84,6 +84,7 @@ export default function CameraHelpScreen() {
         }
 
         let errorName = state.errorName;
+        CurrentSessionData.logEvent("camera_help_shown", {name: errorName});
         for (let isRetry = false; ; isRetry = true) {
             const lines = explanation(errorName);
             if (isRetry) {
@@ -97,24 +98,21 @@ export default function CameraHelpScreen() {
                 break;
             }
             panels.showPanel(null);
-            CurrentSessionData.logEvent("cameraRetry");
             try {
                 await abortable(getCameraStream(), signal);
             } catch (error) {
                 if (error instanceof Aborted) {
                     throw error;
                 }
-                CurrentSessionData.logEvent("cameraError", error.name);
                 errorName = error.name;
                 continue;
             }
-            CurrentSessionData.logEvent("cameraWorking");
             await teddy.say(TeddyAnimations.SUCCESS, "That did it! Let's keep going.", signal);
             navigate(state.returnTo);
             return;
         }
 
-        CurrentSessionData.logEvent("cameraUnavailable", state.errorName);
+        CurrentSessionData.logEvent("camera_given_up", {name: errorName});
         stopCameraStream();
         panels.showPanel(null);
         // There's no recording to wait for, just a few events, so this is quick.

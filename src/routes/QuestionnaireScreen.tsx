@@ -45,7 +45,7 @@ export default function QuestionnaireScreen() {
         const questionIDs = CurrentSessionData.getCurrentModuleArgs();
 
         console.log("Starting questionnaire module with questions:", questionIDs)
-        CurrentSessionData.logEvent("questionnaireScreenStarted", questionIDs.toString())
+        CurrentSessionData.startModule()
 
         const questionDescription = questionIDs.length == 1 ?
             "a quick question" : "a few quick questions";
@@ -57,19 +57,21 @@ export default function QuestionnaireScreen() {
         panels.showStartPanel();
         await start.next(signal);
 
-        CurrentSessionData.logEvent("questionnaireRecordingStarted", questionIDs.toString())
-        const recording = userVideoRef.current.record({kind: "questionnaire", item: questionIDs.toString()}, {signal});
-        recording.done.then(() => {
-            CurrentSessionData.logEvent("questionnaireRecordingEnded", questionIDs.toString())
-        });
+        const recording = userVideoRef.current.record({kind: "questions", items: questionIDs}, {signal});
 
         // Teddy asks each question, and its answers appear once the question
         // has finished typing out (or been tapped through) and the last
         // answers have gone.
         for (let index = 0; index < questionIDs.length; index++) {
             const question = questions[questionIDs[index]];
-            CurrentSessionData.logEvent("questionShown",
-                {id: question.id, text: question.text, responses: question.responses, choices: question.choices})
+            CurrentSessionData.logEvent("item_shown", {
+                item: question.id,
+                text: question.text,
+                responses: question.responses,
+                choices: question.choices,
+                number: index + 1,
+                of: questionIDs.length,
+            })
             await Promise.all([
                 panels.showPanel(null),
                 teddy.say(TeddyAnimations.LISTEN, question.text, signal),
@@ -77,17 +79,16 @@ export default function QuestionnaireScreen() {
             setShown({question, number: index + 1, of: questionIDs.length});
             panels.showPanel("answers");
             const choice = await answers.next(signal);
-            CurrentSessionData.logEvent("questionAnswered", {
-                id: question.id,
+            CurrentSessionData.logEvent("response", {
+                item: question.id,
                 text: question.text,
-                responses: question.responses,
-                choices: question.choices,
-                code: choice.code,
+                value: choice.code,
                 label: choice.label,
+                choices: question.choices,
             });
         }
 
-        recording.stop();
+        recording.stop("finished");
         panels.showPanel(null);
         teddy.playAnimation(TeddyAnimations.IDLE);
         const hasMoreModules = CurrentSessionData.hasMoreModules();
@@ -95,7 +96,6 @@ export default function QuestionnaireScreen() {
             ["Thanks for sharing that with me!",
                 hasMoreModules ? "Shall we go to the next module?" : "It's time to finish up our session."],
             signal);
-        CurrentSessionData.logEvent(hasMoreModules ? "questionnaireScreenNextModule" : "questionnaireScreenFinishSession")
         panels.showStartPanel(hasMoreModules ? "nextModule" : "finishSession");
         await next.next(signal);
         CurrentSessionData.navigateToNextModule(navigate);
