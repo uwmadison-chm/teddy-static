@@ -12,6 +12,7 @@ import {
 import {CurrentSessionData, setCanLeavePageSafely} from "@/data/sessionData.tsx";
 import {getCameraStream, stopCameraStream} from "@/data/camera.ts";
 import * as pig from "@/data/pig.ts";
+import {Config} from "@/data/config.ts";
 import {abortable, Aborted, useChoice, useScript} from "@/utils/script.ts";
 
 export interface CameraHelpState {
@@ -72,7 +73,8 @@ function explanation(errorName: string): Explanation {
 // Walks the participant through getting the camera and microphone working.
 // The session can't go on without them, so when they can't get it working, or
 // the device has no camera at all, it tells them to use their link on another
-// device or to ask the study for help, and the session ends there.
+// device or to ask the study for help, and the session ends there (or goes on
+// to nextURL, when config.js says to).
 export default function CameraHelpScreen() {
     const navigate = useAnimatedNavigate();
     const location = useLocation();
@@ -155,7 +157,12 @@ export default function CameraHelpScreen() {
         ], signal);
         await abortable(sent, signal);
         setCanLeavePageSafely();
-        teddy.say(TeddyAnimations.WAVE, "You can close this tab now.");
+        if (Config.nextUrlAfterCameraFailure && CurrentSessionData.nextURL) {
+            await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY, "Press the button to continue.", signal);
+            panels.showStartPanel("continue");
+        } else {
+            teddy.say(TeddyAnimations.WAVE, "You can close this tab now.");
+        }
     });
 
     return (
@@ -171,6 +178,14 @@ export default function CameraHelpScreen() {
                     </button>
                     <button onClick={() => help.pick("giveUp")}>
                         I Can't Get This Working
+                    </button>
+                </FadingPanel>
+                <FadingPanel label={"continue"}>
+                    <button
+                            onClick={(_e)=>{
+                                window.location.assign(CurrentSessionData.nextURL);
+                            }}>
+                        Continue
                     </button>
                 </FadingPanel>
             </FadingPanelSet>

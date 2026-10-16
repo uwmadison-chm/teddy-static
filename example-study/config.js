@@ -10,6 +10,10 @@ export default {
     // Hosts the end screen may send participants to with nextURL, e.g.
     // ["redcap.example.edu"]. Empty means any http or https URL.
     nextUrlHosts: [],
+    // When the camera can't be used, whether to offer a button to nextURL after
+    // telling the participant to try another device. When false, the session
+    // ends there and the participant is told to close the tab.
+    nextUrlAfterCameraFailure: false,
     // Each module this study uses, and the CSV of its items, relative to this
     // folder. Links can only name these modules. Reel files are found relative
     // to the reels CSV.
