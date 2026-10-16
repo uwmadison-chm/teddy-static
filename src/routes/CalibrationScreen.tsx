@@ -42,7 +42,8 @@ export default function CalibrationScreen() {
         // the detector can't run at all we just log it and carry on.
         teddy.say(TeddyAnimations.PEERING, "Checking to see if I can detect your face...");
         await abortable(video.ready(), signal);
-        const faceRecording = video.record({kind: "face_check"}, {timeout: 15000, signal});
+        // Running out of time is how this recording usually ends.
+        const faceRecording = video.record({kind: "face_check"}, {timeout: 15000, timeoutIsNormal: true, signal});
         CurrentSessionData.logEvent("face_check_started")
         const timerCompleteAudio = new Audio(timerCompleteUrl);
         await firstOf(signal,
@@ -53,14 +54,18 @@ export default function CalibrationScreen() {
                         teddy.say(TeddyAnimations.PEERING, "I can't quite see you yet. These might help.");
                     },
                 });
+                const summary = faceDetectorRef.current.summary();
+                // Found despite a detector error or two is worth a look; not
+                // running at all means the check didn't happen.
                 CurrentSessionData.logEvent("face_check_result",
-                    {result: result.found ? "found" : "unavailable", ...faceDetectorRef.current.summary()})
+                    {result: result.found ? "found" : "unavailable", ...summary},
+                    !result.found ? "error" : summary.detector_errors.length ? "warning" : "info")
             },
             async (signal) => {
                 await sleep(6000, signal);
                 panels.showStartPanel();
                 await bypass.next(signal);
-                CurrentSessionData.logEvent("face_check_result", {result: "bypassed", ...faceDetectorRef.current.summary()})
+                CurrentSessionData.logEvent("face_check_result", {result: "bypassed", ...faceDetectorRef.current.summary()}, "warning")
             });
 
         panels.showPanel(null);

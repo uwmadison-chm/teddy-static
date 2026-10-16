@@ -8,8 +8,12 @@ import {build} from "virtual:teddy-study";
 // renamed, removed, or changed in meaning.
 export const EVENT_SCHEMA = "1.0";
 
-// The most script_error events one session sends.
+// The most uncaught_exception events one session sends.
 const MAX_SCRIPT_ERRORS = 20;
+
+// How an event went. "warning": the session carried on, but its data may be
+// affected. "error": something didn't work.
+export type Level = "info" | "warning" | "error";
 
 // The session's state. What happens in it goes to pig as events, through
 // logEvent(); the link's parameters reach pig when the run starts (see pig.ts).
@@ -61,14 +65,17 @@ class SessionData {
 
         // The participant switching tabs or apps, or locking their phone.
         document.addEventListener("visibilitychange", () => {
-            this.logEvent(document.visibilityState == "hidden" ? "tab_hidden" : "tab_shown");
+            // Hidden during a recording, the video likely doesn't show what it should.
+            const hidden = document.visibilityState == "hidden";
+            this.logEvent(hidden ? "tab_hidden" : "tab_shown", {},
+                hidden && this.currentRecording != null ? "warning" : "info");
         });
         // Anything that goes wrong that nothing else caught. An error that
         // repeats, say in a timer, stops being sent after the first few.
         let scriptErrors = 0;
         const logScriptError = (error: unknown) => {
             if (++scriptErrors <= MAX_SCRIPT_ERRORS) {
-                this.logEvent("script_error", errorFields(error));
+                this.logEvent("uncaught_exception", errorFields(error), "error");
             }
         };
         window.addEventListener("error", (e) => logScriptError(e.error ?? e.message));
@@ -76,16 +83,17 @@ class SessionData {
     }
 
     // Sends an event to pig. `type` says what happened, in snake_case; `fields`
-    // are anything else worth keeping. Every event also says which module and
-    // which recording were running, and pig's client adds the time. See
-    // docs/events.md for every type and its fields.
-    logEvent(type: string, fields: Record<string, unknown> = {}): void {
-        sendEvent(this.event(type, fields));
+    // are anything else worth keeping; `level` says whether this time it went
+    // badly. Every event also says which module and which recording were
+    // running, and pig's client adds the time. See docs/events.md for every
+    // type and its fields.
+    logEvent(type: string, fields: Record<string, unknown> = {}, level: Level = "info"): void {
+        sendEvent(this.event(type, fields, level));
     }
 
     // An event's data, as logEvent() sends it.
-    event(type: string, fields: Record<string, unknown> = {}): Record<string, unknown> {
-        return {type, module: this.currentModuleName(), recording: this.currentRecording, ...fields};
+    event(type: string, fields: Record<string, unknown> = {}, level: Level = "info"): Record<string, unknown> {
+        return {type, level, module: this.currentModuleName(), recording: this.currentRecording, ...fields};
     }
 
     // Numbers a new recording and makes it the current one.

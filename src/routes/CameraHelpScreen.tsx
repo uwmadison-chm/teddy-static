@@ -88,7 +88,7 @@ export default function CameraHelpScreen() {
         const panels = fadingPanelRef.current;
 
         let errorName = state.errorName;
-        CurrentSessionData.logEvent("camera_help_shown", {name: errorName});
+        CurrentSessionData.logEvent("camera_help_shown", {name: errorName}, "warning");
 
         // Where the browser can tell us, try again on our own as soon as the
         // participant allows the camera and microphone in the browser's settings.
@@ -138,12 +138,13 @@ export default function CameraHelpScreen() {
                 errorName = error.name;
                 continue;
             }
+            CurrentSessionData.logEvent("camera_help_result", {result: "working"});
             await teddy.say(TeddyAnimations.SUCCESS, "That did it! Let's keep going.", signal);
             navigate(state.returnTo);
             return;
         }
 
-        CurrentSessionData.logEvent(gaveUp ? "camera_given_up" : "camera_unusable", {name: errorName});
+        CurrentSessionData.logEvent("camera_help_result", {result: gaveUp ? "given_up" : "unusable", name: errorName}, "error");
         stopCameraStream();
         panels.showPanel(null);
         // There's no recording to wait for, just a few events, so this is quick.
