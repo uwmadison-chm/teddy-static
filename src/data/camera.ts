@@ -38,10 +38,11 @@ export async function lacksCamera(): Promise<boolean> {
     const kinds = new Set(devices.map(d => d.kind));
     const missing = !kinds.has("videoinput") || !kinds.has("audioinput");
     if (missing) {
-        CurrentSessionData.logEvent("camera_missing", {
+        CurrentSessionData.logEvent("camera_result", {
+            result: "missing",
             video_inputs: devices.filter(d => d.kind == "videoinput").length,
             audio_inputs: devices.filter(d => d.kind == "audioinput").length,
-        });
+        }, "error");
     }
     return missing;
 }
@@ -50,7 +51,7 @@ export async function lacksCamera(): Promise<boolean> {
 // getUserMedia's error if the browser won't give us the camera and microphone,
 // or with a NotSupportedError if this browser can't use a camera at all (an
 // old browser, or a page not served over https). Each time it asks the
-// browser, it logs camera_requested, then camera_started or camera_error.
+// browser, it logs camera_requested, then camera_result.
 export function getCameraStream(): Promise<MediaStream> {
     if (stream != null && isLive(stream)) {
         return Promise.resolve(stream);
@@ -73,7 +74,8 @@ export function getCameraStream(): Promise<MediaStream> {
             .then((s) => {
                 stream = s;
                 const video = s.getVideoTracks()[0]?.getSettings() ?? {};
-                CurrentSessionData.logEvent("camera_started", {
+                CurrentSessionData.logEvent("camera_result", {
+                    result: "started",
                     width: video.width ?? null,
                     height: video.height ?? null,
                     frame_rate: video.frameRate ?? null,
@@ -82,16 +84,17 @@ export function getCameraStream(): Promise<MediaStream> {
                 // permission is taken away; stopCameraStream() doesn't count.
                 for (const track of s.getTracks()) {
                     track.addEventListener("ended", () => {
-                        CurrentSessionData.logEvent("camera_ended", {track: track.kind});
+                        CurrentSessionData.logEvent("camera_ended", {track: track.kind}, "error");
                     }, {once: true});
                 }
                 return s;
             }, (error) => {
-                CurrentSessionData.logEvent("camera_error", {
+                CurrentSessionData.logEvent("camera_result", {
+                    result: "failed",
                     ...errorFields(error),
                     // Which setting the camera couldn't meet, for an OverconstrainedError.
                     constraint: error?.constraint ?? null,
-                });
+                }, "error");
                 throw error;
             })
             .finally(() => {

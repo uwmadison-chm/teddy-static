@@ -23,12 +23,16 @@ export interface RecordingInfo {
 }
 
 // Why a recording stopped, for its recording_stopped event. See docs/events.md.
-export type StopReason = "done_button" | "timed_out" | "reel_ended" | "answered" | "finished" | "replaced" | "left_screen";
+export type StopReason = "done_button" | "timed_out" | "reel_ended" | "answered" | "finished" | "replaced" | "left_screen" | "failed";
 
 export interface RecordOptions {
     // The longest this recording may run, in milliseconds. The study's limit
     // applies too.
     timeout?: number;
+    // Whether reaching the timeout is an ordinary end to this recording, rather
+    // than a participant running out of time. Its recording_stopped is then
+    // info, not a warning.
+    timeoutIsNormal?: boolean;
     // Stops the recording when it fires.
     signal?: AbortSignal;
 }
@@ -120,7 +124,9 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
         currentRef.current?.stop("replaced");
         const stream = videoElementRef.current.srcObject as MediaStream;
         const recorder = new MediaRecorder(stream, recorderOptions());
+        let resolveDone: () => void;
         const done = new Promise<void>((resolve) => {
+            resolveDone = resolve;
             recorder.addEventListener("stop", () => resolve());
         });
         // No recording runs past the study's limit, whatever the module asks for.
@@ -134,11 +140,22 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
         pig.record(recorder, CurrentSessionData.event("recording", {...info, limit_seconds: limit / 1000}))
             .catch((error) => {
                 console.error("Couldn't record:", error);
-                CurrentSessionData.logEvent("recording_error", {...info, recording: number, ...errorFields(error)});
+                if (stopped) {
+                    // Too late to be the recording's only stop; say so anyway.
+                    logStopped("failed", errorFields(error));
+                }
+                stop("failed", errorFields(error));
+                // A recorder that never started never says it stopped.
+                resolveDone();
             });
 
+        const logStopped = (reason: StopReason, fields: Record<string, unknown> = {}) => {
+            const level = reason == "failed" ? "error" :
+                reason == "left_screen" || (reason == "timed_out" && !options.timeoutIsNormal) ? "warning" : "info";
+            CurrentSessionData.logEvent("recording_stopped", {...info, recording: number, reason, ...fields}, level);
+        };
         let stopped = false;
-        const stop = (reason: StopReason) => {
+        const stop = (reason: StopReason, fields: Record<string, unknown> = {}) => {
             if (stopped) {
                 return;
             }
@@ -147,7 +164,7 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
             options.signal?.removeEventListener("abort", onAbort);
             // Logged when stop is asked for, which is when the participant was
             // done; the recorder's own stop comes a little later.
-            CurrentSessionData.logEvent("recording_stopped", {...info, recording: number, reason});
+            logStopped(reason, fields);
             if (CurrentSessionData.currentRecording == number) {
                 CurrentSessionData.currentRecording = null;
             }

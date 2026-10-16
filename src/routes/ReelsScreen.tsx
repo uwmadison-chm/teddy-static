@@ -61,7 +61,7 @@ export default function ReelsScreen() {
                 CurrentSessionData.logEvent("reel_playing", {item: reelID});
             })
             videoElement.addEventListener("stalled", ()=> {
-                CurrentSessionData.logEvent("reel_stalled", {item: reelID});
+                CurrentSessionData.logEvent("reel_stalled", {item: reelID}, "warning");
             })
             videoElement.addEventListener("ended", ()=> {
                 CurrentSessionData.logEvent("reel_ended", {item: reelID});
@@ -126,7 +126,7 @@ export default function ReelsScreen() {
             teddy.say(TeddyAnimations.LISTEN, RATING_QUESTION);
             panels.showStartPanel("rateReel");
             const ratingRecording = userVideoRef.current.record({kind: "reel_rating", item: id},
-                {timeout: MAX_RATING_RECORDING_DURATION, signal});
+                {timeout: MAX_RATING_RECORDING_DURATION, timeoutIsNormal: true, signal});
 
             const rating = await rate.next(signal);
             CurrentSessionData.logEvent("response", {

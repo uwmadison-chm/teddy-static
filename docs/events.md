@@ -15,13 +15,36 @@ Every change gets a line in the changelog at the bottom, and `EVENT_SCHEMA` in `
 
 Each session is one pig run. Every event Teddy sends has:
 
-- `type`: what happened, in snake_case.
+- `type`: what happened, in snake_case. See [Naming](#naming).
+- `level`: how it went this time: `info`, `warning` (the session carried on, but its data may be affected), or `error` (something didn't work). The same type can have different levels; a `face_check_result` is `info` when a face was found and `error` when the detector couldn't run. Filtering on `level` finds a run's problems without knowing every type. See [Levels](#levels).
 - `module`: the module running: `null` on the intro and camera screens before calibration, `calibration`, then the module name (`sentence`, `videolog`, `questions`, `reels`), and `null` again on the end screen.
 - `recording`: the number of the recording running when the event happened, or `null` if none was. Recordings are numbered from 1 within the session.
 
 pig's client adds `_client`, with `wall_time` (the participant's clock, with its UTC offset) and `performance_now` (milliseconds on the page's monotonic clock). The session stays on one page, so `performance_now` is comparable across the whole run. pig's own first event in each run (`_client.event: "run_start"`) has the browser, screen and window size, and the pig client's version.
 
 Field names are snake_case, and a name means the same thing on every event it appears on: `item` is an item ID from the study's CSVs, `items` a list of them, `text` the words the participant saw, `name` and `message` an error's.
+
+## Naming
+
+- A type names what happened. Related types share a prefix: `camera_`, `face_check_`, `eyes_closed_`, `recording_`, `module_`, `session_`, `tab_`, `reel_`. Whether it went well is the event's `level`, not its name; no type ends in `_error`.
+- Something that can go more than one way gets one `…_result` event with a `result` field, rather than one type per outcome: `camera_result`, `camera_help_result`, `face_check_result`.
+- Fields are snake_case too.
+
+## Levels
+
+Every event is `info` unless listed here.
+
+| type | `warning` when | `error` when |
+|---|---|---|
+| `camera_result` | | `result` is `failed` or `missing` |
+| `camera_ended` | | always |
+| `camera_help_shown` | always | |
+| `camera_help_result` | | `result` is `given_up` or `unusable` |
+| `face_check_result` | `result` is `bypassed`, or `found` after a detector error | `result` is `unavailable` |
+| `recording_stopped` | `reason` is `left_screen`, or `timed_out` on a sentence, videolog, reel or questions recording | `reason` is `failed` |
+| `reel_stalled` | always | |
+| `tab_hidden` | a recording was running | |
+| `uncaught_exception` | | always |
 
 ## Recordings and timing
 
@@ -66,25 +89,31 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 **`tab_hidden`**, **`tab_shown`**: the browser tab was hidden (the participant switched tabs or apps, minimized the browser, or locked their phone) or shown again.
 
-**`script_error`**: an error that nothing else in Teddy caught. `name`, `message`, and `stack` (its first few lines), when there is one. Only the first 20 in a session are sent.
+**`uncaught_exception`**: an error that nothing else in Teddy caught. `name`, `message`, and `stack` (its first few lines), when there is one. Only the first 20 in a session are sent.
 
 ### Camera
 
 **`camera_requested`**: Teddy asked the browser for the camera and microphone. This is where the browser shows its permission prompt, the first time.
 
-**`camera_started`**: the browser gave Teddy the camera. `width`, `height`, `frame_rate`: what the camera is actually sending, which may differ from what `config.js` asked for.
+**`camera_result`**: how getting the camera went.
 
-**`camera_error`**: the browser wouldn't give Teddy the camera. `name` (like `NotAllowedError`), `message`, and `constraint` (the setting the camera couldn't meet, for an `OverconstrainedError`; otherwise `null`).
-
-**`camera_missing`**: before asking for the camera, Teddy found that the device has no camera or no microphone, and went straight to the camera help screen without asking. `video_inputs`, `audio_inputs`: how many of each the browser listed.
+| `result` | fields |
+|---|---|
+| `started` | the browser gave Teddy the camera. `width`, `height`, `frame_rate`: what the camera is actually sending, which may differ from what `config.js` asked for. |
+| `failed` | the browser wouldn't give Teddy the camera. `name` (like `NotAllowedError`), `message`, and `constraint` (the setting the camera couldn't meet, for an `OverconstrainedError`; otherwise `null`). |
+| `missing` | before asking, Teddy found that the device has no camera or no microphone, and went straight to the camera help screen; there's no `camera_requested` before it. `video_inputs`, `audio_inputs`: how many of each the browser listed. |
 
 **`camera_ended`**: a camera or microphone track stopped on its own, such as when a camera was unplugged or permission was revoked mid-session. `track`: `video` or `audio`. If it happens on a screen showing the camera, the camera help screen follows.
 
-**`camera_help_shown`**: the camera help screen started. `name`: the error, `NotFoundError` after a `camera_missing`, or `ended` after a `camera_ended`.
+**`camera_help_shown`**: the camera help screen started. `name`: the error, `NotFoundError` after a `camera_result` of `missing`, or `ended` after a `camera_ended`.
 
-**`camera_given_up`**: the participant gave up on the camera help screen; the session ends there. `name`: the last error.
+**`camera_help_result`**: how the camera help screen ended.
 
-**`camera_unusable`**: the camera help screen found nothing to try again, because the device has no camera or microphone (`NotFoundError`, `OverconstrainedError`) or the browser can't use one (`NotSupportedError`); the session ends there. `name`: the error.
+| `result` | |
+|---|---|
+| `working` | a retry got the camera, and the session goes back to where it was |
+| `given_up` | the participant gave up; the session ends there. `name`: the last error. |
+| `unusable` | there was nothing to try again, because the device has no camera or microphone (`NotFoundError`, `OverconstrainedError`) or the browser can't use one (`NotSupportedError`); the session ends there. `name`: the error. |
 
 ### Modules
 
@@ -102,13 +131,12 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 | field | |
 |---|---|
-| `result` | `found`: a face was in view for a second. `bypassed`: no face was found, and the participant pressed "Let's Continue Anyhow". `unavailable`: the face detector couldn't load or run, so the check ended without telling the participant; see `face_detector_error` |
+| `result` | `found`: a face was in view for a second. `bypassed`: no face was found, and the participant pressed "Let's Continue Anyhow". `unavailable`: the face detector couldn't load, or three checks in a row failed, so the check ended without telling the participant |
 | `best_score` | the face detector's highest score for a face during the check, 0 to 1; `null` if it never saw one scoring at least 0.2. A face counts as found above 0.5 |
 | `centered` | whether the last check saw a face in the middle of the camera preview |
 | `light_ok` | whether the last check found the face (or the middle of the picture, without one) neither too dark nor washed out |
 | `tips_shown` | whether the tips had come up |
-
-**`face_detector_error`**: the face detector failed. `stage`: `load` (face-api or its model wouldn't load; the check ends as `unavailable`) or `detect` (one check of the camera failed; three in a row end the check as `unavailable`). `name`, `message`, and `stack` (its first few lines). At most 10 per face check.
+| `detector_errors` | each time the face detector failed during the check, up to 10, as `{stage, name, message, stack}`. `stage` is `load` (face-api or its model wouldn't load) or `detect` (one check of the camera failed). Empty when nothing went wrong. |
 
 **`eyes_closed_countdown_started`**: the countdown before the eyes-closed period started; the participant should be closing their eyes.
 
@@ -156,8 +184,7 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 | `finished` | the step it was recording ended (calibration, the last question answered) |
 | `replaced` | another recording started |
 | `left_screen` | the screen it was on went away, such as for the camera help screen |
-
-**`recording_error`**: pig's client couldn't start or store a recording. `kind`, `item`, `recording`, `name`, `message`.
+| `failed` | pig's client couldn't start the recording; `name` and `message` say why. If it fails after Teddy had already stopped it, the recording has a second `recording_stopped` with this reason. |
 
 ### Teddy
 
