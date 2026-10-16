@@ -1,6 +1,15 @@
-import {allowedNextURL} from "@/data/config.ts";
+import {allowedNextURL, Config} from "@/data/config.ts";
 import {sendEvent} from "@/data/pig.ts";
 import {type ModuleParam, parseModules} from "@/data/links.ts";
+import {build} from "virtual:teddy-study";
+
+// The version of the events Teddy sends, documented in docs/events.md. Bump
+// the minor version for anything added, and the major version for anything
+// renamed, removed, or changed in meaning.
+export const EVENT_SCHEMA = "1.0";
+
+// The most script_error events one session sends.
+const MAX_SCRIPT_ERRORS = 20;
 
 // The session's state. What happens in it goes to pig as events, through
 // logEvent(); the link's parameters reach pig when the run starts (see pig.ts).
@@ -14,6 +23,9 @@ class SessionData {
     currentModule: number;
     // True on the calibration screen, which runs before the first module.
     calibrating = false;
+    // The recording running now, by its number in the session, if any.
+    currentRecording: number | null = null;
+    private recordings = 0;
 
     constructor() {
         const params = new URLSearchParams(window.location.search);
@@ -23,7 +35,6 @@ class SessionData {
 
         if (params.get("nextURL") && !this.nextURL) {
             console.warn("Ignoring nextURL; it isn't an allowed http(s) URL:", params.get("nextURL"));
-            this.logEvent("nextURLRejected", params.get("nextURL"));
         }
         this.currentModule = -1;
 
@@ -34,25 +45,63 @@ class SessionData {
         this.linkProblems = parsed.problems;
         if (this.linkProblems.length) {
             console.error("Problems with this link:", this.linkProblems);
-            this.logEvent("linkProblems", {problems: this.linkProblems});
         }
         console.log("Starting session with modules", this.modules);
-        this.logEvent("sessionStarted", {modules: params.get("modules")});
+        this.logEvent("session_started", {
+            schema: EVENT_SCHEMA,
+            teddy: build.teddy,
+            study: {task_code: Config.taskCode, ...build.study},
+            debug: Config.debug,
+            modules: this.modules.map((m) => ({[m.module]: m.args})),
+            link_problems: this.linkProblems,
+            next_url: this.nextURL,
+            next_url_rejected: params.get("nextURL") && !this.nextURL ? params.get("nextURL") : null,
+            expiration_time: Number.isNaN(this.expirationTime) ? null : this.expirationTime,
+        });
+
+        // The participant switching tabs or apps, or locking their phone.
+        document.addEventListener("visibilitychange", () => {
+            this.logEvent(document.visibilityState == "hidden" ? "tab_hidden" : "tab_shown");
+        });
+        // Anything that goes wrong that nothing else caught. An error that
+        // repeats, say in a timer, stops being sent after the first few.
+        let scriptErrors = 0;
+        const logScriptError = (error: unknown) => {
+            if (++scriptErrors <= MAX_SCRIPT_ERRORS) {
+                this.logEvent("script_error", errorFields(error));
+            }
+        };
+        window.addEventListener("error", (e) => logScriptError(e.error ?? e.message));
+        window.addEventListener("unhandledrejection", (e) => logScriptError(e.reason));
     }
 
-    // Sends an event to pig. `type` says what happened; `detail` is anything
-    // else worth keeping. Each event also records which module was running, and
-    // pig's client adds the time.
-    logEvent(type: string, detail?: string | Record<string, unknown>): void {
-        const event: Record<string, unknown> = {type: type, module: this.currentModuleName()};
-        if (detail !== undefined) {
-            event.detail = detail;
-        }
-        sendEvent(event);
+    // Sends an event to pig. `type` says what happened, in snake_case; `fields`
+    // are anything else worth keeping. Every event also says which module and
+    // which recording were running, and pig's client adds the time. See
+    // docs/events.md for every type and its fields.
+    logEvent(type: string, fields: Record<string, unknown> = {}): void {
+        sendEvent(this.event(type, fields));
+    }
+
+    // An event's data, as logEvent() sends it.
+    event(type: string, fields: Record<string, unknown> = {}): Record<string, unknown> {
+        return {type, module: this.currentModuleName(), recording: this.currentRecording, ...fields};
+    }
+
+    // Numbers a new recording and makes it the current one.
+    startRecording(): number {
+        this.recordings += 1;
+        this.currentRecording = this.recordings;
+        return this.recordings;
+    }
+
+    // Logs that a module's screen has started, with its items.
+    startModule(): void {
+        this.logEvent("module_started", {items: this.calibrating ? [] : this.getCurrentModuleArgs()});
     }
 
     complete(): void {
-        this.logEvent("sessionComplete");
+        this.logEvent("session_finished");
         this.isCompleted = true;
     }
 
@@ -65,29 +114,44 @@ class SessionData {
     }
 
     navigateToNextModule(navigate): void {
-        this.logEvent("moduleComplete");
+        this.logEvent("module_finished");
         this.calibrating = false;
         if (this.hasMoreModules()) {
             this.currentModule += 1;
             const moduleName = this.modules[this.currentModule].module;
             navigate("/"+moduleName);
         } else {
+            // Past the last module, so the end screen's events have no module.
+            this.currentModule = this.modules.length;
             navigate("/end");
         }
     }
 
     // The running module's name, "calibration" during calibration, or null
-    // before that (the intro).
+    // before that (the intro) and after the last module (the end screen).
     currentModuleName(): string | null {
         if (this.calibrating) {
             return "calibration";
         }
-        return this.currentModule >= 0 ? this.modules[this.currentModule].module : null;
+        return this.modules[this.currentModule]?.module ?? null;
     }
 
     getCurrentModuleArgs(): string[] {
         return this.modules[this.currentModule].args
     }
+}
+
+// An error's name, message, and the start of its stack, for an event.
+export function errorFields(error: unknown): {name: string, message: string, stack?: string} {
+    if (error instanceof Error || (error != null && typeof error == "object" && "name" in error)) {
+        const e = error as Error;
+        const fields: {name: string, message: string, stack?: string} = {name: String(e.name), message: String(e.message ?? "")};
+        if (e.stack) {
+            fields.stack = e.stack.split("\n").slice(0, 6).join("\n");
+        }
+        return fields;
+    }
+    return {name: "Error", message: String(error)};
 }
 
 export const CurrentSessionData = new SessionData();

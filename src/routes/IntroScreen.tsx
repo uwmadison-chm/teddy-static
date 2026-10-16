@@ -66,13 +66,11 @@ export default function IntroScreen() {
             if (error instanceof Aborted) {
                 throw error;
             }
-            CurrentSessionData.logEvent("cameraError", error.name)
             const state: CameraHelpState = {errorName: error.name, returnTo: "/calibration"};
             navigate("camerahelp", {state});
             return;
         }
         await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY, "Great! Let's start up that camera!", signal);
-        CurrentSessionData.logEvent("introComplete")
         navigate("calibration");
     });
 

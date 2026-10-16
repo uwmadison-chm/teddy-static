@@ -44,7 +44,7 @@ export default function VideoLogScreen() {
         const promptIDs = CurrentSessionData.getCurrentModuleArgs();
 
         console.log("Starting videoLog module with prompts:", promptIDs)
-        CurrentSessionData.logEvent("videoLogScreenStarted", promptIDs.toString())
+        CurrentSessionData.startModule()
 
         const promptDescription = promptIDs.length == 1 ?
             "a prompt" : "a couple prompts";
@@ -74,7 +74,7 @@ export default function VideoLogScreen() {
 
             // The prompt, and a moment to think about it before recording.
             const prompt = videoLogPrompts[id];
-            CurrentSessionData.logEvent("videoLogPromptShown", {id: prompt.id, text: prompt.text})
+            CurrentSessionData.logEvent("item_shown", {item: prompt.id, text: prompt.text})
             teddy.say(TeddyAnimations.IDLE, "Please think about the following prompt and press the button when you're ready.")
             promptTextRef.current.showText(prompt.text, MAX_RECORDING_DURATION)
             panels.showPanel(null)
@@ -83,8 +83,7 @@ export default function VideoLogScreen() {
             await startRecording.next(signal);
 
             promptTextRef.current.startTimer();
-            CurrentSessionData.logEvent("videoLogRecordingStarted", id)
-            const recording = userVideoRef.current.record({kind: "videoLog", item: id},
+            const recording = userVideoRef.current.record({kind: "videolog", item: id},
                 {timeout: MAX_RECORDING_DURATION, signal});
             teddy.say(TeddyAnimations.LISTEN, "Please answer the prompt out loud.", undefined, {skipAnimation: true})
             panels.showPanel(null);
@@ -97,11 +96,9 @@ export default function VideoLogScreen() {
                     await sleep(BUTTON_POPUP_DELAY, signal);
                     panels.showStartPanel("completeRecordingButton");
                     await done.next(signal);
-                    CurrentSessionData.logEvent("completePromptButton", id)
-                    recording.stop();
+                    recording.stop("done_button");
                     await recording.done;
                 });
-            CurrentSessionData.logEvent("videoLogRecordingEnded", id)
             panels.showPanel(null);
             promptTextRef.current.hide()
         }
@@ -112,7 +109,6 @@ export default function VideoLogScreen() {
             ["I knew you could do it!",
                 hasMoreModules ? "Are you ready for the next module?" : "Now all we have to do is finish up our session."],
             signal);
-        CurrentSessionData.logEvent(hasMoreModules ? "videoLogScreenNextModule" : "videoLogScreenFinishSession")
         panels.showStartPanel(hasMoreModules ? "nextModule" : "finishSession");
         await next.next(signal);
         CurrentSessionData.navigateToNextModule(navigate);

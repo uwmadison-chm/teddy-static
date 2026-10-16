@@ -6,6 +6,7 @@
 // study (a missing setting, a duplicate ID, a reel file that isn't there) stops
 // the build, rather than turning up for a participant.
 
+import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {closeSync, cpSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, readSync} from "node:fs";
 import {dirname, extname, join, relative, resolve} from "node:path";
@@ -213,6 +214,37 @@ function parseResponses(responses: string): {choices: {code: string, label: stri
     return {choices, problems};
 }
 
+// The git commit `dir` is at, and whether anything tracked or new in it has
+// changed since. Nulls when it isn't in git, or git isn't installed.
+function gitState(dir: string, ignoreSubmodules = false): {commit: string | null, dirty: boolean | null} {
+    try {
+        const git = (...args: string[]) => execFileSync("git", ["-C", dir, ...args], {encoding: "utf8", stdio: ["ignore", "pipe", "ignore"]}).trim();
+        const commit = git("rev-parse", "HEAD");
+        const status = git("status", "--porcelain", ...(ignoreSubmodules ? ["--ignore-submodules=all"] : []), "--", ".");
+        return {commit, dirty: status != ""};
+    } catch {
+        return {commit: null, dirty: null};
+    }
+}
+
+// What this build is, for the session_started event: Teddy's version and
+// commit, and the study's commit and a hash of everything the build took from
+// it (config.js, the CSVs, the reel files), so two builds with the same hash
+// showed participants the same thing, committed or not.
+function buildInfo(studyDir: string, studyFiles: string[]) {
+    const teddyDir = import.meta.dirname;
+    const version = JSON.parse(readFileSync(join(teddyDir, "package.json"), "utf8")).version;
+    const hash = createHash("sha256");
+    for (const file of [...new Set(studyFiles)].sort()) {
+        hash.update(relative(studyDir, file)).update("\0").update(readFileSync(file)).update("\0");
+    }
+    return {
+        teddy: {version, ...gitState(teddyDir)},
+        // The study's folder may hold Teddy as a submodule; Teddy's own state is above.
+        study: {...gitState(studyDir, true), hash: "sha256:" + hash.digest("hex")},
+    };
+}
+
 function isURL(file: string): boolean {
     return /^https?:\/\//i.test(file);
 }
@@ -328,8 +360,12 @@ export default function teddyStudy(): Plugin {
                 throw new StudyError(badResponses.join("\n"));
             }
 
+            const hashed = [...studyFiles, ...[...new Set(Object.values(items.reels)
+                .filter(r => !isURL(r.file)).map(r => r.file))].map(f => resolve(reelsDir, f))];
+
             const {modules: _, ...settings} = config;
             return [
+                `export const build = ${JSON.stringify(buildInfo(studyDir, hashed))};`,
                 `export const config = ${JSON.stringify(settings)};`,
                 `export const modules = ${JSON.stringify(Object.keys(moduleFiles))};`,
                 `export const sentences = ${JSON.stringify(items.sentence)};`,

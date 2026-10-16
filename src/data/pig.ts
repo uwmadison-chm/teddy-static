@@ -28,6 +28,8 @@ export interface StartFailure {
 }
 
 let started: Promise<StartFailure | null> | null = null;
+// Set once finishRun() has finalized the run.
+let finishing: Promise<void> | null = null;
 
 // Starts this session's run, once. Resolves with null when it started (or in
 // debug mode), or with what went wrong. Call it as early as possible: a bad
@@ -66,10 +68,15 @@ async function start(): Promise<StartFailure | null> {
     return null;
 }
 
-// Queues an event. Returns at once.
+// Queues an event. Returns at once. Once the run is finishing, pig would
+// refuse anything more, so later events only go to the console.
 export function sendEvent(data: Record<string, unknown>): void {
     if (Config.debug) {
         console.log("Debug mode: event", data);
+        return;
+    }
+    if (finishing != null) {
+        console.log("Not sent; the run is finishing:", data);
         return;
     }
     if (run == null) {
@@ -93,8 +100,6 @@ export async function record(recorder: MediaRecorder, data: Record<string, unkno
     }
     await run.record(recorder, data, {timeslice: RECORDING_TIMESLICE});
 }
-
-let finishing: Promise<void> | null = null;
 
 // Finalizes the run, once, and resolves when everything has reached pig. Calls
 // `onProgress` as it goes, with what's still to send.

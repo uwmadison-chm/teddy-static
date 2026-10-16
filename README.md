@@ -80,14 +80,7 @@ In a debug build, `?links` opens a link builder instead of a session; the debug 
 
 Each session is one pig run. It starts as soon as Teddy loads, with every link parameter, and is finalized on the end screen once everything has been sent. A session the participant leaves early is finalized the next time this browser opens Teddy, or expires on pig's schedule.
 
-Everything Teddy logs is a pig event: `type` says what happened, `module` which module was running (`calibration` during calibration, and empty during the intro), and `detail` holds anything else, such as the sentence ID. When an item is shown, its event says what it was: `sentenceShown` and `videoLogPromptShown` have the item's `id` and `text`, `reelShown` has its `id` and `file`, and `questionShown` has the question's `id`, `text`, `responses` (as the CSV has them), and `choices` (the same, parsed into a list of `code` and `label`). `questionAnswered` has all of that, plus the `code` and `label` the participant picked. A recording that runs to its time limit logs `recordingTimedOut`. Pig's client adds the participant's clock time and `performance.now()` to each one.
-
-Each recording is a media item, sent in 5-second parts as it records. Its event has `kind` (`faceDetect`, `faceCalibration`, `videoLog`, `sentence`, `reel`, `reelRating`, or `questionnaire`), `item` (the prompt, sentence, or reel ID; for the questionnaire, which is one recording for the whole module, its question IDs separated by commas), `module`, and `content_type`. It is stamped with the moment the recorder started, on the same `performance.now()` clock as the events, which is what lines recordings up with what happened. To get a playable file, join the parts in order:
-
-```
-cat media/00003/*.part > recording.webm
-ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration and seek index
-```
+Everything Teddy logs is a pig event with a `type`, the `module` running, and the number of the `recording` running, if any. Each recording is a pig media item, stamped with the moment its recorder started on the same clock as every event, which is what lines events up with the video. The first event, `session_started`, says which version of Teddy and of the study made the run, and which version of the event schema its events follow. [docs/events.md](docs/events.md) describes every event and field, how to line events up with recordings, and how to join a recording's parts into a playable file.
 
 ## Updating pig's client
 

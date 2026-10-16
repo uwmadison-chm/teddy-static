@@ -35,31 +35,31 @@ export default function CalibrationScreen() {
         const panels = fadingPanelRef.current;
         const video = userVideoRef.current;
         CurrentSessionData.calibrating = true;
+        CurrentSessionData.startModule();
 
         // Look for a face. If none turns up for a while, the participant can
         // say they're there.
         teddy.say(TeddyAnimations.PEERING, "Checking to see if I can detect your face...");
         await abortable(video.ready(), signal);
-        const faceRecording = video.record({kind: "faceDetect"}, {timeout: 15000, signal});
-        faceRecording.done.then(() => {
-            CurrentSessionData.logEvent("faceDetectComplete")
-        });
-        CurrentSessionData.logEvent("faceDetectStart")
+        const faceRecording = video.record({kind: "face_check"}, {timeout: 15000, signal});
+        CurrentSessionData.logEvent("face_check_started")
         const timerCompleteAudio = new Audio(timerCompleteUrl);
         await firstOf(signal,
-            (signal) => faceDetectorRef.current.detect(signal),
+            async (signal) => {
+                await faceDetectorRef.current.detect(signal);
+                CurrentSessionData.logEvent("face_detected")
+            },
             async (signal) => {
                 await sleep(9000, signal);
                 panels.showStartPanel();
                 await bypass.next(signal);
-                CurrentSessionData.logEvent("faceDetectBypassed")
+                CurrentSessionData.logEvent("face_check_bypassed")
             });
 
-        CurrentSessionData.logEvent("faceDetected")
         panels.showPanel(null);
         faceDetectorRef.current.hide();
         // Keep a few seconds of the face, unless calibration starts first.
-        sleep(5000, signal).then(faceRecording.stop, () => {});
+        sleep(5000, signal).then(() => faceRecording.stop("finished"), () => {});
 
         // This seems weird, but if we go straight from listening to success, his eyebrow loops. So we go to idle quickly first.
         teddy.playAnimation(TeddyAnimations.IDLE)
@@ -76,24 +76,21 @@ export default function CalibrationScreen() {
         panels.showStartPanel("startFaceCalibration");
         await calibrate.next(signal);
 
-        faceRecording.stop();
-        CurrentSessionData.logEvent("calibrationStart")
+        faceRecording.stop("finished");
         panels.showPanel(null);
-        const calibrationRecording = video.record({kind: "faceCalibration"}, {signal});
-        calibrationRecording.done.then(() => {
-            CurrentSessionData.logEvent("calibrationRecordComplete")
-        });
+        const calibrationRecording = video.record({kind: "eyes_closed"}, {signal});
         await teddy.say(TeddyAnimations.LISTEN, "Close your eyes and calm your face.", signal);
+        CurrentSessionData.logEvent("eyes_closed_countdown_started")
         await abortable(calibrationPrepTimer.current.start(), signal);
 
-        CurrentSessionData.logEvent("calibrationRecordStart")
+        CurrentSessionData.logEvent("eyes_closed_started")
         teddy.say(TeddyAnimations.LISTEN, "Keep your eyes closed and face calm.")
         calibrationPrepTimer.current.hide()
         await abortable(calibrationTimer.current.start(), signal);
 
-        CurrentSessionData.logEvent("calibrationComplete")
+        CurrentSessionData.logEvent("eyes_closed_finished")
         timerCompleteAudio.play();
-        calibrationRecording.stop()
+        calibrationRecording.stop("finished")
         calibrationTimer.current.fadeOut()
         teddy.playAnimation(TeddyAnimations.IDLE);
         const hasMoreModules = CurrentSessionData.hasMoreModules()
@@ -105,7 +102,6 @@ export default function CalibrationScreen() {
                     "You're all done! Let's quickly finish up our session.",
             ],
             signal);
-        CurrentSessionData.logEvent("calibrationScreenComplete")
         panels.showPanel(hasMoreModules ? "nextModule" : "finishSession");
         await next.next(signal);
         CurrentSessionData.navigateToNextModule(navigate);

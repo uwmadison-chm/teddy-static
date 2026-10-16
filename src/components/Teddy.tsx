@@ -13,6 +13,7 @@ import {SpeechBubble, type SpeechBubbleFunctions} from "@/components/SpeechBubbl
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {prefersReducedMotion} from "@/utils/utils.tsx";
 import {abortable} from "@/utils/script.ts";
+import {CurrentSessionData} from "@/data/sessionData.tsx";
 
 // With reduced motion, Teddy holds still this long after starting an
 // animation. Motion that runs longer than 5 seconds next to other content
@@ -136,9 +137,17 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
     useImperativeHandle(ref, () => ({
         say: (animation, lines, signal, options) => {
             playAnimation(animation)
-            const said = speechBubbleRef.current?.say(
-                typeof lines == "string" ? [lines] : [...lines],
-                options?.skipAnimation) ?? Promise.resolve();
+            const all = typeof lines == "string" ? [lines] : [...lines];
+            // Each line goes to pig as it starts to show, so the video shows
+            // what Teddy was saying when.
+            const said = speechBubbleRef.current?.say(all, options?.skipAnimation, (index) => {
+                CurrentSessionData.logEvent("teddy_said", {
+                    text: all[index],
+                    line: index + 1,
+                    lines: all.length,
+                    animation: animation,
+                });
+            }) ?? Promise.resolve();
             return signal ? abortable(said, signal) : said;
         },
         playAnimation: (animation) => {
