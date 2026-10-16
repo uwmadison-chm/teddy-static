@@ -1,25 +1,20 @@
-@use "./colors.scss";
-@use "./sizes.scss";
-
-$width: 4vh;
-$height: 3.5vh;
-
+/* Each dot is 4vh wide and 3.5vh tall. */
 .loader {
   margin-bottom: 3vh;
-  width: calc(6*$width);
-  height: calc(2*$height);
+  width: calc(6 * 4vh);
+  height: calc(2 * 3.5vh);
   margin-left: auto;
   margin-right: auto;
   display: flex;
-  color: colors.$uservideoBG;
-  filter: drop-shadow($width $height 0 currentColor) drop-shadow($width*2 0 0 currentColor) drop-shadow($width*4 0 0 currentColor);
+  color: var(--uservideo-bg);
+  filter: drop-shadow(4vh 3.5vh 0 currentColor) drop-shadow(8vh 0 0 currentColor) drop-shadow(16vh 0 0 currentColor);
   clip-path: inset(0 100% 0 0);
   animation: l12 2s infinite steps(7);
 }
 .loader:before {
   content: "";
-  width: $width;
-  height: $height;
+  width: 4vh;
+  height: 3.5vh;
   --c:no-repeat radial-gradient(farthest-side,currentColor 92%,#0000);
   background:
           var(--c) left /70% 70%,
@@ -28,7 +23,7 @@ $height: 3.5vh;
           var(--c) bottom 0 right 15%/20% 20%;
 }
 @keyframes l12 {
-  100% {clip-path: inset(0 (-$width) 0 0)}
+  100% {clip-path: inset(0 -4vh 0 0)}
 }
 
 .loader-wrapper {
@@ -36,7 +31,7 @@ $height: 3.5vh;
   flex-shrink: 0;
   margin-top: 6vh;
   text-align: center;
-  font-size: sizes.text(3);
+  font-size: max(3vh, 3rem * var(--rem-per-vh));
   font-weight:200;
 }
 
@@ -50,12 +45,12 @@ $height: 3.5vh;
 
   .bar {
     height: 100%;
-    background-color: colors.$uservideoBG;
+    background-color: var(--uservideo-bg);
     transition: width 0.3s;
   }
 }
 
 .send-progress-text {
   margin-top: 1vh;
-  font-size: sizes.text(2);
+  font-size: max(2vh, 2rem * var(--rem-per-vh));
 }

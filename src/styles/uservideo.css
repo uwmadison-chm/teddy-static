@@ -1,6 +1,3 @@
-@use "./colors.scss";
-@use "./sizes.scss";
-
 .user-video {
   width: 25%;
   margin: 5vh 10% 0;
@@ -30,7 +27,7 @@
   .bg {
     width: 100%;
     height: 100%;
-    background-color: colors.$uservideoBG;
+    background-color: var(--uservideo-bg);
     position: absolute;
     top: 0;
     left: 0;
@@ -106,7 +103,7 @@
   white-space: nowrap;
   line-height: 1.75;
   text-align: center;
-  font-size: sizes.text(1.6);
+  font-size: max(1.6vh, 1.6rem * var(--rem-per-vh));
   top: 0;
   left: 50%;
   transform: translate(-50%);
@@ -116,7 +113,7 @@
   svg {
     display: inline-block;
     margin-right: 0.4em;
-    color: colors.$recordingColor;
+    color: var(--recording-color);
     height: 1.2em;
     margin-top:-1%;
     vertical-align: middle;
@@ -128,21 +125,21 @@
   position: relative;
   flex-shrink: 0;
   margin: 1vh auto 0;
-  // Sized like text, since it holds the countdown's numbers
-  width: sizes.text(20);
-  height: sizes.text(20);
+  /* Sized like text, since it holds the countdown's numbers */
+  width: max(20vh, 20rem * var(--rem-per-vh));
+  height: max(20vh, 20rem * var(--rem-per-vh));
 }
 .face-detector.small {
-  width: sizes.text(8);
-  height: sizes.text(8);
+  width: max(8vh, 8rem * var(--rem-per-vh));
+  height: max(8vh, 8rem * var(--rem-per-vh));
 
   .circle-progress-text {
-    font-size: sizes.text(3);
+    font-size: max(3vh, 3rem * var(--rem-per-vh));
   }
 }
 .circle-progress-text {
   cursor: default;
-  font-size: sizes.text(6);
+  font-size: max(6vh, 6rem * var(--rem-per-vh));
   font-weight: 700;
   transition-duration: 0.5s;
 }
@@ -166,7 +163,7 @@
     position: relative;
 
     .level {
-      background-color: colors.$primaryColor1;
+      background-color: var(--primary-color-1);
       position:absolute;
       left:0;
       right:0;
@@ -180,7 +177,7 @@
     content: "";
     width: 70%;
     height: 70%;
-    background-color: colors.$primaryColor4;
+    background-color: var(--primary-color-4);
     position: absolute;
     top:50%;
     left:-80%;
@@ -190,12 +187,12 @@
   }
 }
 
-// Tips for when the face detector can't find the participant. Each tip we can
-// check gets a box that fills in once the camera's picture seems to meet it.
+/* Tips for when the face detector can't find the participant. Each tip we can
+   check gets a box that fills in once the camera's picture seems to meet it. */
 .face-tips {
   flex-shrink: 0;
   margin: 1.5vh 12% 0;
-  font-size: sizes.text(2);
+  font-size: max(2vh, 2rem * var(--rem-per-vh));
   cursor: default;
   opacity: 0;
   transition: opacity 0.4s ease;
@@ -224,19 +221,19 @@
     justify-content: center;
     width: 1.2em;
     height: 1.2em;
-    border: 2px solid colors.$primaryColor1;
+    border: 2px solid var(--primary-color-1);
     border-radius: 0.25em;
-    color: colors.$onPrimary;
+    color: var(--on-primary);
     font-size: 0.9em;
     transition: background-color 0.3s ease;
   }
 
   li.ok .box {
-    background-color: colors.$primaryColor2;
-    border-color: colors.$primaryColor2;
+    background-color: var(--primary-color-2);
+    border-color: var(--primary-color-2);
   }
 
-  // Tips we can't check get a dot instead of a box.
+  /* Tips we can't check get a dot instead of a box. */
   li.unchecked .box {
     border: none;
     &::before {
@@ -244,7 +241,7 @@
       width: 0.4em;
       height: 0.4em;
       border-radius: 50%;
-      background-color: colors.$primaryColor2;
+      background-color: var(--primary-color-2);
     }
   }
 

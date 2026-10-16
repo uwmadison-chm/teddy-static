@@ -1,0 +1,17 @@
+:root {
+  --primary-color: #52d5a5;
+  --primary-color-1: #44b38a;
+  --primary-color-2: #35906f;
+  --primary-color-3: #287257;
+  --primary-color-4: #1b523e;
+  --primary-color-5: #0f3326;
+
+  --on-primary: #fff;
+
+  --page-bg-color: #f5f5f5;
+  --phone-area-bg-color: #fff;
+
+  --uservideo-bg: #D8E2E9;
+
+  --recording-color: #c30303;
+}

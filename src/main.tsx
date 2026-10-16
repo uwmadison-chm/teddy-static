@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './index.scss'
+import './index.css'
 import { MemoryRouter, Routes, Route } from "react-router";
 import CalibrationScreen from "@/routes/CalibrationScreen.tsx";
 import IntroScreen from "@/routes/IntroScreen.tsx";
