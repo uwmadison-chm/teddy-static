@@ -1,75 +1,68 @@
-import {useEffect, useEffectEvent, useImperativeHandle, useRef, useState} from "react";
+import {useEffect, useImperativeHandle, useRef, useState} from "react";
 import * as React from "react";
 import {prefersReducedMotion} from "@/utils/utils.tsx";
 
 export interface TypeWriterFunctions {
-    showText: (text: string) => void;
+    // Types out `text`, resolving once it's all showing: typed out, skipped to
+    // the end, or replaced by the next line.
+    type: (text: string) => Promise<void>;
     skipToEnd: () => void;
+    isTyping: () => boolean;
 }
 
 interface Props {
-    onTypingComplete: () => void;
     delayMS: number;
 }
 
-export const TypeWriter = React.forwardRef<TypeWriterFunctions, Props>(({onTypingComplete, delayMS}, ref) => {
-    const [isTyping, setIsTyping] = useState(false);
+export const TypeWriter = React.forwardRef<TypeWriterFunctions, Props>(({delayMS}, ref) => {
     const [currentProgress, setCurrentProgress] = useState(0);
     const [displayString, setDisplayString] = useState("");
     const intervalRef = useRef<number>(null);
-    const currentProgressRef = useRef<number>(0);
+    const progressRef = useRef(0);
     // The interval reads the text from here, not from state, so it always sees
     // the text it's typing rather than the one from the render that started it.
     const textRef = useRef("");
+    // Resolves the line being typed. Set only while typing.
+    const doneRef = useRef<(() => void) | null>(null);
 
-    function stopInterval() {
+    // Stops typing where it is, and resolves the line being typed.
+    function finish() {
         if (intervalRef.current != null) {
             clearInterval(intervalRef.current);
             intervalRef.current = null;
         }
+        const done = doneRef.current;
+        doneRef.current = null;
+        done?.();
     }
 
-    useEffect(() => {
-        return stopInterval;
-    }, []);
+    useEffect(() => finish, []);
 
-    const onTypingStopped = useEffectEvent(() => {
-        onTypingComplete()
-    });
-
-    useEffect(() => {
-        if (!isTyping) {
-            onTypingStopped();
-        }
-    }, [isTyping]);
-
-    // The interval is started and stopped right here, rather than from an effect
-    // after the next render. Otherwise a tick that was already queued could undo
-    // a skip, leaving the text cut off partway with typing marked as finished.
     useImperativeHandle(ref, () => ({
-        showText: (newText) => {
-            stopInterval();
+        type: (newText) => {
+            finish();
             textRef.current = newText || "";
-            currentProgressRef.current = 0;
+            progressRef.current = 0;
             setDisplayString(textRef.current);
             setCurrentProgress(0);
-            setIsTyping(true);
-            intervalRef.current = window.setInterval(() => {
-                // With reduced motion, the whole line appears on the first tick.
-                currentProgressRef.current += prefersReducedMotion() ? textRef.current.length : 1;
-                setCurrentProgress(currentProgressRef.current);
-                if (currentProgressRef.current >= textRef.current.length) {
-                    stopInterval();
-                    setIsTyping(false);
-                }
-            }, delayMS);
+            return new Promise<void>((resolve) => {
+                doneRef.current = resolve;
+                intervalRef.current = window.setInterval(() => {
+                    // With reduced motion, the whole line appears on the first tick.
+                    progressRef.current += prefersReducedMotion() ? textRef.current.length : 1;
+                    setCurrentProgress(progressRef.current);
+                    if (progressRef.current >= textRef.current.length) {
+                        finish();
+                    }
+                }, delayMS);
+            });
         },
         skipToEnd: () => {
-            stopInterval();
-            currentProgressRef.current = Number.POSITIVE_INFINITY;
+            progressRef.current = Number.POSITIVE_INFINITY;
             setCurrentProgress(Number.POSITIVE_INFINITY);
-            setIsTyping(false);
+            finish();
         },
+        isTyping: () => doneRef.current != null,
     }));
 
     return (

@@ -1,4 +1,5 @@
-import {useEffect, useRef} from "react";
+import {useRef} from "react";
+import {useScript} from "@/utils/script.ts";
 import {useLocation} from "react-router";
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
@@ -47,16 +48,12 @@ export default function LinkProblemScreen() {
     const location = useLocation();
     const state = (location.state || {}) as LinkProblemState;
 
-    useEffect(() => {
+    useScript(async (signal) => {
         setCanLeavePageSafely()
         stopCameraStream()
-        teddyRef.current?.showTextSequence(TeddyAnimations.SADNESS,
-          explanation(state.code),
-          () => {
-              teddyRef.current?.playAnimation(TeddyAnimations.WAVE)
-          }
-        );
-    }, [teddyRef, state.code]);
+        await teddyRef.current.say(TeddyAnimations.SADNESS, explanation(state.code), signal);
+        teddyRef.current.playAnimation(TeddyAnimations.WAVE)
+    });
 
     return (
         <div className={"wrapper"}>

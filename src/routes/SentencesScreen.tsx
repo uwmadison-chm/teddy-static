@@ -1,4 +1,4 @@
-import {saveBlob, useAnimatedNavigate} from "@/utils/utils"
+import {useAnimatedNavigate} from "@/utils/utils"
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {
@@ -7,15 +7,13 @@ import {
     type FadingPanelFunctions,
     FadingPanelSet
 } from "@/components/FadingPanelSet.tsx";
-import {useCallback, useEffect, useRef, useState} from "react";
+import {useCallback, useRef} from "react";
 import {UserVideo, type UserVideoFunctions} from "@/components/UserVideo.tsx";
-import {FaceDetector} from "@/components/FaceDetector.tsx";
 import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.tsx";
-import {CountdownTimer} from "@/components/CountdownTimer.tsx";
-import {Colors} from "@/utils/colors.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {sentences} from "virtual:teddy-study";
 import {PromptText, type PromptTextFunctions} from "@/components/PromptText.tsx";
+import {firstOf, sleep, useChoice, useScript} from "@/utils/script.ts";
 
 const BUTTON_POPUP_DELAY = 5000;
 const MAX_RECORDING_DURATION = 60 * 1000;
@@ -33,126 +31,86 @@ export default function SentencesScreen() {
     const fadingPanelRef = useRef<FadingPanelFunctions>(null);
     const userVideoRef = useRef<UserVideoFunctions>(null);
     const microphoneIndicatorRef = useRef(null);
-    const sentenceIDs = useRef(CurrentSessionData.getCurrentModuleArgs());
-    const currentSentenceIndex = useRef(0);
-
     const promptTextRef = useRef<PromptTextFunctions>(null);
+    const start = useChoice();
+    const done = useChoice();
+    const next = useChoice();
 
-    const completeButtonDelayTimeout = useRef(null);
+    useScript(async (signal) => {
+        const teddy = teddyRef.current;
+        const panels = fadingPanelRef.current;
+        const sentenceIDs = CurrentSessionData.getCurrentModuleArgs();
 
-    const [isRecording, setIsRecording] = useState(false);
+        console.log("Starting sentence module with sentences:", sentenceIDs)
+        CurrentSessionData.logEvent("sentenceScreenStarted", sentenceIDs.toString())
 
-    useEffect(() => {
-        if (teddyRef != null) {
+        const sentenceDescription = sentenceIDs.length == 1 ?
+            "a sentence" : "a couple sentences";
+        await teddy.say(TeddyAnimations.WAVE_SHORT,
+            [`For this next part, I'm going to show you ${sentenceDescription}.`,
+                `Please read it out loud, then press the button when you're done.`,
+                "And please keep your face in frame the whole time!"],
+            signal);
 
-            console.log("Starting sentence module with sentences:", sentenceIDs.current)
+        for (let index = 0; index < sentenceIDs.length; index++) {
+            const id = sentenceIDs[index];
+            if (index > 0) {
+                teddy.playAnimation(TeddyAnimations.IDLE);
+                const remaining = sentenceIDs.length - index;
+                const sentenceDescription = remaining == 1 ?
+                    "one more sentence" : `${remaining} more sentences`;
+                await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY,
+                    ["That was perfect!",
+                        `You only have ${sentenceDescription} to read. Let's go!`,
+                        "Are you ready?"],
+                    signal);
+            }
+            panels.showStartPanel();
+            await start.next(signal);
 
-            CurrentSessionData.logEvent("sentenceScreenStarted", sentenceIDs.current.toString())
+            CurrentSessionData.logEvent("sentenceRecordingStarted", id)
+            const recording = userVideoRef.current.record({kind: "sentence", item: id},
+                {timeout: MAX_RECORDING_DURATION, signal});
+            teddy.say(TeddyAnimations.LISTEN, "Please read this sentence out loud then press the button.",
+                undefined, {skipAnimation: true});
+            panels.showPanel(null);
+            const sentence = sentences[id];
+            CurrentSessionData.logEvent("sentenceShown", {id: sentence.id, text: sentence.text})
+            promptTextRef.current.showText(sentence.text, MAX_RECORDING_DURATION)
+            promptTextRef.current.startTimer();
 
-            const sentenceDescription = sentenceIDs.current.length == 1 ?
-                "a sentence" : "a couple sentences";
-            const sentenceWord = sentenceIDs.current.length == 1 ?
-                "sentences" : "sentences";
-            teddyRef.current.showTextSequence(TeddyAnimations.WAVE_SHORT,
-                [`For this next part, I'm going to show you ${sentenceDescription}.`,
-                    `Please read it out loud, then press the button when you're done.`,
-                    "And please keep your face in frame the whole time!"],
-                () => {
-                    fadingPanelRef.current?.showStartPanel()
-                }
-            );
+            // The participant says when they're done, once the button shows up,
+            // or the recording runs out of time.
+            await firstOf(signal,
+                () => recording.done,
+                async (signal) => {
+                    await sleep(BUTTON_POPUP_DELAY, signal);
+                    panels.showStartPanel("completeRecordingButton");
+                    await done.next(signal);
+                    CurrentSessionData.logEvent("completeSentenceButton", id)
+                    recording.stop();
+                    await recording.done;
+                });
+            CurrentSessionData.logEvent("sentenceRecordingEnded", id)
+            panels.showPanel(null);
+            promptTextRef.current.hide()
         }
-    }, [teddyRef])
+
+        teddy.playAnimation(TeddyAnimations.IDLE);
+        const hasMoreModules = CurrentSessionData.hasMoreModules();
+        await teddy.say(TeddyAnimations.SUCCESS,
+            ["Amazing job!",
+                hasMoreModules ? "Shall we go to the next module?" : "It's time to finish up our session."],
+            signal);
+        CurrentSessionData.logEvent(hasMoreModules ? "sentenceScreenNextModule" : "sentenceScreenFinishSession")
+        panels.showStartPanel(hasMoreModules ? "nextModule" : "finishSession");
+        await next.next(signal);
+        CurrentSessionData.navigateToNextModule(navigate);
+    });
 
     const onVideoInitialized = useCallback(() => {
         microphoneIndicatorRef.current.start()
     }, [])
-
-    const completeModule = useCallback(() => {
-        const hasMoreModules = CurrentSessionData.hasMoreModules()
-        teddyRef.current.playAnimation(TeddyAnimations.IDLE);
-        if (hasMoreModules) {
-            teddyRef.current?.showTextSequence(TeddyAnimations.SUCCESS,
-                [
-                    "Amazing job!",
-                    "Shall we go to the next module?",
-                ],
-                () => {
-                    CurrentSessionData.logEvent("sentenceScreenNextModule")
-                    fadingPanelRef.current.showStartPanel("nextModule");
-            });
-        } else {
-            teddyRef.current?.showTextSequence(TeddyAnimations.SUCCESS,
-                [
-                    "Amazing job!",
-                    "It's time to finish up our session.",
-                ],
-                () => {
-                    CurrentSessionData.logEvent("sentenceScreenFinishSession")
-                    fadingPanelRef.current.showStartPanel("finishSession");
-                });
-        }
-    }, [])
-
-    const introduceNextSentence = useCallback(() => {
-        currentSentenceIndex.current = currentSentenceIndex.current + 1;
-        teddyRef.current.playAnimation(TeddyAnimations.IDLE);
-        const remainingSentences = sentenceIDs.current.length - currentSentenceIndex.current;
-
-        const sentenceDescription = remainingSentences == 1 ?
-            "one more sentence" : `${remainingSentences} more sentences`;
-
-        teddyRef.current?.showTextSequence(TeddyAnimations.SLIGHTLY_HAPPY,
-            [
-                "That was perfect!",
-                `You only have ${sentenceDescription} to read. Let's go!`,
-                "Are you ready?",
-            ],
-            () => {
-                fadingPanelRef.current?.showStartPanel()
-            }
-        );
-
-    }, [])
-
-    function startSentence() {
-        setIsRecording(true)
-        if (completeButtonDelayTimeout.current != null) {
-            clearTimeout(completeButtonDelayTimeout.current);
-            completeButtonDelayTimeout.current = null
-        }
-        CurrentSessionData.logEvent("sentenceRecordingStarted", sentenceIDs.current[currentSentenceIndex.current])
-
-        userVideoRef.current.record({kind: "sentence", item: sentenceIDs.current[currentSentenceIndex.current]}, ()=> {
-            CurrentSessionData.logEvent("sentenceRecordingEnded", sentenceIDs.current[currentSentenceIndex.current])
-
-            if (completeButtonDelayTimeout.current != null) {
-                clearTimeout(completeButtonDelayTimeout.current);
-                completeButtonDelayTimeout.current = null
-            }
-            fadingPanelRef.current?.showPanel(null, ()=>{});
-
-            setIsRecording(false);
-            promptTextRef.current.hide()
-            if (currentSentenceIndex.current + 1 >= sentenceIDs.current.length) {
-                completeModule();
-            } else {
-                introduceNextSentence();
-            }
-        }, MAX_RECORDING_DURATION)
-
-        completeButtonDelayTimeout.current = setTimeout(() => {
-            fadingPanelRef.current.showStartPanel("completeRecordingButton")
-        }, BUTTON_POPUP_DELAY)
-
-        teddyRef.current.showText(TeddyAnimations.LISTEN, "Please read this sentence out loud then press the button.", true)
-        fadingPanelRef.current?.showPanel(null, ()=>{});
-
-        const sentence = sentences[sentenceIDs.current[currentSentenceIndex.current]];
-        CurrentSessionData.logEvent("sentenceShown", {id: sentence.id, text: sentence.text})
-        promptTextRef.current.showText(sentence.text, MAX_RECORDING_DURATION)
-        promptTextRef.current.startTimer();
-    }
 
     return (
         <div className={"wrapper"}>
@@ -170,35 +128,22 @@ export default function SentencesScreen() {
 
             <FadingPanelSet ref={fadingPanelRef}>
                 <FadingPanel label={FADING_PANEL_DEFAULT_LABEL}>
-                    <button
-                            onClick={(_e) => {
-                                startSentence()
-                            }}>
+                    <button onClick={() => start.pick()}>
                         Let's Read!
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"completeRecordingButton"}>
-                    <button
-                            onClick={(_e) => {
-                                CurrentSessionData.logEvent("completeSentenceButton", sentenceIDs.current[currentSentenceIndex.current])
-                                userVideoRef.current.stop()
-                            }}>
+                    <button onClick={() => done.pick()}>
                         I've Read It Out Loud
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"nextModule"}>
-                    <button
-                            onClick={(_e) => {
-                                CurrentSessionData.navigateToNextModule(navigate)
-                            }}>
+                    <button onClick={() => next.pick()}>
                         To The Next Module!
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"finishSession"}>
-                    <button
-                            onClick={(_e) => {
-                                CurrentSessionData.navigateToNextModule(navigate)
-                            }}>
+                    <button onClick={() => next.pick()}>
                         Sounds Great!
                     </button>
                 </FadingPanel>

@@ -10,10 +10,12 @@ interface Props {
     children?: React.ReactNode;
 }
 
+// Each resolves once its animation is done. Its first button gets focus then.
 export interface FadingPanelFunctions {
-    showPanel: (text: string, callback?:()=>void) => void;
-    showStartPanel: (panelName?: string) => void;
-    hide: (callback?: () => void) => void;
+    // Fades the shown panel out and `label`'s in, or with null, leaves none showing.
+    showPanel: (label: string | null) => Promise<void>;
+    // Bounces `label`'s panel, or the default one, up from below.
+    showStartPanel: (label?: string) => Promise<void>;
 }
 
 export const FADING_PANEL_DEFAULT_LABEL = "default"
@@ -62,7 +64,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
         panel?.querySelector("button")?.focus();
     }, [isAnimating]);
 
-    const showStartPanel = (panelName) => {
+    const showStartPanel = (panelName?: string) => new Promise<void>((resolve) => {
         const change = ++changeRef.current;
         const animateDuration = 600
         setIsAnimating(true);
@@ -79,10 +81,10 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
             if (change == changeRef.current) {
                 setIsAnimating(false)
             }
+            resolve()
         }, animateDuration)
-
-    };
-    const showPanel = async (panelLabel:string, callback:(()=>void)|null=null) => {
+    });
+    const showPanel = (panelLabel: string | null) => new Promise<void>((resolve) => {
         const change = ++changeRef.current;
         const fadeOutDuration = 300
         const fadeInDuration = 200
@@ -95,7 +97,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
             })
         setTimeout(()=> {
             if (change != changeRef.current) {
-                callback?.()
+                resolve()
                 return
             }
 
@@ -114,49 +116,13 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
                 if (change == changeRef.current) {
                     setIsAnimating(false)
                 }
-                if (callback != null) {
-                    callback()
-                }
-
+                resolve()
             }, fadeInDuration)
         }, fadeOutDuration)
-    };
-    const hide = async (callback:(()=>void)|null=null) => {
-        const change = ++changeRef.current;
-        const animateDuration = 600
-        setIsAnimating(true);
-        setIsDisplayed(true);
-        setShownPanelkey(FADING_PANEL_DEFAULT_LABEL);
-        focusPendingRef.current = false;
-        animatedRef.current!.animate(generateBounceKeyframes(0, 1000),
-            {
-                duration: animateDuration,
-                easing: "cubic-bezier(.4,.04,.37,-0.57)",
-                fill: "both",
-            })
-        setTimeout(()=> {
-            if (change == changeRef.current) {
-                setIsAnimating(false)
-                setShownPanelkey(null);
-                setIsDisplayed(false);
-            }
-            if (callback != null) {
-                callback()
-            }
-        }, animateDuration)
-    };
+    });
     useImperativeHandle(ref, () => ({
-
-        showPanel(panelLabel, callback) {
-            showPanel(panelLabel, callback);
-        },
-        hide(callback) {
-            hide(callback);
-        },
-        showStartPanel(panelName) {
-            showStartPanel(panelName);
-        }
-
+        showPanel,
+        showStartPanel,
     }));
 
     // Inert while animating, so a second press of Enter can't go through

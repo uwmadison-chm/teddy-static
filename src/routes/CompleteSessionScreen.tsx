@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from "react";
+import {useRef, useState} from "react";
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import * as pig from "@/data/pig.ts";
@@ -10,6 +10,7 @@ import {
     FadingPanelSet
 } from "@/components/FadingPanelSet.tsx";
 import {stopCameraStream} from "@/data/camera.ts";
+import {firstOf, sleep, useScript} from "@/utils/script.ts";
 
 
 export default function CompleteSessionScreen() {
@@ -20,38 +21,12 @@ export default function CompleteSessionScreen() {
     const [bytesLeft, setBytesLeft] = useState<number>(0);
     const [bytesMost, setBytesMost] = useState<number>(0);
     const [sending, setSending] = useState<boolean>(true);
-    const sentRef = useRef<Promise<void>>(null);
 
-    function onVideosCompletedUploaded(didUpload:boolean) {
-        const nextURL = CurrentSessionData.nextURL;
-        if (!nextURL) {
-            setCanLeavePageSafely()
-        }
-
-            const firstText = didUpload ?
-                ["Uploads complete! Hooray! Thank you for waiting."] :
-                []
-            const secondText = nextURL == null ?
-                [
-                    "You're all set! Thank you for your time. You may close this tab at any time. Bye bye!",
-                ] :
-                [
-                    "Please press this button to continue your session. Bye!"
-                ]
-        teddyRef.current?.showTextSequence(TeddyAnimations.SLIGHTLY_HAPPY,
-            firstText.concat(secondText),
-            () => {
-                if (nextURL) {
-                    fadingPanelRef.current.showStartPanel()
-                }
-                teddyRef.current?.playAnimation(TeddyAnimations.WAVE)
-            })
-    }
-
-    useEffect(() => {
+    useScript(async (signal) => {
+        const teddy = teddyRef.current;
         CurrentSessionData.complete()
         stopCameraStream()
-        sentRef.current = pig.finishRun((pending) => {
+        const sent = pig.finishRun((pending) => {
             setBytesLeft(pending.bytes);
             setBytesMost((most) => Math.max(most, pending.bytes));
         }).catch((error) => {
@@ -60,26 +35,38 @@ export default function CompleteSessionScreen() {
             setSending(false);
         });
 
-        teddyRef.current?.showTextSequence(TeddyAnimations.SLIGHTLY_HAPPY,
-            ["You're all finished! Hooray!"],
-            () => {
-                let waited = false;
-                const timer = window.setTimeout(() => {
-                    // Still sending: say so, rather than go quiet.
-                    waited = true;
-                    teddyRef.current?.showTextSequence(TeddyAnimations.SLIGHTLY_HAPPY,
-                        [
-                            "We just have to wait for your videos to finish sending.",
-                            "Please don't close this window until they're done.",
-                        ]);
-                }, 500);
-                sentRef.current.then(() => {
-                    clearTimeout(timer);
-                    onVideosCompletedUploaded(waited);
-                });
-            }
-        );
-    }, [teddyRef]);
+        await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY, "You're all finished! Hooray!", signal);
+        // Still sending: say so, rather than go quiet.
+        const waited = await firstOf(signal,
+            () => sent.then(() => false),
+            async (signal) => {
+                await sleep(500, signal);
+                teddy.say(TeddyAnimations.SLIGHTLY_HAPPY,
+                    [
+                        "We just have to wait for your videos to finish sending.",
+                        "Please don't close this window until they're done.",
+                    ]);
+                await sent;
+                return true;
+            });
+
+        const nextURL = CurrentSessionData.nextURL;
+        if (!nextURL) {
+            setCanLeavePageSafely()
+        }
+        await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY,
+            [
+                ...(waited ? ["Uploads complete! Hooray! Thank you for waiting."] : []),
+                nextURL == null ?
+                    "You're all set! Thank you for your time. You may close this tab at any time. Bye bye!" :
+                    "Please press this button to continue your session. Bye!",
+            ],
+            signal);
+        if (nextURL) {
+            fadingPanelRef.current.showStartPanel()
+        }
+        teddy.playAnimation(TeddyAnimations.WAVE)
+    });
 
     return (
         <div className={"wrapper"}>

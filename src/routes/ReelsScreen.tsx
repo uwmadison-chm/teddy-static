@@ -1,4 +1,4 @@
-import {saveBlob, useAnimatedNavigate} from "@/utils/utils"
+import {useAnimatedNavigate} from "@/utils/utils"
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {
@@ -7,15 +7,12 @@ import {
     type FadingPanelFunctions,
     FadingPanelSet
 } from "@/components/FadingPanelSet.tsx";
-import {useCallback, useEffect, useRef, useState} from "react";
+import {useCallback, useRef, useState} from "react";
 import {UserVideo, type UserVideoFunctions} from "@/components/UserVideo.tsx";
-import {FaceDetector} from "@/components/FaceDetector.tsx";
 import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.tsx";
-import {CountdownTimer} from "@/components/CountdownTimer.tsx";
-import {Colors} from "@/utils/colors.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
-import * as React from "react";
 import {reels} from "virtual:teddy-study";
+import {sleep, useChoice, useScript} from "@/utils/script.ts";
 
 const MAX_RATING_RECORDING_DURATION = 15000;
 const MAX_RECORDING_DURATION = 120 * 1000;
@@ -24,7 +21,7 @@ export default function ReelsScreen() {
 
     // Use this to test module outside of normal flow
     if (CurrentSessionData.currentModule < 0) {
-
+        // eslint-disable-next-line react-hooks/immutability
         CurrentSessionData.currentModule = 0;
     }
 
@@ -33,158 +30,121 @@ export default function ReelsScreen() {
     const fadingPanelRef = useRef<FadingPanelFunctions>(null);
     const userVideoRef = useRef<UserVideoFunctions>(null);
     const microphoneIndicatorRef = useRef(null);
-    const reelIDs = useRef(CurrentSessionData.getCurrentModuleArgs());
-    const currentReelIndex = useRef(0);
-
-    const videoElementsRef = useRef([]);
     const videoElementWrapperRef = useRef(null);
     const [videoWrapperShown, setVideoWrapperShown] = useState(false);
+    const start = useChoice();
+    const rate = useChoice<number>();
+    const next = useChoice();
 
-    const [isRecording, setIsRecording] = useState(false);
+    useScript(async (signal) => {
+        const teddy = teddyRef.current;
+        const panels = fadingPanelRef.current;
+        const reelIDs = CurrentSessionData.getCurrentModuleArgs();
 
-    useEffect(() => {
-        if (teddyRef != null) {
+        // Load every reel now, so each is ready when its turn comes.
+        const videoElements = reelIDs.map((reelID) => {
+            const videoElement = document.createElement('video');
+            videoElement.setAttribute('src', reels[reelID].url);
+            videoElement.setAttribute("playsinline", "true");
+            videoElement.load()
+            videoElement.addEventListener("playing", ()=> {
+                CurrentSessionData.logEvent("reelPlaying", reelID);
+            })
+            videoElement.addEventListener("stalled", ()=> {
+                CurrentSessionData.logEvent("reelStalled", reelID);
+            })
+            videoElement.addEventListener("ended", ()=> {
+                CurrentSessionData.logEvent("reelEnding", reelID);
+            })
+            return videoElement;
+        });
+        // A video taken out of the page keeps playing, so stop them all if the
+        // screen goes.
+        signal.addEventListener("abort", () => {
+            for (const videoElement of videoElements) {
+                videoElement.pause();
+            }
+        });
 
-            if (!videoElementsRef.current.length) {
-                for (const reelID of reelIDs.current) {
-                    const videoElement = document.createElement('video');
-                    videoElement.setAttribute('src', reels[reelID].url);
-                    videoElement.load()
-                    videoElement.addEventListener("playing", ()=> {
-                        CurrentSessionData.logEvent("reelPlaying", reelID);
-                    })
-                    videoElement.addEventListener("stalled", ()=> {
-                        CurrentSessionData.logEvent("reelStalled", reelID);
-                    })
-                    videoElement.addEventListener("ended", ()=> {
-                        CurrentSessionData.logEvent("reelEnding", reelID);
-                    })
-                    videoElementsRef.current.push(videoElement);
-                }
+        console.log("Starting reels module with reels:", reelIDs)
+        CurrentSessionData.logEvent("reelsScreenStarted", reelIDs.toString())
+
+        const reelDescription = reelIDs.length == 1 ?
+            "a funny video" : "a couple funny videos";
+        const reelWord = reelIDs.length == 1 ?
+            "video" : "videos";
+        await teddy.say(TeddyAnimations.WAVE_SHORT,
+            [`For this next part, I'm going to show you ${reelDescription}.`,
+                `Please just watch the ${reelWord}, and rate it when it's done.`,
+                "And please keep your face in frame the whole time!"],
+            signal);
+        panels.showStartPanel();
+        await start.next(signal);
+
+        for (let index = 0; index < reelIDs.length; index++) {
+            const id = reelIDs[index];
+            if (index > 0) {
+                // Let the buttons fade out a bit, and let the recording finish
+                await sleep(400, signal);
             }
 
-            console.log("Starting reels module with reels:", reelIDs.current)
+            CurrentSessionData.logEvent("reelRecordingStarted", id)
+            const recording = userVideoRef.current.record({kind: "reel", item: id},
+                {timeout: MAX_RECORDING_DURATION, signal});
+            teddy.playAnimation(TeddyAnimations.WATCH_MOVIE)
+            teddy.hideTextbox()
+            panels.showPanel(null);
 
-            CurrentSessionData.logEvent("reelsScreenStarted", reelIDs.current.toString())
+            setVideoWrapperShown(true);
+            const reel = reels[id];
+            CurrentSessionData.logEvent("reelShown", {id: reel.id, file: reel.file})
+            const video = videoElements[index];
+            videoElementWrapperRef.current.innerHTML = "";
+            videoElementWrapperRef.current.appendChild(video);
+            video.addEventListener("ended", recording.stop, {once: true});
+            console.log("playing reel", id, video.getAttribute("src"));
+            video.play();
 
-            const reelDescription = reelIDs.current.length == 1 ?
-                "a funny video" : "a couple funny videos";
-            const reelWord = reelIDs.current.length == 1 ?
-                "video" : "videos";
-            teddyRef.current.showTextSequence(TeddyAnimations.WAVE_SHORT,
-                [`For this next part, I'm going to show you ${reelDescription}.`,
-                    `Please just watch the ${reelWord}, and rate it when it's done.`,
-                    "And please keep your face in frame the whole time!"],
-                () => {
-                    fadingPanelRef.current?.showStartPanel()
-                }
-            );
+            // The recording ends with the reel, or at its time limit. Stop the
+            // reel then too, so it isn't heard behind the rating.
+            await recording.done;
+            video.removeEventListener("ended", recording.stop);
+            video.pause();
+            CurrentSessionData.logEvent("reelRecordingEnded", id)
+            setVideoWrapperShown(false);
+
+            teddy.playAnimation(TeddyAnimations.IDLE);
+            teddy.say(TeddyAnimations.LISTEN, "What did you think of that video?");
+            panels.showStartPanel("rateReel");
+            CurrentSessionData.logEvent("reelRatingRecordingStarted", id)
+            const ratingRecording = userVideoRef.current.record({kind: "reelRating", item: id},
+                {timeout: MAX_RATING_RECORDING_DURATION, signal});
+            ratingRecording.done.then(() => {
+                CurrentSessionData.logEvent("reelRatingRecordingEnded", id)
+            });
+
+            const rating = await rate.next(signal);
+            ratingRecording.stop()
+            CurrentSessionData.logEvent("ratedReel", {reel: id, rating: rating});
+            console.log("Rated reel", id, rating);
+            panels.showPanel(null);
         }
-    }, [teddyRef])
+
+        teddy.playAnimation(TeddyAnimations.IDLE);
+        const hasMoreModules = CurrentSessionData.hasMoreModules();
+        await teddy.say(TeddyAnimations.SUCCESS,
+            ["Thanks so much for your feedback!",
+                hasMoreModules ? "Should we start the next module?" : "Let's quickly finish up our session."],
+            signal);
+        CurrentSessionData.logEvent(hasMoreModules ? "reelsScreenNextModule" : "reelsScreenFinishSession")
+        panels.showStartPanel(hasMoreModules ? "nextModule" : "finishSession");
+        await next.next(signal);
+        CurrentSessionData.navigateToNextModule(navigate);
+    });
 
     const onUserVideoInitialized = useCallback(() => {
         microphoneIndicatorRef.current.start()
     }, [])
-
-    const completeModule = useCallback(() => {
-        const hasMoreModules = CurrentSessionData.hasMoreModules()
-        teddyRef.current.playAnimation(TeddyAnimations.IDLE);
-        if (hasMoreModules) {
-            teddyRef.current?.showTextSequence(TeddyAnimations.SUCCESS,
-                [
-                    "Thanks so much for your feedback!",
-                    "Should we start the next module?",
-                ],
-                () => {
-                    CurrentSessionData.logEvent("reelsScreenNextModule")
-                    fadingPanelRef.current.showStartPanel("nextModule");
-            });
-        } else {
-            teddyRef.current?.showTextSequence(TeddyAnimations.SUCCESS,
-                [
-                    "Thanks so much for your feedback!",
-                    "Let's quickly finish up our session.",
-                ],
-                () => {
-                    CurrentSessionData.logEvent("reelsScreenFinishSession")
-                    fadingPanelRef.current.showStartPanel("finishSession");
-                });
-        }
-    }, [])
-
-    const rateReel = () => {
-        teddyRef.current.playAnimation(TeddyAnimations.IDLE);
-        teddyRef.current?.showText(TeddyAnimations.LISTEN, "What did you think of that video?",);
-        fadingPanelRef.current?.showStartPanel("rateReel");
-
-        setIsRecording(true);
-        CurrentSessionData.logEvent("reelRatingRecordingStarted", reelIDs.current[currentReelIndex.current])
-        const currentVideoID = reelIDs.current[currentReelIndex.current]
-        userVideoRef.current.record({kind: "reelRating", item: currentVideoID}, ()=> {
-            CurrentSessionData.logEvent("reelRatingRecordingEnded", currentVideoID)
-
-            setIsRecording(false);
-        }, MAX_RATING_RECORDING_DURATION)
-
-    }
-
-    const onRateCurrentReel = (rating:number) => {
-
-        userVideoRef.current.stop()
-        CurrentSessionData.logEvent("ratedReel", {reel: reelIDs.current[currentReelIndex.current], rating: rating});
-        console.log("Rated reel", reelIDs.current[currentReelIndex.current], rating);
-        currentReelIndex.current = currentReelIndex.current + 1;
-        fadingPanelRef.current.showPanel(null);
-
-        if (currentReelIndex.current >= reelIDs.current.length) {
-            completeModule();
-        } else {
-            // Let the buttons fade out a bit, and let the recording finish
-            setTimeout(()=> {
-                startReel()
-            }, 400)
-        }
-
-    }
-
-    function startReel() {
-        const currentReel = videoElementsRef.current[currentReelIndex.current];
-        setIsRecording(true)
-
-        CurrentSessionData.logEvent("reelRecordingStarted", reelIDs.current[currentReelIndex.current])
-
-        userVideoRef.current.record({kind: "reel", item: reelIDs.current[currentReelIndex.current]}, ()=> {
-            CurrentSessionData.logEvent("reelRecordingEnded", reelIDs.current[currentReelIndex.current])
-
-            setIsRecording(false);
-
-            // The recording can hit its time limit before a long reel ends.
-            // Stop the reel too, so it isn't heard behind the rating, and so its
-            // end doesn't stop the rating's recording.
-            currentReel.pause();
-            setVideoWrapperShown(false);
-
-            rateReel();
-
-        }, MAX_RECORDING_DURATION)
-
-        teddyRef.current.playAnimation(TeddyAnimations.WATCH_MOVIE)
-        teddyRef.current.hideTextbox()
-        fadingPanelRef.current?.showPanel(null, ()=>{});
-
-        setVideoWrapperShown(true);
-        const reel = reels[reelIDs.current[currentReelIndex.current]];
-        CurrentSessionData.logEvent("reelShown", {id: reel.id, file: reel.file})
-        currentReel.setAttribute("playsinline", true);
-        currentReel.setAttribute("autoplay", true);
-        videoElementWrapperRef.current.innerHTML = "";
-        videoElementWrapperRef.current.appendChild(currentReel);
-        currentReel.addEventListener("ended", () => {
-            userVideoRef.current.stop()
-        })
-        console.log("playing reel", reelIDs.current[currentReelIndex.current], currentReel.getAttribute("src"));
-        currentReel.play();
-    }
 
     return (
         <div className={"wrapper"}>
@@ -205,52 +165,31 @@ export default function ReelsScreen() {
 
             <FadingPanelSet ref={fadingPanelRef}>
                 <FadingPanel label={FADING_PANEL_DEFAULT_LABEL}>
-                    <button
-                            onClick={(_e) => {
-                                startReel()
-                            }}>
+                    <button onClick={() => start.pick()}>
                         Let's Watch!
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"rateReel"}>
-                    <button
-                            onClick={(_e) => {
-                                onRateCurrentReel(4)
-                            }}>
+                    <button onClick={() => rate.pick(4)}>
                         <span aria-hidden={true}>🤣</span> Really Funny
                     </button>
-                    <button
-                        onClick={(_e) => {
-                            onRateCurrentReel(3)
-                        }}>
+                    <button onClick={() => rate.pick(3)}>
                         <span aria-hidden={true}>😄</span> Pretty Funny
                     </button>
-                    <button
-                        onClick={(_e) => {
-                            onRateCurrentReel(2)
-                        }}>
+                    <button onClick={() => rate.pick(2)}>
                         <span aria-hidden={true}>🫤</span> Not Funny
                     </button>
-                    <button
-                        onClick={(_e) => {
-                            onRateCurrentReel(1)
-                        }}>
+                    <button onClick={() => rate.pick(1)}>
                         <span aria-hidden={true}>😠</span> Hated It
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"nextModule"}>
-                    <button
-                        onClick={(_e) => {
-                            CurrentSessionData.navigateToNextModule(navigate)
-                        }}>
+                    <button onClick={() => next.pick()}>
                         Let's Go!
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"finishSession"}>
-                    <button
-                            onClick={(_e) => {
-                                CurrentSessionData.navigateToNextModule(navigate)
-                            }}>
+                    <button onClick={() => next.pick()}>
                         Let's Finish Up!
                     </button>
                 </FadingPanel>

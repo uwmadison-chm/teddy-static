@@ -1,11 +1,10 @@
 import * as React from "react";
-import {useImperativeHandle, useRef} from "react";
+import {useEffect, useImperativeHandle, useRef} from "react";
 import {buildStyles, CircularProgressbar, CircularProgressbarWithChildren} from "react-circular-progressbar";
 import {interpolateColors} from "@/utils/utils.tsx";
 import {Colors} from "@/utils/colors.tsx";
 
 export interface CountdownTimerProps {
-    onComplete: () => void;
     duration: number;
     countUp?: boolean;
     startColor?: string;
@@ -13,15 +12,18 @@ export interface CountdownTimerProps {
 }
 
 export interface CountdownTimerFunctions {
-    start: () => void;
+    // Shows the timer and runs it. Resolves when it runs out.
+    start: () => Promise<void>;
     cancel: () => void;
     hide: () => void;
-    fadeOut: (onComplete:()=>void) => void;
+    fadeOut: () => void;
 }
 
-export const CountdownTimer = React.forwardRef<CountdownTimerFunctions, CountdownTimerProps>(({duration, onComplete, countUp, startColor, endColor, ...props}, ref) => {
+export const CountdownTimer = React.forwardRef<CountdownTimerFunctions, CountdownTimerProps>(({duration, countUp, startColor, endColor, ...props}, ref) => {
 
     const intervalRef = useRef(null);
+
+    useEffect(() => () => clearInterval(intervalRef.current), []);
     const startedTimestampRef = useRef(null);
     const [circleProgress, setCircleProgress] = React.useState(0);
     const [elapsedTime, setElapsedTime] = React.useState(0);
@@ -29,7 +31,7 @@ export const CountdownTimer = React.forwardRef<CountdownTimerFunctions, Countdow
     const [isFadingOut, setIsFadingOut] = React.useState(false);
 
     useImperativeHandle(ref, () => ({
-        start: () => {
+        start: () => new Promise<void>((resolve) => {
             setElapsedTime(0)
             setCircleProgress(0)
             setIsShown(true);
@@ -46,12 +48,11 @@ export const CountdownTimer = React.forwardRef<CountdownTimerFunctions, Countdow
                 if (elapsed >= duration) {
                     setElapsedTime(elapsed)
                     clearInterval(intervalRef.current)
-                    onComplete()
+                    resolve()
                 }
 
             }, 10)
-
-        },
+        }),
         cancel: () => {
             clearInterval(intervalRef.current)
             setCircleProgress(0)
