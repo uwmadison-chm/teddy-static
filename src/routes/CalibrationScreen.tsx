@@ -108,7 +108,7 @@ export default function CalibrationScreen() {
         const hasMoreModules = CurrentSessionData.hasMoreModules()
         await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY,
             [
-                "Keep it up!",
+                "Thanks, that looks great! You can open your eyes now.",
                 hasMoreModules ?
                     "Let's continue to the next activity." :
                     "You're all done! Let's quickly finish up our session.",
