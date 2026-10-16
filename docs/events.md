@@ -1,6 +1,6 @@
 # Teddy's events
 
-Event schema **1.1**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event.
+Event schema **1.0**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event.
 
 ## Versioning
 
@@ -162,4 +162,3 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 ## Changelog
 
 - **1.0**: the first version.
-- **1.1**: added `camera_missing` and `camera_unusable`, and `ended` as a `camera_help_shown` name.

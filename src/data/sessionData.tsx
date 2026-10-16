@@ -6,7 +6,7 @@ import {build} from "virtual:teddy-study";
 // The version of the events Teddy sends, documented in docs/events.md. Bump
 // the minor version for anything added, and the major version for anything
 // renamed, removed, or changed in meaning.
-export const EVENT_SCHEMA = "1.1";
+export const EVENT_SCHEMA = "1.0";
 
 // The most script_error events one session sends.
 const MAX_SCRIPT_ERRORS = 20;
