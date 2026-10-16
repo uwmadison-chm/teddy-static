@@ -20,12 +20,16 @@ import ReelsScreen from "@/routes/ReelsScreen.tsx";
 import QuestionnaireScreen from "@/routes/QuestionnaireScreen.tsx";
 import {Config} from "@/data/config.ts";
 import {loadFaceApi} from "@/utils/faceApi.ts";
+import LinkBuilderScreen from "@/routes/LinkBuilderScreen.tsx";
+
+// In debug mode, ?links opens the link builder instead of a session.
+const showLinkBuilder = Config.debug && new URLSearchParams(window.location.search).has("links");
 
 // Serve Rive's WASM ourselves instead of from its default CDNs
 RuntimeLoader.setWasmUrl(riveWasmUrl);
 RuntimeLoader.setWasmFallbackUrl(riveFallbackWasmUrl);
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById('root')!).render(showLinkBuilder ? <StrictMode><LinkBuilderScreen /></StrictMode> :
   <StrictMode>
       <MemoryRouter>
           <main className={"phone-screen-wrapper"}>
@@ -63,7 +67,9 @@ createRoot(document.getElementById('root')!).render(
                       } />
                   </Routes>
                   <RecordingNotification />
-                  {Config.debug && <div className={"debug-banner"}>Debug mode: nothing is uploaded</div>}
+                  {Config.debug && <div className={"debug-banner"}>
+                  Debug mode: nothing is uploaded · <a href={"?links"} target={"_blank"} rel={"noreferrer"}>Link builder</a>
+              </div>}
               </div>
           </main>
       </MemoryRouter>
@@ -73,4 +79,4 @@ createRoot(document.getElementById('root')!).render(
 )
 
 // Start downloading the face detector now so it's ready by the calibration screen
-loadFaceApi().catch(error => console.error("Couldn't load face detector", error));
+if (!showLinkBuilder) loadFaceApi().catch(error => console.error("Couldn't load face detector", error));

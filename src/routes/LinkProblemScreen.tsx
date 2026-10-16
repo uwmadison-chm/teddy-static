@@ -1,8 +1,10 @@
-import {useEffect, useRef} from "react";
+import {useRef} from "react";
+import {useScript} from "@/utils/script.ts";
 import {useLocation} from "react-router";
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
-import {setCanLeavePageSafely} from "@/data/sessionData.tsx";
+import {CurrentSessionData, setCanLeavePageSafely} from "@/data/sessionData.tsx";
+import {Config} from "@/data/config.ts";
 import {stopCameraStream} from "@/data/camera.ts";
 
 
@@ -47,16 +49,12 @@ export default function LinkProblemScreen() {
     const location = useLocation();
     const state = (location.state || {}) as LinkProblemState;
 
-    useEffect(() => {
+    useScript(async (signal) => {
         setCanLeavePageSafely()
         stopCameraStream()
-        teddyRef.current?.showTextSequence(TeddyAnimations.SADNESS,
-          explanation(state.code),
-          () => {
-              teddyRef.current?.playAnimation(TeddyAnimations.WAVE)
-          }
-        );
-    }, [teddyRef, state.code]);
+        await teddyRef.current.say(TeddyAnimations.SADNESS, explanation(state.code), signal);
+        teddyRef.current.playAnimation(TeddyAnimations.WAVE)
+    });
 
     return (
         <div className={"wrapper"}>
@@ -64,7 +62,16 @@ export default function LinkProblemScreen() {
                 ref={teddyRef}
                 initialAnimation={TeddyAnimations.SADNESS}
             />
-
+            {/* What's wrong, for whoever made the link. Participants don't see this. */}
+            {Config.debug && <div className={"debug-link-problems"}>
+                <ul>
+                    {state.code ?
+                        <li>pig wouldn't start the run: {state.code}</li> :
+                        CurrentSessionData.linkProblems.map((p, i) => <li key={i}>{p}</li>)}
+                </ul>
+                <a href={"?links&check=" + encodeURIComponent(window.location.href)}
+                   target={"_blank"} rel={"noreferrer"}>Check this link in the link builder</a>
+            </div>}
         </div>
     );
 }

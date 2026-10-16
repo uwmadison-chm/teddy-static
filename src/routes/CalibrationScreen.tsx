@@ -1,4 +1,4 @@
-import {saveBlob, useAnimatedNavigate} from "@/utils/utils"
+import {useAnimatedNavigate} from "@/utils/utils"
 import timerCompleteUrl from "@/assets/audio/timer_complete.mp3";
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
@@ -8,169 +8,112 @@ import {
     type FadingPanelFunctions,
     FadingPanelSet
 } from "@/components/FadingPanelSet.tsx";
-import {useCallback, useEffect, useRef, useState} from "react";
+import {useCallback, useRef} from "react";
 import {UserVideo, type UserVideoFunctions} from "@/components/UserVideo.tsx";
-import {FaceDetector} from "@/components/FaceDetector.tsx";
+import {FaceDetector, type FaceDetectorFunctions} from "@/components/FaceDetector.tsx";
 import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.tsx";
-import {CountdownTimer} from "@/components/CountdownTimer.tsx";
+import {CountdownTimer, type CountdownTimerFunctions} from "@/components/CountdownTimer.tsx";
 import {Colors} from "@/utils/colors.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
+import {abortable, firstOf, sleep, useChoice, useScript} from "@/utils/script.ts";
 
 export default function CalibrationScreen() {
     const navigate = useAnimatedNavigate();
     const teddyRef = useRef<TeddyFunctions>(null);
     const fadingPanelRef = useRef<FadingPanelFunctions>(null);
     const userVideoRef = useRef<UserVideoFunctions>(null);
-    const faceDetectorRef = useRef(null);
+    const faceDetectorRef = useRef<FaceDetectorFunctions>(null);
     const microphoneIndicatorRef = useRef(null);
+    const calibrationPrepTimer = useRef<CountdownTimerFunctions>(null);
+    const calibrationTimer = useRef<CountdownTimerFunctions>(null);
+    const bypass = useChoice();
+    const calibrate = useChoice();
+    const next = useChoice();
 
-    const timerCompleteAudioRef = useRef(null);
-    const calibrationPrepTimer = useRef(null);
-    const calibrationTimer = useRef(null);
-
-    const faceDetectButtonDelayTimeout = useRef(null);
-
-    const [tryingToDetectFace, setTryingToDetectFace] = useState<boolean>(true);
-    const postDetectFaceTimeoutRef = useRef<number | null>(null);
-
-
-    useEffect(() => {
+    useScript(async (signal) => {
+        const teddy = teddyRef.current;
+        const panels = fadingPanelRef.current;
+        const video = userVideoRef.current;
         CurrentSessionData.calibrating = true;
-    }, [])
 
-    useEffect(() => {
-        teddyRef.current?.showTextSequence(TeddyAnimations.PEERING,
-            ["Checking to see if I can detect your face..."],
-            () => {
-            }
-        );
-        if (teddyRef != null && faceDetectButtonDelayTimeout.current == null) {
-            faceDetectButtonDelayTimeout.current = setTimeout(() => {
-                fadingPanelRef.current.showStartPanel()
-            }, 9000);
-        }
-        const userVideo = userVideoRef.current;
-        return () => {
-            if (postDetectFaceTimeoutRef.current != null) {
-                userVideo.stop();
-                clearTimeout(postDetectFaceTimeoutRef.current);
-            }
-        }
-    }, [teddyRef])
-
-    const onVideoInitialized = useCallback(() => {
-        userVideoRef.current.record({kind: "faceDetect"}, ()=>{
+        // Look for a face. If none turns up for a while, the participant can
+        // say they're there.
+        teddy.say(TeddyAnimations.PEERING, "Checking to see if I can detect your face...");
+        await abortable(video.ready(), signal);
+        const faceRecording = video.record({kind: "faceDetect"}, {timeout: 15000, signal});
+        faceRecording.done.then(() => {
             CurrentSessionData.logEvent("faceDetectComplete")
-        }, 15000)
-
+        });
         CurrentSessionData.logEvent("faceDetectStart")
+        const timerCompleteAudio = new Audio(timerCompleteUrl);
+        await firstOf(signal,
+            (signal) => faceDetectorRef.current.detect(signal),
+            async (signal) => {
+                await sleep(9000, signal);
+                panels.showStartPanel();
+                await bypass.next(signal);
+                CurrentSessionData.logEvent("faceDetectBypassed")
+            });
 
-        faceDetectorRef.current.start()
-        microphoneIndicatorRef.current.start()
-
-        if (timerCompleteAudioRef.current == null) {
-            timerCompleteAudioRef.current = new Audio(timerCompleteUrl)
-        }
-    }, [])
-
-    function afterFaceDetected() {
+        CurrentSessionData.logEvent("faceDetected")
+        panels.showPanel(null);
+        faceDetectorRef.current.hide();
+        // Keep a few seconds of the face, unless calibration starts first.
+        sleep(5000, signal).then(faceRecording.stop, () => {});
 
         // This seems weird, but if we go straight from listening to success, his eyebrow loops. So we go to idle quickly first.
-        teddyRef.current?.playAnimation(TeddyAnimations.IDLE)
-        setTimeout(()=>{
-            teddyRef.current?.showTextSequence(TeddyAnimations.SUCCESS,
-                [
-                    "There you are! You look wonderful!",
-                    "Next, I'd like you to close your eyes and relax your face.",
-                    "You'll see a countdown, during which you should close your eyes.",
-                    "Keep them closed and keep your face relaxed until you hear a gong. (After about 8 seconds)",
-                    "Ready?",
-                ],
-                () => {
-                    fadingPanelRef.current.showStartPanel("startFaceCalibration");
-                }
-            );
-        }, 100)
-    }
+        teddy.playAnimation(TeddyAnimations.IDLE)
+        await sleep(100, signal);
+        await teddy.say(TeddyAnimations.SUCCESS,
+            [
+                "There you are! You look wonderful!",
+                "Next, I'd like you to close your eyes and relax your face.",
+                "You'll see a countdown, during which you should close your eyes.",
+                "Keep them closed and keep your face relaxed until you hear a gong. (After about 8 seconds)",
+                "Ready?",
+            ],
+            signal);
+        panels.showStartPanel("startFaceCalibration");
+        await calibrate.next(signal);
 
-    useEffect(() => {
-        if (!tryingToDetectFace) {
-            // Face detected!
-
-            CurrentSessionData.logEvent("faceDetected")
-            clearTimeout(faceDetectButtonDelayTimeout.current)
-            faceDetectButtonDelayTimeout.current = null
-
-            fadingPanelRef.current.showPanel(null, ()=> {
-            })
-            faceDetectorRef.current.hide();
-
-
-            if (userVideoRef.current.getIsRecording()) {
-                postDetectFaceTimeoutRef.current = window.setTimeout(() => {
-                    userVideoRef.current.stop();
-                    postDetectFaceTimeoutRef.current = null;
-                }, 5000)
-            }
-            afterFaceDetected()
-        }
-    }, [tryingToDetectFace]);
-
-    const startFaceCalibrationPrep = () => {
-
-        if (postDetectFaceTimeoutRef.current != null) {
-            clearTimeout(postDetectFaceTimeoutRef.current);
-            postDetectFaceTimeoutRef.current = null;
-            userVideoRef.current.stop();
-        }
-
+        faceRecording.stop();
         CurrentSessionData.logEvent("calibrationStart")
-        fadingPanelRef.current.showPanel(null, ()=> {})
-        teddyRef.current?.showText(TeddyAnimations.LISTEN, "Close your eyes and calm your face.", false, () => {
-            calibrationPrepTimer.current.start()
-        })
-        userVideoRef.current.record({kind: "faceCalibration"}, ()=>{
+        panels.showPanel(null);
+        const calibrationRecording = video.record({kind: "faceCalibration"}, {signal});
+        calibrationRecording.done.then(() => {
             CurrentSessionData.logEvent("calibrationRecordComplete")
-        })
-    }
-    const onCalibrationPrepComplete = () => {
+        });
+        await teddy.say(TeddyAnimations.LISTEN, "Close your eyes and calm your face.", signal);
+        await abortable(calibrationPrepTimer.current.start(), signal);
+
         CurrentSessionData.logEvent("calibrationRecordStart")
-        teddyRef.current?.showText(TeddyAnimations.LISTEN, "Keep your eyes closed and face calm.")
+        teddy.say(TeddyAnimations.LISTEN, "Keep your eyes closed and face calm.")
         calibrationPrepTimer.current.hide()
-        calibrationTimer.current.start()
-    }
-    const onCalibrationComplete = () => {
+        await abortable(calibrationTimer.current.start(), signal);
+
         CurrentSessionData.logEvent("calibrationComplete")
-        timerCompleteAudioRef.current.play();
-        userVideoRef.current.stop()
+        timerCompleteAudio.play();
+        calibrationRecording.stop()
         calibrationTimer.current.fadeOut()
-
-        teddyRef.current?.playAnimation(TeddyAnimations.IDLE);
-
+        teddy.playAnimation(TeddyAnimations.IDLE);
         const hasMoreModules = CurrentSessionData.hasMoreModules()
-        const teddyTexts = hasMoreModules ?
-            [
-                "Let's continue to the next activity."
-            ] :
-            [
-                "You're all done! Let's quickly finish up our session."
-            ]
-
-        teddyRef.current?.showTextSequence(TeddyAnimations.SLIGHTLY_HAPPY,
+        await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY,
             [
                 "Keep it up!",
-            ].concat(teddyTexts),
-            () => {
-                CurrentSessionData.logEvent("calibrationScreenComplete")
-                if (hasMoreModules) {
-                    fadingPanelRef.current.showPanel("nextModule", ()=> {})
-                } else {
-                    fadingPanelRef.current.showPanel("finishSession", ()=> {})
-                }
-            }
-        );
+                hasMoreModules ?
+                    "Let's continue to the next activity." :
+                    "You're all done! Let's quickly finish up our session.",
+            ],
+            signal);
+        CurrentSessionData.logEvent("calibrationScreenComplete")
+        panels.showPanel(hasMoreModules ? "nextModule" : "finishSession");
+        await next.next(signal);
+        CurrentSessionData.navigateToNextModule(navigate);
+    });
 
-    }
+    const onVideoInitialized = useCallback(() => {
+        microphoneIndicatorRef.current.start()
+    }, [])
 
     return (
         <div className={"wrapper"}>
@@ -185,59 +128,37 @@ export default function CalibrationScreen() {
 
             <FaceDetector
                 ref={faceDetectorRef}
-                          detectionDuration={1000}
-                          onDetected={() => {
-                setTryingToDetectFace(false)
-            }} />
+                detectionDuration={1000} />
 
             <CountdownTimer
                 ref={calibrationPrepTimer}
                 duration={3000}
                 countUp={true}
                 startColor={Colors.countdownTimer}
-                endColor={Colors.countdownTimerDark}
-                onComplete={() => {
-                    onCalibrationPrepComplete()
-                }} />
+                endColor={Colors.countdownTimerDark} />
 
             <CountdownTimer
                 ref={calibrationTimer}
-                duration={5000}
-                onComplete={() => {
-                    onCalibrationComplete()
-                }} />
+                duration={5000} />
 
             <FadingPanelSet ref={fadingPanelRef}>
                 <FadingPanel label={FADING_PANEL_DEFAULT_LABEL}>
-                    <button
-                            onClick={(_e) => {
-                                CurrentSessionData.logEvent("faceDetectBypassed")
-                                setTryingToDetectFace(false)
-                            }}>
+                    <button onClick={() => bypass.pick()}>
                         I'm Here!
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"startFaceCalibration"}>
-                    <button
-                            onClick={(_e) => {
-                                startFaceCalibrationPrep()
-                            }}>
+                    <button onClick={() => calibrate.pick()}>
                         Let's Do This!
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"nextModule"}>
-                    <button
-                            onClick={(_e) => {
-                                CurrentSessionData.navigateToNextModule(navigate)
-                            }}>
+                    <button onClick={() => next.pick()}>
                         I'm So Ready!
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"finishSession"}>
-                    <button
-                            onClick={(_e) => {
-                                CurrentSessionData.navigateToNextModule(navigate)
-                            }}>
+                    <button onClick={() => next.pick()}>
                         Let's Finish Up!
                     </button>
                 </FadingPanel>

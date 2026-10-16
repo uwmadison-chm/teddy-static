@@ -1,71 +1,74 @@
 import * as React from "react";
-import {useImperativeHandle, useRef} from "react";
+import {useImperativeHandle} from "react";
 import {buildStyles, CircularProgressbarWithChildren} from "react-circular-progressbar";
 import {FaCheck, FaUser} from "react-icons/fa";
 import {interpolateColors} from "@/utils/utils.tsx";
 import {Colors} from "@/utils/colors.tsx";
 import * as events from "@/utils/events.tsx";
 import {loadFaceApi} from "@/utils/faceApi.ts";
+import {abortable, Aborted, sleep} from "@/utils/script.ts";
 
 export interface FaceDetectorProps {
-    onDetected: () => void;
     detectionDuration: number;
 }
 
 export interface FaceDetectorFunctions {
-    start: () => void;
-    stop: () => void;
+    // Shows the detector and checks the camera until a face has been in view
+    // for detectionDuration. Stops checking when `signal` fires.
+    detect: (signal: AbortSignal) => Promise<void>;
     hide: () => void;
 }
 
 export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetectorProps>((props, ref) => {
 
-    const intervalRef = useRef(null);
-    const faceFirstSeenTimestampRef = useRef(null);
     const [progress, setProgress] = React.useState(0);
     const [isShown, setIsShown] = React.useState(false);
     const [isFadingOut, setIsFadingOut] = React.useState(false);
 
-    useImperativeHandle(ref, () => ({
-        start: () => {
-            setProgress(0)
-            setIsShown(true);
-            setIsFadingOut(false);
-            const videoInput = document.getElementById('userVideo')
-            if (intervalRef.current != null) {
-                clearInterval(intervalRef.current);
-            }
-            intervalRef.current = setInterval(async () => {
-                const faceapi = await loadFaceApi()
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-expect-error
-                const detection = await faceapi.detectSingleFace(videoInput, new faceapi.TinyFaceDetectorOptions({inputSize:224}))
-
-                if (detection != null && detection.score > .5) {
-                    if (faceFirstSeenTimestampRef.current == null) {
-                        faceFirstSeenTimestampRef.current = new Date().getTime()
-                    }
-                    const elapsed = new Date().getTime() - faceFirstSeenTimestampRef.current
-                    setProgress(elapsed / props.detectionDuration)
-                    if (elapsed > props.detectionDuration) {
-                        events.announce("Face found")
-                        props.onDetected()
-                        clearInterval(intervalRef.current)
-                        setProgress(1)
-                    }
-                } else {
-                    // No face detected. Time to reset our counter
-                    faceFirstSeenTimestampRef.current = null
-                    setProgress(0)
+    // Each check waits for the last to finish, so slow checks don't pile up.
+    async function detect(signal: AbortSignal) {
+        setProgress(0)
+        setIsShown(true);
+        setIsFadingOut(false);
+        const videoInput = document.getElementById('userVideo')
+        let firstSeen: number | null = null;
+        for (;;) {
+            await sleep(100, signal);
+            let detection: {score: number} | undefined;
+            try {
+                const faceapi = await abortable(loadFaceApi(), signal)
+                detection = await abortable<{score: number} | undefined>(
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                    // @ts-expect-error
+                    faceapi.detectSingleFace(videoInput, new faceapi.TinyFaceDetectorOptions({inputSize:224})),
+                    signal);
+            } catch (error) {
+                if (error instanceof Aborted) {
+                    throw error;
                 }
+                // Keep trying. If it never works, the participant can skip it.
+                console.error("Couldn't check for a face:", error);
+                continue;
+            }
+            if (detection != null && detection.score > .5) {
+                firstSeen ??= Date.now();
+                const elapsed = Date.now() - firstSeen;
+                setProgress(elapsed / props.detectionDuration)
+                if (elapsed > props.detectionDuration) {
+                    events.announce("Face found")
+                    setProgress(1)
+                    return;
+                }
+            } else {
+                // No face detected. Time to reset our counter
+                firstSeen = null;
+                setProgress(0)
+            }
+        }
+    }
 
-            }, 100)
-
-        },
-        stop: () => {
-            clearInterval(intervalRef.current)
-            setProgress(0)
-        },
+    useImperativeHandle(ref, () => ({
+        detect,
         hide: () => {
             // Leave the checkmark up long enough to read as confirmation
             setTimeout(()=>{

@@ -52,4 +52,6 @@ declare module "virtual:teddy-study" {
     export const videoLogPrompts: Record<string, TextItem>;
     export const reels: Record<string, ReelItem>;
     export const questions: Record<string, QuestionItem>;
+    // Each module's item IDs in the CSV's order, by module name.
+    export const itemIDs: Record<string, string[]>;
 }

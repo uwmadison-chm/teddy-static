@@ -20,10 +20,27 @@ export interface RecordingInfo {
     item?: string;
 }
 
-export interface UserVideoFunctions {
-    record: (info: RecordingInfo, onComplete:() => void, timeout?:number) => void;
+export interface RecordOptions {
+    // The longest this recording may run, in milliseconds. The study's limit
+    // applies too.
+    timeout?: number;
+    // Stops the recording when it fires.
+    signal?: AbortSignal;
+}
+
+// One recording. Starting another stops this one.
+export interface Recording {
+    // Resolves when the recorder has stopped and handed over its last part,
+    // however it was stopped.
+    done: Promise<void>;
+    // Stops this recording, if it's still going. Safe to call more than once.
     stop: () => void;
-    getIsRecording: () => boolean;
+}
+
+export interface UserVideoFunctions {
+    record: (info: RecordingInfo, options?: RecordOptions) => Recording;
+    // Resolves once the camera is showing.
+    ready: () => Promise<void>;
 }
 
 export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((props, ref) => {
@@ -31,18 +48,22 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
     const navigate = useAnimatedNavigate();
     const location = useLocation();
     const videoElementRef = useRef<HTMLVideoElement>(null);
-    const mediaRecorderRef = useRef<MediaRecorder>(null);
-    const recordingInfoRef = useRef<RecordingInfo>(null);
-    const timeoutRef = useRef<number>(null);
+    const currentRef = useRef<Recording>(null);
+    // Resolved once the camera is showing.
+    const [ready] = useState(() => {
+        let resolve: () => void;
+        const promise = new Promise<void>((r) => { resolve = r; });
+        return {promise, resolve: () => resolve()};
+    });
 
     const [silhouetteShown, setSilhouetteShown] = useState<boolean>(localStorage.getItem("SilhouetteShown") == "true");
-    const isRecording = useRef<boolean>(false);
 
 
     const startCamera = useEffectEvent(() => {
         getCameraStream()
             .then((localMediaStream) => {
                 videoElementRef.current.srcObject = localMediaStream;
+                ready.resolve();
                 if (props.onInitialized != null) {
                     props.onInitialized()
                 }
@@ -60,21 +81,23 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
 
     useEffect(() => {
         startCamera()
+        // Nothing records past its screen.
+        return () => currentRef.current?.stop();
     }, [])
 
     // Each recording gets its own MediaRecorder, which pig's client starts and
     // sends to pig as one media item, in parts, as it records. A recorder
     // delivers its last part and its stop event a moment after stop() is
     // called, so nothing is shared between recordings.
-    function startRecording(info: RecordingInfo, onComplete:()=>void, timeout?:number) {
-        if (isRecording.current) {
-            stopRecording();
-        }
+    function startRecording(info: RecordingInfo, options: RecordOptions = {}): Recording {
+        currentRef.current?.stop();
         const stream = videoElementRef.current.srcObject as MediaStream;
         const recorder = new MediaRecorder(stream, recorderOptions());
-        recorder.addEventListener("stop", () => {
-            CurrentSessionData.logEvent("recordingStopped", {...info});
-            onComplete();
+        const done = new Promise<void>((resolve) => {
+            recorder.addEventListener("stop", () => {
+                CurrentSessionData.logEvent("recordingStopped", {...info});
+                resolve();
+            });
         });
         // This starts the recorder before it returns; the media item's event is
         // stamped with the moment the recorder says it started.
@@ -83,52 +106,44 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
                 console.error("Couldn't record:", error);
                 CurrentSessionData.logEvent("recordingError", {...info, message: String(error)});
             });
-        mediaRecorderRef.current = recorder;
-        recordingInfoRef.current = info;
 
-        if (timeoutRef.current != null) {
-            clearTimeout(timeoutRef.current);
-            timeoutRef.current = null;
-        }
+        let stopped = false;
+        const stop = () => {
+            if (stopped) {
+                return;
+            }
+            stopped = true;
+            clearTimeout(timer);
+            options.signal?.removeEventListener("abort", stop);
+            // Logged when stop is asked for, which is when the participant was
+            // done; the recorder's own stop comes a little later.
+            CurrentSessionData.logEvent("recordingStopRequested", {...info});
+            if (recorder.state != "inactive") {
+                recorder.stop();
+            }
+            if (currentRef.current == recording) {
+                currentRef.current = null;
+                events.emit("recordingnotificationstatus", false);
+            }
+        };
+
         // No recording runs past the study's limit, whatever the module asks for.
-        const limit = Math.min(timeout || Infinity, Config.recording.maxSeconds * 1000);
-        timeoutRef.current = window.setTimeout(() => {
+        const limit = Math.min(options.timeout || Infinity, Config.recording.maxSeconds * 1000);
+        const timer = window.setTimeout(() => {
             CurrentSessionData.logEvent("recordingTimedOut", {...info, seconds: limit / 1000});
-            stopRecording();
+            stop();
         }, limit);
-        events.emit("recordingnotificationstatus", true);
-        isRecording.current = true;
-    }
+        options.signal?.addEventListener("abort", stop, {once: true});
 
-    const stopRecording = () => {
-        if (! isRecording.current) {
-            return;
-        }
-        if (timeoutRef.current != null) {
-            clearTimeout(timeoutRef.current);
-            timeoutRef.current = null;
-        }
-        // Logged when stop is asked for, which is when the participant was done;
-        // the recorder's own stop comes a little later.
-        CurrentSessionData.logEvent("recordingStopRequested", {...recordingInfoRef.current});
-        if (mediaRecorderRef.current.state != "inactive") {
-            mediaRecorderRef.current.stop();
-        }
-        mediaRecorderRef.current = null;
-        events.emit("recordingnotificationstatus", false);
-        isRecording.current = false;
+        const recording: Recording = {done, stop};
+        currentRef.current = recording;
+        events.emit("recordingnotificationstatus", true);
+        return recording;
     }
 
     useImperativeHandle(ref, () => ({
-        record: (info, onComplete, timeout) => {
-            startRecording(info, onComplete, timeout);
-        },
-        stop: () => {
-            stopRecording()
-        },
-        getIsRecording: () => {
-            return isRecording.current
-        }
+        record: startRecording,
+        ready: () => ready.promise,
     }));
 
     return (

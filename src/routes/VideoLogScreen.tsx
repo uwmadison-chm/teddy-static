@@ -1,4 +1,4 @@
-import {saveBlob, useAnimatedNavigate} from "@/utils/utils"
+import {useAnimatedNavigate} from "@/utils/utils"
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {
@@ -7,17 +7,14 @@ import {
     type FadingPanelFunctions,
     FadingPanelSet
 } from "@/components/FadingPanelSet.tsx";
-import {useCallback, useEffect, useRef, useState} from "react";
+import {useCallback, useRef} from "react";
 import {UserVideo, type UserVideoFunctions} from "@/components/UserVideo.tsx";
-import {FaceDetector} from "@/components/FaceDetector.tsx";
 import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.tsx";
-import {CountdownTimer} from "@/components/CountdownTimer.tsx";
-import {Colors} from "@/utils/colors.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {videoLogPrompts} from "virtual:teddy-study";
 import {PromptText, type PromptTextFunctions} from "@/components/PromptText.tsx";
-import * as React from "react";
-import {FaQuestion, FaQuestionCircle} from "react-icons/fa";
+import {FaQuestionCircle} from "react-icons/fa";
+import {firstOf, sleep, useChoice, useScript} from "@/utils/script.ts";
 
 const BUTTON_POPUP_DELAY = 5000;
 const MAX_RECORDING_DURATION = 90 * 1000;
@@ -35,140 +32,95 @@ export default function VideoLogScreen() {
     const fadingPanelRef = useRef<FadingPanelFunctions>(null);
     const userVideoRef = useRef<UserVideoFunctions>(null);
     const microphoneIndicatorRef = useRef(null);
-    const promptIDs = useRef(CurrentSessionData.getCurrentModuleArgs());
-    const currentPromptIndex = useRef(0);
-
     const promptTextRef = useRef<PromptTextFunctions>(null);
+    const ready = useChoice();
+    const startRecording = useChoice();
+    const done = useChoice();
+    const next = useChoice();
 
-    const completeButtonDelayTimeout = useRef(null);
+    useScript(async (signal) => {
+        const teddy = teddyRef.current;
+        const panels = fadingPanelRef.current;
+        const promptIDs = CurrentSessionData.getCurrentModuleArgs();
 
-    const [isRecording, setIsRecording] = useState(false);
+        console.log("Starting videoLog module with prompts:", promptIDs)
+        CurrentSessionData.logEvent("videoLogScreenStarted", promptIDs.toString())
 
-    useEffect(() => {
-        if (teddyRef != null) {
+        const promptDescription = promptIDs.length == 1 ?
+            "a prompt" : "a couple prompts";
+        const promptWord = promptIDs.length == 1 ?
+            "prompt" : "prompts";
+        await teddy.say(TeddyAnimations.WAVE_SHORT,
+            [`For this next part, I'm going to ask you ${promptDescription}.`,
+                `Please talk about the ${promptWord} as long as you need.`,
+                "And please keep your face in frame the whole time!"],
+            signal);
 
-            console.log("Starting videoLog module with prompts:", promptIDs.current)
+        for (let index = 0; index < promptIDs.length; index++) {
+            const id = promptIDs[index];
+            if (index > 0) {
+                teddy.playAnimation(TeddyAnimations.IDLE);
+                const remaining = promptIDs.length - index;
+                const promptDescription = remaining == 1 ?
+                    "one more prompt" : `${remaining} more prompts`;
+                await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY,
+                    ["Keep it up!",
+                        `You have ${promptDescription} to go. Let's go!`,
+                        "Ready?"],
+                    signal);
+            }
+            panels.showStartPanel();
+            await ready.next(signal);
 
-            CurrentSessionData.logEvent("videoLogScreenStarted", promptIDs.current.toString())
+            // The prompt, and a moment to think about it before recording.
+            const prompt = videoLogPrompts[id];
+            CurrentSessionData.logEvent("videoLogPromptShown", {id: prompt.id, text: prompt.text})
+            teddy.say(TeddyAnimations.IDLE, "Please think about the following prompt and press the button when you're ready.")
+            promptTextRef.current.showText(prompt.text, MAX_RECORDING_DURATION)
+            panels.showPanel(null)
+            await sleep(2000, signal);
+            panels.showPanel("startRecordingButton");
+            await startRecording.next(signal);
 
-            const promptDescription = promptIDs.current.length == 1 ?
-                "a prompt" : "a couple prompts";
-            const promptWord = promptIDs.current.length == 1 ?
-                "prompt" : "prompts";
-            teddyRef.current.showTextSequence(TeddyAnimations.WAVE_SHORT,
-                [`For this next part, I'm going to ask you ${promptDescription}.`,
-                    `Please talk about the ${promptWord} as long as you need.`,
-                    "And please keep your face in frame the whole time!"],
-                () => {
-                    fadingPanelRef.current?.showStartPanel()
-                }
-            );
+            promptTextRef.current.startTimer();
+            CurrentSessionData.logEvent("videoLogRecordingStarted", id)
+            const recording = userVideoRef.current.record({kind: "videoLog", item: id},
+                {timeout: MAX_RECORDING_DURATION, signal});
+            teddy.say(TeddyAnimations.LISTEN, "Please answer the prompt out loud.", undefined, {skipAnimation: true})
+            panels.showPanel(null);
+
+            // The participant says when they're done, once the button shows up,
+            // or the recording runs out of time.
+            await firstOf(signal,
+                () => recording.done,
+                async (signal) => {
+                    await sleep(BUTTON_POPUP_DELAY, signal);
+                    panels.showStartPanel("completeRecordingButton");
+                    await done.next(signal);
+                    CurrentSessionData.logEvent("completePromptButton", id)
+                    recording.stop();
+                    await recording.done;
+                });
+            CurrentSessionData.logEvent("videoLogRecordingEnded", id)
+            panels.showPanel(null);
+            promptTextRef.current.hide()
         }
-    }, [teddyRef])
+
+        teddy.playAnimation(TeddyAnimations.IDLE);
+        const hasMoreModules = CurrentSessionData.hasMoreModules();
+        await teddy.say(TeddyAnimations.SUCCESS,
+            ["I knew you could do it!",
+                hasMoreModules ? "Are you ready for the next module?" : "Now all we have to do is finish up our session."],
+            signal);
+        CurrentSessionData.logEvent(hasMoreModules ? "videoLogScreenNextModule" : "videoLogScreenFinishSession")
+        panels.showStartPanel(hasMoreModules ? "nextModule" : "finishSession");
+        await next.next(signal);
+        CurrentSessionData.navigateToNextModule(navigate);
+    });
 
     const onVideoInitialized = useCallback(() => {
         microphoneIndicatorRef.current.start()
     }, [])
-
-    const completeModule = useCallback(() => {
-        const hasMoreModules = CurrentSessionData.hasMoreModules()
-        teddyRef.current.playAnimation(TeddyAnimations.IDLE);
-        if (hasMoreModules) {
-            teddyRef.current?.showTextSequence(TeddyAnimations.SUCCESS,
-                [
-                    "I knew you could do it!",
-                    "Are you ready for the next module?",
-                ],
-                () => {
-                    CurrentSessionData.logEvent("videoLogScreenNextModule")
-                    fadingPanelRef.current.showStartPanel("nextModule");
-            });
-        } else {
-            teddyRef.current?.showTextSequence(TeddyAnimations.SUCCESS,
-                [
-                    "I knew you could do it!",
-                    "Now all we have to do is finish up our session.",
-                ],
-                () => {
-                    CurrentSessionData.logEvent("videoLogScreenFinishSession")
-                    fadingPanelRef.current.showStartPanel("finishSession");
-                });
-        }
-    }, [])
-
-    const introduceNextPrompt = useCallback(() => {
-        currentPromptIndex.current = currentPromptIndex.current + 1;
-        teddyRef.current.playAnimation(TeddyAnimations.IDLE);
-        const remainingPrompts = promptIDs.current.length - currentPromptIndex.current;
-
-        const promptDescription = remainingPrompts == 1 ?
-            "one more prompt" : `${remainingPrompts} more prompts`;
-
-        teddyRef.current?.showTextSequence(TeddyAnimations.SLIGHTLY_HAPPY,
-            [
-                "Keep it up!",
-                `You have ${promptDescription} to go. Let's go!`,
-                "Ready?",
-            ],
-            () => {
-                fadingPanelRef.current?.showStartPanel()
-            }
-        );
-
-    }, [])
-
-    function showPrompt() {
-        if (completeButtonDelayTimeout.current != null) {
-            clearTimeout(completeButtonDelayTimeout.current);
-            completeButtonDelayTimeout.current = null
-        }
-        const prompt = videoLogPrompts[promptIDs.current[currentPromptIndex.current]];
-        CurrentSessionData.logEvent("videoLogPromptShown", {id: prompt.id, text: prompt.text})
-
-        teddyRef.current.showText(TeddyAnimations.IDLE, "Please think about the following prompt and press the button when you're ready.")
-
-        promptTextRef.current.showText(prompt.text, MAX_RECORDING_DURATION)
-
-        fadingPanelRef.current?.showPanel(null)
-        setTimeout(()=>{
-            fadingPanelRef.current?.showPanel("startRecordingButton");
-        }, 2000)
-
-    }
-
-    function startPromptRecording() {
-        setIsRecording(true)
-        promptTextRef.current.startTimer();
-
-        CurrentSessionData.logEvent("videoLogRecordingStarted", promptIDs.current[currentPromptIndex.current])
-        userVideoRef.current.record({kind: "videoLog", item: promptIDs.current[currentPromptIndex.current]}, ()=> {
-            CurrentSessionData.logEvent("videoLogRecordingEnded", promptIDs.current[currentPromptIndex.current])
-
-            if (completeButtonDelayTimeout.current != null) {
-                clearTimeout(completeButtonDelayTimeout.current);
-                completeButtonDelayTimeout.current = null
-            }
-            fadingPanelRef.current?.showPanel(null, ()=>{});
-
-            promptTextRef.current.hide()
-
-            setIsRecording(false);
-            promptTextRef.current.hide()
-            if (currentPromptIndex.current + 1 >= promptIDs.current.length) {
-                completeModule();
-            } else {
-                introduceNextPrompt();
-            }
-        }, MAX_RECORDING_DURATION)
-
-        completeButtonDelayTimeout.current = setTimeout(() => {
-            fadingPanelRef.current.showStartPanel("completeRecordingButton")
-        }, BUTTON_POPUP_DELAY)
-
-        teddyRef.current.showText(TeddyAnimations.LISTEN, "Please answer the prompt out loud.", true)
-        fadingPanelRef.current?.showPanel(null, ()=>{});
-
-    }
 
     return (
         <div className={"wrapper"}>
@@ -191,43 +143,27 @@ export default function VideoLogScreen() {
 
             <FadingPanelSet ref={fadingPanelRef}>
                 <FadingPanel label={FADING_PANEL_DEFAULT_LABEL}>
-                    <button
-                            onClick={(_e) => {
-                                showPrompt()
-                            }}>
+                    <button onClick={() => ready.pick()}>
                         I'm Ready!
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"startRecordingButton"}>
-                    <button
-                        onClick={(_e) => {
-                            startPromptRecording()
-                        }}>
+                    <button onClick={() => startRecording.pick()}>
                         Let's Start Recording
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"completeRecordingButton"}>
-                    <button
-                            onClick={(_e) => {
-                                CurrentSessionData.logEvent("completePromptButton", promptIDs.current[currentPromptIndex.current])
-                                userVideoRef.current.stop()
-                            }}>
+                    <button onClick={() => done.pick()}>
                         I'm Done
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"nextModule"}>
-                    <button
-                            onClick={(_e) => {
-                                CurrentSessionData.navigateToNextModule(navigate)
-                            }}>
+                    <button onClick={() => next.pick()}>
                         Let's Do This!
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"finishSession"}>
-                    <button
-                            onClick={(_e) => {
-                                CurrentSessionData.navigateToNextModule(navigate)
-                            }}>
+                    <button onClick={() => next.pick()}>
                         Let's Finish Up!
                     </button>
                 </FadingPanel>

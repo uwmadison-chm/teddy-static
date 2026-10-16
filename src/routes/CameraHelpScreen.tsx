@@ -1,4 +1,4 @@
-import {useEffect, useEffectEvent, useRef} from "react";
+import {useRef} from "react";
 import {useLocation} from "react-router";
 import {useAnimatedNavigate} from "@/utils/utils";
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
@@ -12,6 +12,7 @@ import {
 import {CurrentSessionData, setCanLeavePageSafely} from "@/data/sessionData.tsx";
 import {getCameraStream, stopCameraStream} from "@/data/camera.ts";
 import * as pig from "@/data/pig.ts";
+import {abortable, Aborted, useChoice, useScript} from "@/utils/script.ts";
 
 export interface CameraHelpState {
     // The name of the error getUserMedia failed with, like "NotAllowedError".
@@ -58,66 +59,11 @@ export default function CameraHelpScreen() {
     const state = (location.state || {errorName: "", returnTo: "/calibration"}) as CameraHelpState;
     const teddyRef = useRef<TeddyFunctions>(null);
     const fadingPanelRef = useRef<FadingPanelFunctions>(null);
-    const isTrying = useRef(false);
+    const help = useChoice<"retry" | "giveUp">();
 
-    function explain(errorName: string, isRetry: boolean) {
-        const lines = explanation(errorName);
-        if (isRetry) {
-            lines.unshift("Hmm, that still didn't work.");
-        }
-        teddyRef.current?.showTextSequence(TeddyAnimations.SADNESS, lines, () => {
-            fadingPanelRef.current?.showStartPanel();
-        });
-    }
-
-    function tryAgain() {
-        if (isTrying.current) {
-            return;
-        }
-        isTrying.current = true;
-        fadingPanelRef.current?.showPanel(null);
-        CurrentSessionData.logEvent("cameraRetry");
-        getCameraStream()
-            .then(() => {
-                CurrentSessionData.logEvent("cameraWorking");
-                teddyRef.current?.showText(TeddyAnimations.SUCCESS, "That did it! Let's keep going.", false, () => {
-                    navigate(state.returnTo);
-                });
-            })
-            .catch((error) => {
-                isTrying.current = false;
-                CurrentSessionData.logEvent("cameraError", error.name);
-                explain(error.name, true);
-            });
-    }
-
-    function giveUp() {
-        CurrentSessionData.logEvent("cameraUnavailable", state.errorName);
-        stopCameraStream();
-        fadingPanelRef.current?.showPanel(null);
-        // There's no recording to wait for, just a few events, so this is quick.
-        const sent = pig.finishRun(() => {}).catch((error) => {
-            console.error("Couldn't finish sending to pig:", error);
-        });
-        const nextURL = CurrentSessionData.nextURL;
-        teddyRef.current?.showTextSequence(TeddyAnimations.SLIGHTLY_HAPPY,
-            ["That's okay. Thanks for trying!"],
-            () => {
-                sent.then(() => {
-                    setCanLeavePageSafely();
-                    if (nextURL) {
-                        teddyRef.current?.showText(TeddyAnimations.SLIGHTLY_HAPPY, "Press the button to continue.", false, () => {
-                            fadingPanelRef.current?.showStartPanel("continue");
-                        });
-                    } else {
-                        teddyRef.current?.showText(TeddyAnimations.WAVE, "You can close this tab now.");
-                    }
-                });
-            });
-    }
-
-    const onMount = useEffectEvent((removers: (() => void)[]) => {
-        explain(state.errorName, false);
+    useScript(async (signal) => {
+        const teddy = teddyRef.current;
+        const panels = fadingPanelRef.current;
 
         // Where the browser can tell us, try again on our own as soon as the
         // participant allows the camera and microphone in the browser's settings.
@@ -126,27 +72,65 @@ export default function CameraHelpScreen() {
                 .then((status) => {
                     const onChange = () => {
                         if (status.state == "granted") {
-                            tryAgain();
+                            help.pick("retry");
                         }
                     };
                     status.addEventListener("change", onChange);
-                    removers.push(() => status.removeEventListener("change", onChange));
+                    signal.addEventListener("abort", () => status.removeEventListener("change", onChange));
                 })
                 .catch(() => {
                     // This browser can't report this permission. The button still works.
                 });
         }
-    });
 
-    useEffect(() => {
-        const removers: (() => void)[] = [];
-        onMount(removers);
-        return () => {
-            for (const remove of removers) {
-                remove();
+        let errorName = state.errorName;
+        for (let isRetry = false; ; isRetry = true) {
+            const lines = explanation(errorName);
+            if (isRetry) {
+                lines.unshift("Hmm, that still didn't work.");
             }
-        };
-    }, []);
+            // Listen from the start: the permission can change while Teddy talks.
+            const chosen = help.next(signal);
+            teddy.say(TeddyAnimations.SADNESS, lines, signal)
+                .then(() => panels.showStartPanel(), () => {});
+            if (await chosen == "giveUp") {
+                break;
+            }
+            panels.showPanel(null);
+            CurrentSessionData.logEvent("cameraRetry");
+            try {
+                await abortable(getCameraStream(), signal);
+            } catch (error) {
+                if (error instanceof Aborted) {
+                    throw error;
+                }
+                CurrentSessionData.logEvent("cameraError", error.name);
+                errorName = error.name;
+                continue;
+            }
+            CurrentSessionData.logEvent("cameraWorking");
+            await teddy.say(TeddyAnimations.SUCCESS, "That did it! Let's keep going.", signal);
+            navigate(state.returnTo);
+            return;
+        }
+
+        CurrentSessionData.logEvent("cameraUnavailable", state.errorName);
+        stopCameraStream();
+        panels.showPanel(null);
+        // There's no recording to wait for, just a few events, so this is quick.
+        const sent = pig.finishRun(() => {}).catch((error) => {
+            console.error("Couldn't finish sending to pig:", error);
+        });
+        await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY, "That's okay. Thanks for trying!", signal);
+        await abortable(sent, signal);
+        setCanLeavePageSafely();
+        if (CurrentSessionData.nextURL) {
+            await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY, "Press the button to continue.", signal);
+            panels.showStartPanel("continue");
+        } else {
+            teddy.say(TeddyAnimations.WAVE, "You can close this tab now.");
+        }
+    });
 
     return (
         <div className={"wrapper"}>
@@ -156,10 +140,10 @@ export default function CameraHelpScreen() {
             />
             <FadingPanelSet ref={fadingPanelRef}>
                 <FadingPanel label={FADING_PANEL_DEFAULT_LABEL}>
-                    <button onClick={(_e) => { tryAgain(); }}>
+                    <button onClick={() => help.pick("retry")}>
                         Try Again
                     </button>
-                    <button onClick={(_e) => { giveUp(); }}>
+                    <button onClick={() => help.pick("giveUp")}>
                         I Can't Get This Working
                     </button>
                 </FadingPanel>

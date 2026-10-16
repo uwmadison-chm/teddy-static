@@ -266,14 +266,20 @@ export default function teddyStudy(): Plugin {
             // name any other module are refused.
             const moduleFiles = (config.modules || {}) as Record<string, string>;
             const items: Record<string, Record<string, Row>> = {};
+            // Each module's IDs in the CSV's order, which objects keyed by ID
+            // don't keep: "10" sorts before "09".
+            const itemIDs: Record<string, string[]> = {};
             for (const [module, columns] of Object.entries(MODULE_COLUMNS)) {
                 if (!moduleFiles[module]) {
                     items[module] = {};
+                    itemIDs[module] = [];
                     continue;
                 }
                 const path = resolve(studyDir, moduleFiles[module]);
                 watch(path);
-                items[module] = Object.fromEntries(loadItems(path, columns).map(row => [row.id, row]));
+                const rows = loadItems(path, columns);
+                items[module] = Object.fromEntries(rows.map(row => [row.id, row]));
+                itemIDs[module] = rows.map(row => row.id);
             }
 
             // Each reel gets a url to play it from. Files are found relative to
@@ -330,6 +336,7 @@ export default function teddyStudy(): Plugin {
                 `export const videoLogPrompts = ${JSON.stringify(items.videolog)};`,
                 `export const reels = ${JSON.stringify(items.reels)};`,
                 `export const questions = ${JSON.stringify(questions)};`,
+                `export const itemIDs = ${JSON.stringify(itemIDs)};`,
             ].join("\n");
         },
 

@@ -12,6 +12,7 @@ import {
 import {SpeechBubble, type SpeechBubbleFunctions} from "@/components/SpeechBubble.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {prefersReducedMotion} from "@/utils/utils.tsx";
+import {abortable} from "@/utils/script.ts";
 
 // With reduced motion, Teddy holds still this long after starting an
 // animation. Motion that runs longer than 5 seconds next to other content
@@ -20,23 +21,26 @@ const REDUCED_MOTION_PLAY_MS = 4000;
 
 export interface TeddyProps {
     initialAnimation?: string,
-    initialText?: string;
-    onComplete?: () => void;
     isSmallTeddy?: boolean;
-    textStyleOverride?: object;
-    bubbleStyleOverride?: object;
+}
+
+export interface SayOptions {
+    // Show the line all at once rather than typing it out.
+    skipAnimation?: boolean;
 }
 
 export interface TeddyFunctions {
-    showText: (animation:string|null, text: string, autoShow?: boolean, callback?: () => void, maxTimeout?: number) => void;
-    showTextSequence: (animation:string|null, textArray: Array<string>, callback?: () => void, maxTimeout?: number) => void;
-    blockerTapped: () => void;
+    // Plays `animation` and says `lines` in the speech bubble, one at a time.
+    // Resolves when the last line is all showing, or when Teddy is given
+    // something else to say first. With a signal, rejects with Aborted when it
+    // fires.
+    say: (animation: string | null, lines: string | string[], signal?: AbortSignal, options?: SayOptions) => Promise<void>;
     hideTextbox: () => void;
     showTextbox: () => void;
     playAnimation:(animation:string) => void;
 }
 
-export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnimation, isSmallTeddy, ...textBubblesProps}, ref) => {
+export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnimation, isSmallTeddy}, ref) => {
 
     const stateMachineAnimations = useRef({} as { [id: string] : StateMachineInput; })
     const speechBubbleRef = useRef<SpeechBubbleFunctions>(null)
@@ -130,27 +134,15 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
     }, [initialStateMachineInput]);
 
     useImperativeHandle(ref, () => ({
-        showText: (animation, newText, skipAnimation=false, callback, maxTextDuration) => {
+        say: (animation, lines, signal, options) => {
             playAnimation(animation)
-
-            if (speechBubbleRef.current != null) {
-                speechBubbleRef.current.showText(newText, skipAnimation, callback, maxTextDuration)
-            }
-        },
-        showTextSequence: (animation, textArray, callback, maxTextDuration) => {
-            playAnimation(animation)
-
-            if (speechBubbleRef.current != null) {
-                speechBubbleRef.current.showTextSequence(textArray, callback, maxTextDuration)
-            }
+            const said = speechBubbleRef.current?.say(
+                typeof lines == "string" ? [lines] : [...lines],
+                options?.skipAnimation) ?? Promise.resolve();
+            return signal ? abortable(said, signal) : said;
         },
         playAnimation: (animation) => {
             playAnimation(animation);
-        },
-        blockerTapped: () => {
-            if (speechBubbleRef.current != null) {
-                speechBubbleRef.current.blockerTapped();
-            }
         },
         hideTextbox: () => {
             if (speechBubbleRef.current != null) {
@@ -172,7 +164,7 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
                     className='teddy-canvas' />
             </div>
             <div className={"speechbubble-slot"}>
-                <SpeechBubble ref={speechBubbleRef} {...textBubblesProps} />
+                <SpeechBubble ref={speechBubbleRef} />
             </div>
 
         </div>
