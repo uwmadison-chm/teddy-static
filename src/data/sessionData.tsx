@@ -1,23 +1,6 @@
 import {allowedNextURL} from "@/data/config.ts";
-import {modules, questions, reels, sentences, videoLogPrompts} from "virtual:teddy-study";
 import {sendEvent} from "@/data/pig.ts";
-
-const ModuleNames = {
-    Questions: "questions",
-    Reels: "reels",
-    Sentence: "sentence",
-    VideoLog: "videolog",
-}
-
-class ModuleParam {
-    module: string;
-    args: string[];
-
-    constructor(module: string, args: string[]) {
-        this.module = module;
-        this.args = args;
-    }
-}
+import {type ModuleParam, parseModules} from "@/data/links.ts";
 
 // The session's state. What happens in it goes to pig as events, through
 // logEvent(); the link's parameters reach pig when the run starts (see pig.ts).
@@ -42,41 +25,13 @@ class SessionData {
             console.warn("Ignoring nextURL; it isn't an allowed http(s) URL:", params.get("nextURL"));
             this.logEvent("nextURLRejected", params.get("nextURL"));
         }
-        this.modules = [];
         this.currentModule = -1;
 
         // Problems with the link that mean the session can't run as asked.
-        this.linkProblems = [];
         // With no modules, the session is just the face check and calibration.
-        const modulesText = params.get("modules") || "";
-        for (const moduleText of modulesText.split("|").filter(x => !!x)) {
-            const parts = moduleText.split(":");
-            const moduleName = parts[0].toLowerCase();
-            const args = (parts[1] || "").split(",").filter(x => !!x);
-            if (!Object.values(ModuleNames).includes(moduleName)) {
-                this.linkProblems.push(`There's no module called ${parts[0]}`);
-                continue;
-            }
-            if (!modules.includes(moduleName)) {
-                this.linkProblems.push(`This study doesn't use the ${moduleName} module`);
-                continue;
-            }
-            this.modules.push(new ModuleParam(moduleName, args));
-            if (!args.length) {
-                this.linkProblems.push(`The ${moduleName} module needs item IDs, like ${moduleName}:01,02`);
-            }
-            const known = {
-                [ModuleNames.Questions]: questions,
-                [ModuleNames.Reels]: reels,
-                [ModuleNames.Sentence]: sentences,
-                [ModuleNames.VideoLog]: videoLogPrompts,
-            }[moduleName];
-            for (const id of args) {
-                if (!(id in known)) {
-                    this.linkProblems.push(`The ${moduleName} module has no item with ID ${id}`);
-                }
-            }
-        }
+        const parsed = parseModules(params.get("modules") || "");
+        this.modules = parsed.modules;
+        this.linkProblems = parsed.problems;
         if (this.linkProblems.length) {
             console.error("Problems with this link:", this.linkProblems);
             this.logEvent("linkProblems", {problems: this.linkProblems});

@@ -3,7 +3,8 @@ import {useScript} from "@/utils/script.ts";
 import {useLocation} from "react-router";
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
-import {setCanLeavePageSafely} from "@/data/sessionData.tsx";
+import {CurrentSessionData, setCanLeavePageSafely} from "@/data/sessionData.tsx";
+import {Config} from "@/data/config.ts";
 import {stopCameraStream} from "@/data/camera.ts";
 
 
@@ -61,7 +62,16 @@ export default function LinkProblemScreen() {
                 ref={teddyRef}
                 initialAnimation={TeddyAnimations.SADNESS}
             />
-
+            {/* What's wrong, for whoever made the link. Participants don't see this. */}
+            {Config.debug && <div className={"debug-link-problems"}>
+                <ul>
+                    {state.code ?
+                        <li>pig wouldn't start the run: {state.code}</li> :
+                        CurrentSessionData.linkProblems.map((p, i) => <li key={i}>{p}</li>)}
+                </ul>
+                <a href={"?links&check=" + encodeURIComponent(window.location.href)}
+                   target={"_blank"} rel={"noreferrer"}>Check this link in the link builder</a>
+            </div>}
         </div>
     );
 }
