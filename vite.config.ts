@@ -18,7 +18,7 @@ export default defineConfig({
   ],
   // Relative base so the build works from any subdirectory
   base: './',
-  assetsInclude: ['src/assets/**'],
+  assetsInclude: ['src/assets/**/*.shard'],
   server: {
     port: 9000,
   },
