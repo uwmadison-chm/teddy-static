@@ -1,6 +1,6 @@
 # Teddy's events
 
-Event schema **1.1**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event.
+Event schema **1.0**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event.
 
 ## Versioning
 
@@ -167,4 +167,3 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 ## Changelog
 
 - **1.0**: the first version.
-- **1.1**: added `face_check_tips_shown`. `face_check_result` replaces `face_detected` and `face_check_bypassed`; no data had been collected under 1.0.
