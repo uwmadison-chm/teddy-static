@@ -37,8 +37,9 @@ export default function CalibrationScreen() {
         CurrentSessionData.calibrating = true;
         CurrentSessionData.startModule();
 
-        // Look for a face. If none turns up for a while, the participant can
-        // say they're there.
+        // Look for a face. It's only there to help the participant frame
+        // themselves, so after a while they can move on without one, and if
+        // the detector can't run at all we just log it and carry on.
         teddy.say(TeddyAnimations.PEERING, "Checking to see if I can detect your face...");
         await abortable(video.ready(), signal);
         const faceRecording = video.record({kind: "face_check"}, {timeout: 15000, signal});
@@ -46,14 +47,20 @@ export default function CalibrationScreen() {
         const timerCompleteAudio = new Audio(timerCompleteUrl);
         await firstOf(signal,
             async (signal) => {
-                await faceDetectorRef.current.detect(signal);
-                CurrentSessionData.logEvent("face_detected")
+                const result = await faceDetectorRef.current.detect(signal, {
+                    onTrouble: () => {
+                        CurrentSessionData.logEvent("face_check_tips_shown")
+                        teddy.say(TeddyAnimations.PEERING, "I can't quite see you yet. These might help.");
+                    },
+                });
+                CurrentSessionData.logEvent("face_check_result",
+                    {result: result.found ? "found" : "unavailable", ...faceDetectorRef.current.summary()})
             },
             async (signal) => {
-                await sleep(9000, signal);
+                await sleep(6000, signal);
                 panels.showStartPanel();
                 await bypass.next(signal);
-                CurrentSessionData.logEvent("face_check_bypassed")
+                CurrentSessionData.logEvent("face_check_result", {result: "bypassed", ...faceDetectorRef.current.summary()})
             });
 
         panels.showPanel(null);
@@ -140,7 +147,7 @@ export default function CalibrationScreen() {
             <FadingPanelSet ref={fadingPanelRef}>
                 <FadingPanel label={FADING_PANEL_DEFAULT_LABEL}>
                     <button onClick={() => bypass.pick()}>
-                        I'm Here!
+                        Let's Continue Anyhow
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"startFaceCalibration"}>
