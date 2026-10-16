@@ -181,3 +181,66 @@
     mask-size: cover;
   }
 }
+
+// Tips for when the face detector can't find the participant. Each tip we can
+// check gets a box that fills in once the camera's picture seems to meet it.
+.face-tips {
+  flex-shrink: 0;
+  margin: 1.5vh 12% 0;
+  font-size: sizes.text(2);
+  cursor: default;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+
+  &.shown {
+    opacity: 1;
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    margin: 0.4em 0;
+  }
+
+  .box {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.2em;
+    height: 1.2em;
+    border: 2px solid colors.$primaryColor1;
+    border-radius: 0.25em;
+    color: colors.$onPrimary;
+    font-size: 0.9em;
+    transition: background-color 0.3s ease;
+  }
+
+  li.ok .box {
+    background-color: colors.$primaryColor2;
+    border-color: colors.$primaryColor2;
+  }
+
+  // Tips we can't check get a dot instead of a box.
+  li.unchecked .box {
+    border: none;
+    &::before {
+      content: "";
+      width: 0.4em;
+      height: 0.4em;
+      border-radius: 50%;
+      background-color: colors.$primaryColor2;
+    }
+  }
+
+  p {
+    margin: 0.8em 0 0;
+  }
+}
