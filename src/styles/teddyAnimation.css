@@ -1,6 +1,3 @@
-@use "./colors.scss";
-@use "./sizes.scss";
-
 .teddy {
     flex-shrink: 0;
 }
@@ -22,11 +19,11 @@
     height: 100%;
 }
 
-// Room for three lines of speech, so whatever's below doesn't move as Teddy
-// says shorter or longer things. Longer lines push it down.
+/* Room for three lines of speech, so whatever's below doesn't move as Teddy
+   says shorter or longer things. Longer lines push it down. */
 .speechbubble-slot {
     flex-shrink: 0;
-    font-size: sizes.text(2.4);
+    font-size: max(2.4vh, 2.4rem * var(--rem-per-vh));
     min-height: calc(3 * 1.4em + 4vh + 2px);
 }
 
@@ -40,15 +37,12 @@
     box-shadow: rgba(0,0,0,.2) 2px 4px 4px;
     border: 1px solid #f0f0f0;
     z-index: 100;
-    font-size: sizes.text(2.4);
+    font-size: max(2.4vh, 2.4rem * var(--rem-per-vh));
     text-align: center;
     display: flex;
     line-height:1.4em;
     cursor: default;
     user-select: none;
-
-    $tail_height: 3vh;
-    $tail_width: $tail_height * .75;
 
     .small & {
         margin-top: 6%;
@@ -57,11 +51,12 @@
     .speechbubble_tail_parent {
         position: absolute;
         overflow-y: clip;
-        top: -($tail_height);
-        height:($tail_height);
+        top: -3vh;
+        height:3vh;
         width:100%;
         left:0;
     }
+    /* 3vh tall, 2.25vh wide */
     .speechbubble_tail {
         position: absolute;
         background:transparent;
@@ -69,10 +64,10 @@
         left: 65%;
         height:0px;
         width:0px;
-        border-left: calc($tail_width/2) solid white;
-        border-bottom: calc($tail_height/2) solid white;
-        border-right: calc($tail_width/2) solid transparent;
-        border-top: calc($tail_height/2) solid transparent;
+        border-left: 1.125vh solid white;
+        border-bottom: 1.5vh solid white;
+        border-right: 1.125vh solid transparent;
+        border-top: 1.5vh solid transparent;
         filter:drop-shadow(6px 8px 4px rgba(0,0,0,.1)) drop-shadow(0px 0px 1px rgba(0,0,0,.3));
 
         .small & {
@@ -88,24 +83,24 @@
         position: absolute;
         bottom:.6vh;
         right:2vh;
-        font-size: sizes.text(1.5);
+        font-size: max(1.5vh, 1.5rem * var(--rem-per-vh));
         line-height:1.4em;
 
         &:focus-visible {
-            outline: 2px solid colors.$primaryColor3;
+            outline: 2px solid var(--primary-color-3);
             outline-offset: 2px;
             border-radius: 2px;
         }
 
         .arrow {
             padding-left:3px;
-            color: colors.$primaryColor;
-            font-size: sizes.text(1.4);
+            color: var(--primary-color);
+            font-size: max(1.4vh, 1.4rem * var(--rem-per-vh));
             margin-top:.25vh;
         }
     }
     &.has-next-text {
-        padding-bottom: sizes.text(3.5);
+        padding-bottom: max(3.5vh, 3.5rem * var(--rem-per-vh));
         .speechbubble_next {
             display: flex;
         }
