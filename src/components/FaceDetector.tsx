@@ -251,7 +251,7 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
                     <div
                         className={"circle-progress-text"}
                         style={{color: mixColors("var(--primary-color)", "var(--primary-color-3)", progress)}}
-                    >{detected ? <FaCheck aria-hidden={true} /> : <FaUser aria-hidden={true} style={{opacity: 0.4}} />}</div>
+                    >{detected ? <FaCheck aria-hidden={true} /> : <FaUser aria-hidden={true} className={"waiting"} />}</div>
                 </CircularProgressbarWithChildren>
             </div>
             <div className={"face-tips" + (tipsShown ? " shown" : "")} hidden={!isShown}>

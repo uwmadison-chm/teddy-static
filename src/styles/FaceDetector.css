@@ -7,6 +7,11 @@
   }
 }
 
+/* The figure in the ring before a face is found */
+.face-detector .waiting {
+  opacity: 0.4;
+}
+
 /* Tips for when the face detector can't find the participant. Each tip we can
    check gets a box that fills in once the camera's picture seems to meet it. */
 .face-tips {
