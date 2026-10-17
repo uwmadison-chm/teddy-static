@@ -63,14 +63,14 @@
 
   font-family: "Noto Serif", serif;
 
-  font-size: max(2.4vh, 2.4rem * var(--rem-per-vh));
+  font-size: 1.2rem;
   line-height: 1.6em;
   position: relative;
   flex-shrink: 0;
   text-align: center;
 
-  padding: 4vh 10%;
-  margin-top: 1vh;
+  padding: 2rem 10%;
+  margin-top: 0.5rem;
 
   &::before,
   &::after {
@@ -90,5 +90,5 @@
 }
 
 .videolog-prompt {
-  margin-top: 11vh;
+  margin-top: 5.5rem;
 }

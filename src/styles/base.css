@@ -80,8 +80,8 @@ body, #root {
   display: flex;
   /* So the screen can grow past the window and scroll */
   align-items: flex-start;
-  /* Wider when zoomed in, so bigger text still has room */
-  max-width: max(60vh, 30rem);
+  /* About a phone's width. In rem, so it widens as text grows with zoom. */
+  max-width: 30rem;
   overflow-x: hidden;
   overflow-y: auto;
   position: relative;

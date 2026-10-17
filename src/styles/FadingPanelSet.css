@@ -1,15 +1,14 @@
 .fade-panel-set {
+    display: flex;
     position: relative;
     flex-shrink: 0;
     /* At the bottom of the screen, or below everything else if that's taller */
-    margin: auto 12% 7vh;
-    padding-top: 2vh;
+    margin: auto 12% 3.5rem;
+    padding-top: 1rem;
 
     .animated {
         flex: 1;
     }
-
-    display: flex;
 
     .fade-panel {
         display: flex;
@@ -18,9 +17,9 @@
 
     button {
         width: 100%;
-        margin-top: .2vh;
-        font-size: max(2.6vh, 2.6rem * var(--rem-per-vh));
-        padding: 1.8vh 5vh;
+        margin-top: 0.1rem;
+        font-size: 1.3rem;
+        padding: 0.9rem 2.5rem;
         height: auto;
         font-weight: 400;
         border: none;
@@ -44,12 +43,12 @@
         }
 
         &:first-child {
-            border-top-left-radius: 5vh;
-            border-top-right-radius: 5vh;
+            border-top-left-radius: 2.5rem;
+            border-top-right-radius: 2.5rem;
         }
         &:last-child {
-            border-bottom-left-radius: 5vh;
-            border-bottom-right-radius: 5vh;
+            border-bottom-left-radius: 2.5rem;
+            border-bottom-right-radius: 2.5rem;
         }
 
         &:nth-child(2) {

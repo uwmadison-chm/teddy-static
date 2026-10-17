@@ -5,13 +5,13 @@
 .teddy-frame {
     width: 40%;
     aspect-ratio: 1;
-    margin: 5vh auto 0;
+    margin: 2.5rem auto 0;
     overflow: hidden;
     border-radius: 50%;
 
     .small & {
         width: 25%;
-        margin: 5vh 10% 0;
+        margin: 2.5rem 10% 0;
     }
 }
 
@@ -24,6 +24,6 @@
    says shorter or longer things. Longer lines push it down. */
 .speechbubble-slot {
     flex-shrink: 0;
-    font-size: max(2.4vh, 2.4rem * var(--rem-per-vh));
-    min-height: calc(3 * 1.4em + 4vh + 2px);
+    font-size: 1.2rem;
+    min-height: calc(3 * 1.4em + 2rem + 2px);
 }

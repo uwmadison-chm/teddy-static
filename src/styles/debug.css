@@ -4,10 +4,10 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 0.5vh;
+  padding: 0.25rem;
   background-color: #b00020;
   color: white;
-  font-size: max(1.6vh, 1.6rem * var(--rem-per-vh));
+  font-size: 0.8rem;
   text-align: center;
   pointer-events: none;
   z-index: 1000;
@@ -21,12 +21,12 @@
 
 /* Under Teddy on the link problem screen, in debug mode. */
 .debug-link-problems {
-  margin: 2vh 5%;
+  margin: 1rem 5%;
   padding: 1em;
   background: white;
   border: 2px solid #b00020;
   border-radius: 8px;
-  font-size: max(1.6vh, 1.6rem * var(--rem-per-vh));
+  font-size: 0.8rem;
   user-select: text;
 
   ul {

@@ -1,21 +1,21 @@
-/* Each dot is 4vh wide and 3.5vh tall. */
+/* Three dots, each 2rem wide and 1.75rem tall: one dot and its shadows */
 .loader {
-  margin-bottom: 3vh;
-  width: calc(6 * 4vh);
-  height: calc(2 * 3.5vh);
+  margin-bottom: 1.5rem;
+  width: 12rem;
+  height: 3.5rem;
   margin-left: auto;
   margin-right: auto;
   display: flex;
   color: var(--uservideo-bg);
-  filter: drop-shadow(4vh 3.5vh 0 currentColor) drop-shadow(8vh 0 0 currentColor) drop-shadow(16vh 0 0 currentColor);
+  filter: drop-shadow(2rem 1.75rem 0 currentColor) drop-shadow(4rem 0 0 currentColor) drop-shadow(8rem 0 0 currentColor);
   clip-path: inset(0 100% 0 0);
   animation: l12 2s infinite steps(7);
 }
 
 .loader:before {
   content: "";
-  width: 4vh;
-  height: 3.5vh;
+  width: 2rem;
+  height: 1.75rem;
   --c:no-repeat radial-gradient(farthest-side,currentColor 92%,#0000);
   background:
           var(--c) left /70% 70%,
@@ -25,23 +25,23 @@
 }
 
 @keyframes l12 {
-  100% {clip-path: inset(0 -4vh 0 0)}
+  100% {clip-path: inset(0 -2rem 0 0)}
 }
 
 .loader-wrapper {
   position: relative;
   flex-shrink: 0;
-  margin-top: 6vh;
+  margin-top: 3rem;
   text-align: center;
-  font-size: max(3vh, 3rem * var(--rem-per-vh));
+  font-size: 1.5rem;
   font-weight:200;
 }
 
 .send-progress {
-  margin: 2vh auto 0;
+  margin: 1rem auto 0;
   width: 60%;
-  height: 1.2vh;
-  border-radius: 0.6vh;
+  height: 0.6rem;
+  border-radius: 0.3rem;
   background-color: #ddd;
   overflow: hidden;
 
@@ -53,6 +53,6 @@
 }
 
 .send-progress-text {
-  margin-top: 1vh;
-  font-size: max(2vh, 2rem * var(--rem-per-vh));
+  margin-top: 0.5rem;
+  font-size: 1rem;
 }

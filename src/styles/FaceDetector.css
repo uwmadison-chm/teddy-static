@@ -1,9 +1,9 @@
 .face-detector.small {
-  width: max(8vh, 8rem * var(--rem-per-vh));
-  height: max(8vh, 8rem * var(--rem-per-vh));
+  width: 4rem;
+  height: 4rem;
 
   .circle-progress-text {
-    font-size: max(3vh, 3rem * var(--rem-per-vh));
+    font-size: 1.5rem;
   }
 }
 
@@ -11,8 +11,8 @@
    check gets a box that fills in once the camera's picture seems to meet it. */
 .face-tips {
   flex-shrink: 0;
-  margin: 1.5vh 12% 0;
-  font-size: max(2vh, 2rem * var(--rem-per-vh));
+  margin: 0.75rem 12% 0;
+  font-size: 1rem;
   cursor: default;
   opacity: 0;
   transition: opacity 0.4s ease;
