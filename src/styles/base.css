@@ -51,7 +51,13 @@ body, #root {
 }
 
 /* Shared states. Components set these; each element's own rules say how it
-   changes into them (its transition). */
+   changes into them (its transition).
+
+   Motion: fades are fine with prefers-reduced-motion, but things that slide,
+   grow or bounce check it, in CSS next to their transition or in JS
+   (prefersReducedMotion() in utils.tsx) for Teddy, the panels and the
+   typewriter. The prompt timer, countdown rings and upload bar keep theirs,
+   since they show time passing. */
 [hidden] {
   display: none !important;
 }

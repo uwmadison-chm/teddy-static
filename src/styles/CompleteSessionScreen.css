@@ -10,6 +10,13 @@
   filter: drop-shadow(2rem 1.75rem 0 currentColor) drop-shadow(4rem 0 0 currentColor) drop-shadow(8rem 0 0 currentColor);
   clip-path: inset(0 100% 0 0);
   animation: l12 2s infinite steps(7);
+
+  /* Without motion, the dots just sit there; the progress bar shows it's
+     working. */
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    clip-path: none;
+  }
 }
 
 .loader:before {

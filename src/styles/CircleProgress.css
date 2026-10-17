@@ -3,6 +3,11 @@
 .face-detector {
   position: relative;
   transition: all 0.3s ease;
+  /* The face detector shrinks when the tips come up; without motion, it just
+     fades. */
+  @media (prefers-reduced-motion: reduce) {
+    transition-property: opacity;
+  }
   flex-shrink: 0;
   margin: 0.5rem auto 0;
   /* Sized like text, since it holds the countdown's numbers */

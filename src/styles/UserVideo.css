@@ -51,6 +51,14 @@
     transform: translateX(1rem);
   }
 
+  /* Without motion, the knob jumps to the other side */
+  @media (prefers-reduced-motion: reduce) {
+    .handle,
+    .handle:before {
+      transition: none;
+    }
+  }
+
 }
 
 .user-video {
