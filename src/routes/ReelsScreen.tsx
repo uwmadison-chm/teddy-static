@@ -162,8 +162,9 @@ export default function ReelsScreen() {
                 ref={teddyRef}
                 isSmallTeddy={true}
                 initialAnimation={TeddyAnimations.IDLE}
-            />
-            <UserVideo ref={userVideoRef} onInitialized={onUserVideoInitialized} />
+            >
+                <UserVideo ref={userVideoRef} onInitialized={onUserVideoInitialized} />
+            </Teddy>
 
             <MicrophoneLevelIndicator ref={microphoneIndicatorRef} />
 

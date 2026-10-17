@@ -128,8 +128,9 @@ export default function CalibrationScreen() {
                 ref={teddyRef}
                 isSmallTeddy={true}
                 initialAnimation={TeddyAnimations.PEERING}
-            />
-            <UserVideo ref={userVideoRef} onInitialized={onVideoInitialized} />
+            >
+                <UserVideo ref={userVideoRef} onInitialized={onVideoInitialized} />
+            </Teddy>
 
             <MicrophoneLevelIndicator ref={microphoneIndicatorRef} />
 

@@ -2,6 +2,12 @@
     flex-shrink: 0;
 }
 
+/* Teddy, and on the small-Teddy screens, the participant's video beside him */
+.teddy-row {
+    display: flex;
+    justify-content: space-between;
+}
+
 .teddy-frame {
     width: 40%;
     aspect-ratio: 1;
@@ -11,7 +17,7 @@
 
     .small & {
         width: 25%;
-        margin: 2.5rem 10% 0;
+        margin: 2.5rem 0 0 10%;
     }
 }
 
