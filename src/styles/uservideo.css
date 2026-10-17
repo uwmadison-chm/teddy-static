@@ -47,6 +47,18 @@
   }
   .outline {
     background-image: url("../assets/images/headoutline.png");
+    opacity: 0.4;
+  }
+  .silhouette {
+    opacity: 0;
+  }
+  .silhouette-shown {
+    .outline {
+      opacity: 0;
+    }
+    .silhouette {
+      opacity: 1;
+    }
   }
 
   .silhouette-controls {
@@ -119,6 +131,7 @@
 .countdown-timer,
 .face-detector {
   position: relative;
+  transition: all 0.3s ease;
   flex-shrink: 0;
   margin: 1vh auto 0;
   /* Sized like text, since it holds the countdown's numbers */

@@ -168,9 +168,7 @@ export default function ReelsScreen() {
             <MicrophoneLevelIndicator ref={microphoneIndicatorRef} />
 
             <div ref={videoElementWrapperRef}
-                 style={{opacity: videoWrapperShown ? 1 : 0}}
-                        className={"video-reel"}
-                        >
+                 className={"video-reel" + (videoWrapperShown ? "" : " faded")}>
             </div>
 
             <FadingPanelSet ref={fadingPanelRef}>

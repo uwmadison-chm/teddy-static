@@ -60,7 +60,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
         }
         focusPendingRef.current = false;
         const shown = Array.from(animatedRef.current?.children ?? []) as HTMLElement[];
-        const panel = shown.find((child) => child.style.display != "none");
+        const panel = shown.find((child) => !child.hidden);
         panel?.querySelector("button")?.focus();
     }, [isAnimating]);
 
@@ -127,7 +127,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
 
     // Inert while animating, so a second press of Enter can't go through
     // the way pointer-events: none keeps a second tap from going through.
-    return <div className={"fade-panel-set" + (isAnimating ? " uninteractive" : "")} inert={isAnimating} style={{display:isDisplayed ? "flex" : "none"}}>
+    return <div className={"fade-panel-set" + (isAnimating ? " uninteractive" : "")} inert={isAnimating} hidden={!isDisplayed}>
             <div ref={animatedRef} className={"animated"}>
 
 
@@ -142,9 +142,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
                 const childNode = React.cloneElement(child, {
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                     // @ts-expect-error
-                    style: {
-                        display: (label == shownPanelkey && isDisplayed) ? "flex" : "none",
-                    }
+                    hidden: !(label == shownPanelkey && isDisplayed),
                 });
                 return childNode;
             }

@@ -74,6 +74,10 @@
             left:20%;
         }
     }
+    /* Typed out letter by letter, with the rest of the line already in place */
+    .typewriter-untyped {
+        color: transparent;
+    }
     .speechbubble_next {
         display:none;
         background: none;

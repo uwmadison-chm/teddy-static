@@ -78,12 +78,7 @@ export const CountdownTimer = React.forwardRef<CountdownTimerFunctions, Countdow
         Math.floor((elapsedTime)/1000);
 
     return (
-        <div className={"countdown-timer"}
-        style={{
-            display:isShown ? 'block' : 'none',
-            opacity:isFadingOut? 0 : 1,
-            transition: 'all 0.3s ease',
-        }}>
+        <div className={"countdown-timer" + (isFadingOut ? " faded" : "")} hidden={!isShown}>
             <CircularProgressbarWithChildren
                 value={circleProgress*100}
                 maxValue={100}

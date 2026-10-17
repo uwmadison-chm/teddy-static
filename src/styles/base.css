@@ -50,6 +50,21 @@ body, #root {
   overflow: clip;
 }
 
+/* Shared states. Components set these; each element's own rules say how it
+   changes into them (its transition). */
+[hidden] {
+  display: none !important;
+}
+
+.faded {
+  opacity: 0;
+}
+
+/* Hidden but still taking its space */
+.invisible {
+  visibility: hidden;
+}
+
 .uninteractive {
   pointer-events: none;
   cursor:default;

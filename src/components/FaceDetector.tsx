@@ -235,12 +235,8 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
     return (
         <>
             {/* Smaller once the tips are up, to leave them room */}
-            <div className={"face-detector" + (tipsShown ? " small" : "")}
-            style={{
-                display:isShown ? 'block' : 'none',
-                opacity:isFadingOut? 0 : 1,
-                transition: 'all 0.3s ease',
-            }}>
+            <div className={"face-detector" + (tipsShown ? " small" : "") + (isFadingOut ? " faded" : "")}
+                 hidden={!isShown}>
                 <CircularProgressbarWithChildren
                     value={progress*100}
                     maxValue={100}

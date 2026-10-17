@@ -9,7 +9,10 @@
         flex: 1;
     }
 
+    display: flex;
+
     .fade-panel {
+        display: flex;
         flex-direction:column;
     }
 

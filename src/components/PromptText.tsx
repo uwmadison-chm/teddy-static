@@ -57,23 +57,15 @@ export const PromptText = React.forwardRef<PromptTextFunctions, PromptTextProps>
     }));
 
     return (
-        <div className={props.className || "prompt-text"}
-             style={{
-                 opacity:isShown ? 1 : 0,
-             }}>
+        <div className={(props.className || "prompt-text") + (isShown ? "" : " faded")}>
             <div className={"text"}>
                 {text}
             </div>
             { props.children }
 
-            <div className={"prompt-timer"} style={{
-                "display": duration ? "block" : "none",
-                "opacity": showTimer ? 1 : 0,
-            }}>
+            <div className={"prompt-timer" + (showTimer ? "" : " faded")} hidden={!duration}>
                 <div className={"timer "} ref={timerRef}>
-                    <div className={"fill"} ref={timerFillRef} style={{
-                        "transition": `linear`,
-                    }}></div>
+                    <div className={"fill"} ref={timerFillRef}></div>
                 </div>
 
             </div>
