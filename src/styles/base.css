@@ -72,12 +72,6 @@ body, #root {
   position: relative;
 }
 
-.spacer {
-  flex-grow: 1;
-  display: flex;
-}
-
-
 .debug-banner {
   position: absolute;
   bottom: 0;

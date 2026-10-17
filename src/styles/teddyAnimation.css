@@ -7,7 +7,7 @@
     aspect-ratio: 1;
     margin: 5vh auto 0;
     overflow: hidden;
-    border-radius: 500px;
+    border-radius: 50%;
 
     .small & {
         width: 25%;
