@@ -75,7 +75,7 @@ export default function CompleteSessionScreen() {
                 initialAnimation={TeddyAnimations.SLIGHTLY_HAPPY}
             />
 
-            <div className={"loader-wrapper"} style={{display: sending ? "block" : "none"}}>
+            <div className={"loader-wrapper"} hidden={!sending}>
                 <div className="loader"></div>
                 Sending...
                 {bytesMost > 0 && <div className={"send-progress"}

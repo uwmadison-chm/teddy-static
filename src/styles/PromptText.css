@@ -1,6 +1,6 @@
 .prompt-timer {
-  width:5vh;
-  height:5vh;
+  width:2.5rem;
+  height:2.5rem;
   position: absolute;
   top:0;
   left:50%;
@@ -30,13 +30,13 @@
       width:100%;
       height:0;
       position:absolute;
-      top:0.9vh;
+      top:0.45rem;
       left:0;
-      background-color: #ccc;
+      background-color: var(--muted-color);
 
     }
     &.filled .fill {
-      height:3.2vh;
+      height:1.6rem;
     }
   }
 }
@@ -47,10 +47,10 @@
   top:0;
   left:50%;
 
-  width:5vh;
-  height:5vh;
+  width:2.5rem;
+  height:2.5rem;
   background-color: var(--phone-area-bg-color);
-  font-size: 3vh;
+  font-size: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -63,14 +63,14 @@
 
   font-family: "Noto Serif", serif;
 
-  font-size: max(2.4vh, 2.4rem * var(--rem-per-vh));
+  font-size: 1.2rem;
   line-height: 1.6em;
   position: relative;
   flex-shrink: 0;
   text-align: center;
 
-  padding: 4vh 10%;
-  margin-top: 1vh;
+  padding: 2rem 10%;
+  margin-top: 0.5rem;
 
   &::before,
   &::after {
@@ -81,7 +81,7 @@
     position:absolute;
     top:0;
     left:20%;
-    background-color: #ccc;
+    background-color: var(--muted-color);
   }
   &::after {
     top:auto;
@@ -90,5 +90,5 @@
 }
 
 .videolog-prompt {
-  margin-top: 11vh;
+  margin-top: 5.5rem;
 }

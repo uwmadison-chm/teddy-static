@@ -1,8 +1,6 @@
 import * as React from "react";
 import {useImperativeHandle, useRef} from "react";
 import {buildStyles, CircularProgressbar, CircularProgressbarWithChildren} from "react-circular-progressbar";
-import {interpolateColors} from "@/utils/utils.tsx";
-import {Colors} from "@/utils/colors.tsx";
 import * as events from "@/utils/events.tsx";
 
 export interface PromptTextProps {
@@ -59,23 +57,15 @@ export const PromptText = React.forwardRef<PromptTextFunctions, PromptTextProps>
     }));
 
     return (
-        <div className={props.className || "prompt-text"}
-             style={{
-                 opacity:isShown ? 1 : 0,
-             }}>
+        <div className={(props.className || "prompt-text") + (isShown ? "" : " faded")}>
             <div className={"text"}>
                 {text}
             </div>
             { props.children }
 
-            <div className={"prompt-timer"} style={{
-                "display": duration ? "block" : "none",
-                "opacity": showTimer ? 1 : 0,
-            }}>
+            <div className={"prompt-timer" + (showTimer ? "" : " faded")} hidden={!duration}>
                 <div className={"timer "} ref={timerRef}>
-                    <div className={"fill"} ref={timerFillRef} style={{
-                        "transition": `linear`,
-                    }}></div>
+                    <div className={"fill"} ref={timerFillRef}></div>
                 </div>
 
             </div>

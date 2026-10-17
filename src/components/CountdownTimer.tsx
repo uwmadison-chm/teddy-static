@@ -1,12 +1,12 @@
 import * as React from "react";
 import {useEffect, useImperativeHandle, useRef} from "react";
 import {buildStyles, CircularProgressbar, CircularProgressbarWithChildren} from "react-circular-progressbar";
-import {interpolateColors} from "@/utils/utils.tsx";
-import {Colors} from "@/utils/colors.tsx";
+import {mixColors} from "@/utils/colors.tsx";
 
 export interface CountdownTimerProps {
     duration: number;
     countUp?: boolean;
+    // CSS colors the ring goes from and to as it fills
     startColor?: string;
     endColor?: string;
 }
@@ -19,7 +19,7 @@ export interface CountdownTimerFunctions {
     fadeOut: () => void;
 }
 
-export const CountdownTimer = React.forwardRef<CountdownTimerFunctions, CountdownTimerProps>(({duration, countUp, startColor, endColor, ...props}, ref) => {
+export const CountdownTimer = React.forwardRef<CountdownTimerFunctions, CountdownTimerProps>(({duration, countUp, startColor = "var(--primary-color)", endColor = "var(--primary-color-3)", ...props}, ref) => {
 
     const intervalRef = useRef(null);
 
@@ -78,12 +78,7 @@ export const CountdownTimer = React.forwardRef<CountdownTimerFunctions, Countdow
         Math.floor((elapsedTime)/1000);
 
     return (
-        <div className={"countdown-timer"}
-        style={{
-            display:isShown ? 'block' : 'none',
-            opacity:isFadingOut? 0 : 1,
-            transition: 'all 0.3s ease',
-        }}>
+        <div className={"countdown-timer" + (isFadingOut ? " faded" : "")} hidden={!isShown}>
             <CircularProgressbarWithChildren
                 value={circleProgress*100}
                 maxValue={100}
@@ -93,13 +88,13 @@ export const CountdownTimer = React.forwardRef<CountdownTimerFunctions, Countdow
                     trailColor: '#fff',
                     strokeLinecap: 'round',
                     pathTransition: `all ${duration/1000}s linear`,
-                    pathColor: interpolateColors(startColor || Colors.primary, endColor || Colors.primaryDark, circleProgress),
+                    pathColor: mixColors(startColor, endColor, circleProgress),
                 })}
             >
                 <div
                     className={"circle-progress-text"}
                     style={{
-                        color: interpolateColors(startColor || Colors.primary, endColor || Colors.primaryDark, circleProgress),
+                        color: mixColors(startColor, endColor, circleProgress),
                         transitionDuration: `${duration/1000}s`,
                         transitionTimingFunction: 'linear',
                     }}

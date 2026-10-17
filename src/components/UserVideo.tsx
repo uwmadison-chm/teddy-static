@@ -194,9 +194,9 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
 
     return (
         <div className={"user-video"}>
-            <div className={"user-video-cover"}>
-                <div className={"outline"} style={{opacity: silhouetteShown?0:.4}} />
-                <div className={"silhouette"} style={{opacity: silhouetteShown?1:0}} />
+            <div className={"user-video-cover" + (silhouetteShown ? " silhouette-shown" : "")}>
+                <div className={"outline"} />
+                <div className={"silhouette"} />
                 <video id="userVideo" ref={videoElementRef} playsInline autoPlay muted />
                 <div className={"bg"} />
             </div>

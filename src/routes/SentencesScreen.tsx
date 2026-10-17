@@ -114,8 +114,9 @@ export default function SentencesScreen() {
                 ref={teddyRef}
                 isSmallTeddy={true}
                 initialAnimation={TeddyAnimations.IDLE}
-            />
-            <UserVideo ref={userVideoRef} onInitialized={onVideoInitialized} />
+            >
+                <UserVideo ref={userVideoRef} onInitialized={onVideoInitialized} />
+            </Teddy>
 
             <MicrophoneLevelIndicator ref={microphoneIndicatorRef} />
 

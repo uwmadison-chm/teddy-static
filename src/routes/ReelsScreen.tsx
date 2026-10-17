@@ -162,15 +162,14 @@ export default function ReelsScreen() {
                 ref={teddyRef}
                 isSmallTeddy={true}
                 initialAnimation={TeddyAnimations.IDLE}
-            />
-            <UserVideo ref={userVideoRef} onInitialized={onUserVideoInitialized} />
+            >
+                <UserVideo ref={userVideoRef} onInitialized={onUserVideoInitialized} />
+            </Teddy>
 
             <MicrophoneLevelIndicator ref={microphoneIndicatorRef} />
 
             <div ref={videoElementWrapperRef}
-                 style={{opacity: videoWrapperShown ? 1 : 0}}
-                        className={"video-reel"}
-                        >
+                 className={"video-reel" + (videoWrapperShown ? "" : " faded")}>
             </div>
 
             <FadingPanelSet ref={fadingPanelRef}>

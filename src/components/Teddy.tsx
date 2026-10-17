@@ -23,6 +23,8 @@ const REDUCED_MOTION_PLAY_MS = 4000;
 export interface TeddyProps {
     initialAnimation?: string,
     isSmallTeddy?: boolean;
+    // Shown beside a small Teddy, like the participant's video
+    children?: React.ReactNode;
 }
 
 export interface SayOptions {
@@ -41,7 +43,7 @@ export interface TeddyFunctions {
     playAnimation:(animation:string) => void;
 }
 
-export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnimation, isSmallTeddy}, ref) => {
+export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnimation, isSmallTeddy, children}, ref) => {
 
     const stateMachineAnimations = useRef({} as { [id: string] : StateMachineInput; })
     const speechBubbleRef = useRef<SpeechBubbleFunctions>(null)
@@ -168,9 +170,12 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
 
     return (
         <div className={"teddy " + (isSmallTeddy ? "small" : "")}>
-            <div className={"teddy-frame"} aria-hidden={true}>
-                <RiveComponent
-                    className='teddy-canvas' />
+            <div className={"teddy-row"}>
+                <div className={"teddy-frame"} aria-hidden={true}>
+                    <RiveComponent
+                        className='teddy-canvas' />
+                </div>
+                {children}
             </div>
             <div className={"speechbubble-slot"}>
                 <SpeechBubble ref={speechBubbleRef} />

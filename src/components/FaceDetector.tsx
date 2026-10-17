@@ -2,8 +2,7 @@ import * as React from "react";
 import {useImperativeHandle} from "react";
 import {buildStyles, CircularProgressbarWithChildren} from "react-circular-progressbar";
 import {FaCheck, FaUser} from "react-icons/fa";
-import {interpolateColors} from "@/utils/utils.tsx";
-import {Colors} from "@/utils/colors.tsx";
+import {mixColors} from "@/utils/colors.tsx";
 import * as events from "@/utils/events.tsx";
 import {loadFaceApi} from "@/utils/faceApi.ts";
 import {abortable, Aborted, sleep} from "@/utils/script.ts";
@@ -236,27 +235,23 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
     return (
         <>
             {/* Smaller once the tips are up, to leave them room */}
-            <div className={"face-detector" + (tipsShown ? " small" : "")}
-            style={{
-                display:isShown ? 'block' : 'none',
-                opacity:isFadingOut? 0 : 1,
-                transition: 'all 0.3s ease',
-            }}>
+            <div className={"face-detector" + (tipsShown ? " small" : "") + (isFadingOut ? " faded" : "")}
+                 hidden={!isShown}>
                 <CircularProgressbarWithChildren
                     value={progress*100}
                     maxValue={100}
                     strokeWidth={10}
                     styles={buildStyles({
-                        backgroundColor: '#ccc',
+                        backgroundColor: 'var(--muted-color)',
                         pathTransition: 'all .5s',
                         strokeLinecap: 'round',
-                        pathColor: interpolateColors(Colors.primary, Colors.primaryDark, progress),
+                        pathColor: mixColors("var(--primary-color)", "var(--primary-color-3)", progress),
                     })}
                 >
                     <div
                         className={"circle-progress-text"}
-                        style={{color: interpolateColors(Colors.primary, Colors.primaryDark, progress)}}
-                    >{detected ? <FaCheck aria-hidden={true} /> : <FaUser aria-hidden={true} style={{opacity: 0.4}} />}</div>
+                        style={{color: mixColors("var(--primary-color)", "var(--primary-color-3)", progress)}}
+                    >{detected ? <FaCheck aria-hidden={true} /> : <FaUser aria-hidden={true} className={"waiting"} />}</div>
                 </CircularProgressbarWithChildren>
             </div>
             <div className={"face-tips" + (tipsShown ? " shown" : "")} hidden={!isShown}>

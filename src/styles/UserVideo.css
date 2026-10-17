@@ -1,0 +1,162 @@
+/* The switch that turns the silhouette over the video on and off */
+.switch {
+  position: relative;
+  display: inline-block;
+  /* At least 24px tall, to be easy to hit (WCAG 2.5.8) */
+  width: 2.5rem;
+  height: 1.5rem;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .handle {
+    position: absolute;
+    cursor: pointer;
+    border-radius: 0.75rem;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--muted-color);
+    -webkit-transition: .4s;
+    transition: .4s;
+
+    &:before {
+      position: absolute;
+      content: "";
+      height: 1.2rem;
+      aspect-ratio: 1;
+      left: 0.15rem;
+      bottom: 0.15rem;
+      background-color: white;
+      -webkit-transition: .4s;
+      transition: .4s;
+      border-radius: 50%;
+    }
+  }
+
+  input:checked + .handle {
+    background-color: var(--primary-color);
+  }
+
+  input:focus-visible + .handle {
+    outline: 2px solid var(--primary-color-3);
+    outline-offset: 2px;
+  }
+
+  input:checked + .handle:before {
+    transform: translateX(1rem);
+  }
+
+  /* Without motion, the knob jumps to the other side */
+  @media (prefers-reduced-motion: reduce) {
+    .handle,
+    .handle:before {
+      transition: none;
+    }
+  }
+
+}
+
+.user-video {
+  width: 25%;
+  margin: 2.5rem 10% 0 0;
+  aspect-ratio: 1;
+  position: relative;
+  /* Its silhouette switch hangs over the speech bubble */
+  z-index: 200;
+
+  .user-video-cover {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 50%;
+    position: relative;
+    top: 0;
+    left: 0;
+  }
+
+  video {
+    width: 100%;
+    height: 100%;
+    transform: scaleX(-1);
+    object-fit: cover;
+  }
+
+  .bg {
+    width: 100%;
+    height: 100%;
+    background-color: var(--uservideo-bg);
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+  }
+
+  .outline,
+  .silhouette {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-image: url("../assets/images/silhouette.png");
+    background-size: cover;
+    z-index: 10;
+    -webkit-transition: .4s;
+    transition: .4s;
+  }
+  .outline {
+    background-image: url("../assets/images/headoutline.png");
+    opacity: 0.4;
+  }
+  .silhouette {
+    opacity: 0;
+  }
+  .silhouette-shown {
+    .outline {
+      opacity: 0;
+    }
+    .silhouette {
+      opacity: 1;
+    }
+  }
+
+  .silhouette-controls {
+    position: absolute;
+    bottom: -1.25rem;
+    left:50%;
+    transform: translateX(-50%);
+    height: 2.25rem;
+    background-color: white;
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    border-radius: 0.5rem;
+    padding: 0 0.5rem;
+    display: flex;
+    gap: 0.35rem;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+    cursor:default;
+
+    .icon {
+      display: inline-block;
+      height: 60%;
+      aspect-ratio: 1;
+      mask-image: url("../assets/images/silhouette.png");
+      mask-size: cover;
+      background: var(--muted-color);
+      margin-bottom: 2%;
+
+      &.outline-icon {
+        mask-image: url("../assets/images/headoutline.png");
+        background: #eee;
+      }
+    }
+
+    .switch {
+      flex-shrink: 0;
+    }
+  }
+}

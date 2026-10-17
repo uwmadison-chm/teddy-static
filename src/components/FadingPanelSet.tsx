@@ -2,8 +2,8 @@ import * as React from "react";
 import {useEffect, useImperativeHandle, useRef, useState} from "react";
 import {prefersReducedMotion} from "@/utils/utils.tsx";
 
-export const FadingPanel = ({label, ...props}) => {
-    return <div className={"fade-panel"} {...props} />;
+export const FadingPanel = ({label, invisible = false, ...props}) => {
+    return <div className={"fade-panel" + (invisible ? " invisible" : "")} {...props} />;
 };
 
 interface Props {
@@ -23,6 +23,9 @@ export const FADING_PANEL_DEFAULT_LABEL = "default"
 export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((props, ref) => {
 
     const [shownPanelkey, setShownPanelkey] = useState<string|null>(null);
+    // The last panel shown. With none showing, it stays in place, invisible,
+    // so the screen doesn't reflow when the next one comes in.
+    const [laidOutKey, setLaidOutKey] = useState<string|null>(null);
     const [isDisplayed, setIsDisplayed] = useState(false);
     const [isAnimating, setIsAnimating] = useState(false);
 
@@ -60,7 +63,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
         }
         focusPendingRef.current = false;
         const shown = Array.from(animatedRef.current?.children ?? []) as HTMLElement[];
-        const panel = shown.find((child) => child.style.display != "none");
+        const panel = shown.find((child) => !child.hidden && !child.classList.contains("invisible"));
         panel?.querySelector("button")?.focus();
     }, [isAnimating]);
 
@@ -70,6 +73,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
         setIsAnimating(true);
         setIsDisplayed(true);
         setShownPanelkey(panelName || FADING_PANEL_DEFAULT_LABEL);
+        setLaidOutKey(panelName || FADING_PANEL_DEFAULT_LABEL);
         focusPendingRef.current = true;
         animatedRef.current!.animate(generateBounceKeyframes(1000, 0),
             {
@@ -103,6 +107,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
 
             setShownPanelkey(panelLabel);
             if (panelLabel != null) {
+                setLaidOutKey(panelLabel);
                 focusPendingRef.current = true;
             }
 
@@ -127,7 +132,7 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
 
     // Inert while animating, so a second press of Enter can't go through
     // the way pointer-events: none keeps a second tap from going through.
-    return <div className={"fade-panel-set" + (isAnimating ? " uninteractive" : "")} inert={isAnimating} style={{display:isDisplayed ? "flex" : "none"}}>
+    return <div className={"fade-panel-set" + (isAnimating ? " uninteractive" : "")} inert={isAnimating} hidden={!isDisplayed}>
             <div ref={animatedRef} className={"animated"}>
 
 
@@ -142,9 +147,8 @@ export const FadingPanelSet = React.forwardRef<FadingPanelFunctions, Props>((pro
                 const childNode = React.cloneElement(child, {
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                     // @ts-expect-error
-                    style: {
-                        display: (label == shownPanelkey && isDisplayed) ? "flex" : "none",
-                    }
+                    hidden: !(label == laidOutKey && isDisplayed),
+                    invisible: label != shownPanelkey,
                 });
                 return childNode;
             }

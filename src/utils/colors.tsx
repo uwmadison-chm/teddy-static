@@ -1,7 +1,7 @@
+// Colors are defined in src/styles/colors.css. Code that needs one uses it as
+// var(--name), so they're only defined there.
 
-export const Colors = {
-    primary: "#52d5a5",
-    primaryDark: "#287257",
-    countdownTimer: "#8BB2E9",
-    countdownTimerDark: "#5A96DB",
+// The color `fraction` of the way from `from` to `to`, both CSS colors.
+export function mixColors(from: string, to: string, fraction: number): string {
+    return `color-mix(in srgb, ${from}, ${to} ${fraction * 100}%)`;
 }

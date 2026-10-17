@@ -67,9 +67,7 @@ export const TypeWriter = React.forwardRef<TypeWriterFunctions, Props>(({delayMS
 
     return (
         <span>
-            <span>{displayString.substring(0, currentProgress)}</span><span style={{
-                color: "transparent",
-            }}>{displayString.substring(currentProgress, displayString.length)}</span>
+            <span>{displayString.substring(0, currentProgress)}</span><span className={"typewriter-untyped"}>{displayString.substring(currentProgress, displayString.length)}</span>
         </span>
     );
 });

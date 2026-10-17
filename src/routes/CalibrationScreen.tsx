@@ -13,7 +13,6 @@ import {UserVideo, type UserVideoFunctions} from "@/components/UserVideo.tsx";
 import {FaceDetector, type FaceDetectorFunctions} from "@/components/FaceDetector.tsx";
 import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.tsx";
 import {CountdownTimer, type CountdownTimerFunctions} from "@/components/CountdownTimer.tsx";
-import {Colors} from "@/utils/colors.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {abortable, firstOf, sleep, useChoice, useScript} from "@/utils/script.ts";
 
@@ -129,8 +128,9 @@ export default function CalibrationScreen() {
                 ref={teddyRef}
                 isSmallTeddy={true}
                 initialAnimation={TeddyAnimations.PEERING}
-            />
-            <UserVideo ref={userVideoRef} onInitialized={onVideoInitialized} />
+            >
+                <UserVideo ref={userVideoRef} onInitialized={onVideoInitialized} />
+            </Teddy>
 
             <MicrophoneLevelIndicator ref={microphoneIndicatorRef} />
 
@@ -142,8 +142,8 @@ export default function CalibrationScreen() {
                 ref={calibrationPrepTimer}
                 duration={3000}
                 countUp={true}
-                startColor={Colors.countdownTimer}
-                endColor={Colors.countdownTimerDark} />
+                startColor={"var(--countdown-color)"}
+                endColor={"var(--countdown-color-dark)"} />
 
             <CountdownTimer
                 ref={calibrationTimer}

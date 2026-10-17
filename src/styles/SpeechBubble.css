@@ -1,43 +1,14 @@
-.teddy {
-    flex-shrink: 0;
-}
-
-.teddy-frame {
-    width: 40%;
-    aspect-ratio: 1;
-    margin: 5vh auto 0;
-    overflow: hidden;
-    border-radius: 500px;
-
-    .small & {
-        width: 25%;
-        margin: 5vh 10% 0;
-    }
-}
-.teddy-canvas {
-    width: 100%;
-    height: 100%;
-}
-
-/* Room for three lines of speech, so whatever's below doesn't move as Teddy
-   says shorter or longer things. Longer lines push it down. */
-.speechbubble-slot {
-    flex-shrink: 0;
-    font-size: max(2.4vh, 2.4rem * var(--rem-per-vh));
-    min-height: calc(3 * 1.4em + 4vh + 2px);
-}
-
 .speechbubble {
     position: relative;
     margin: 3% 10% 0;
     background-color: #fff;
-    padding: 2vh 2vh;
-    border-radius: 1.5vh;
+    padding: 1rem 1rem;
+    border-radius: 0.75rem;
     justify-content: center;
     box-shadow: rgba(0,0,0,.2) 2px 4px 4px;
-    border: 1px solid #f0f0f0;
+    border: 1px solid var(--border-color);
     z-index: 100;
-    font-size: max(2.4vh, 2.4rem * var(--rem-per-vh));
+    font-size: 1.2rem;
     text-align: center;
     display: flex;
     line-height:1.4em;
@@ -51,12 +22,12 @@
     .speechbubble_tail_parent {
         position: absolute;
         overflow-y: clip;
-        top: -3vh;
-        height:3vh;
+        top: -1.5rem;
+        height:1.5rem;
         width:100%;
         left:0;
     }
-    /* 3vh tall, 2.25vh wide */
+    /* 1.5rem tall, 1.125rem wide */
     .speechbubble_tail {
         position: absolute;
         background:transparent;
@@ -64,15 +35,19 @@
         left: 65%;
         height:0px;
         width:0px;
-        border-left: 1.125vh solid white;
-        border-bottom: 1.5vh solid white;
-        border-right: 1.125vh solid transparent;
-        border-top: 1.5vh solid transparent;
+        border-left: 0.5625rem solid white;
+        border-bottom: 0.75rem solid white;
+        border-right: 0.5625rem solid transparent;
+        border-top: 0.75rem solid transparent;
         filter:drop-shadow(6px 8px 4px rgba(0,0,0,.1)) drop-shadow(0px 0px 1px rgba(0,0,0,.3));
 
         .small & {
             left:20%;
         }
+    }
+    /* Typed out letter by letter, with the rest of the line already in place */
+    .typewriter-untyped {
+        color: transparent;
     }
     .speechbubble_next {
         display:none;
@@ -81,9 +56,9 @@
         color: inherit;
         cursor: pointer;
         position: absolute;
-        bottom:.6vh;
-        right:2vh;
-        font-size: max(1.5vh, 1.5rem * var(--rem-per-vh));
+        bottom:0.3rem;
+        right:1rem;
+        font-size: 0.75rem;
         line-height:1.4em;
 
         &:focus-visible {
@@ -95,15 +70,14 @@
         .arrow {
             padding-left:3px;
             color: var(--primary-color);
-            font-size: max(1.4vh, 1.4rem * var(--rem-per-vh));
-            margin-top:.25vh;
+            font-size: 0.7rem;
+            margin-top:0.125rem;
         }
     }
     &.has-next-text {
-        padding-bottom: max(3.5vh, 3.5rem * var(--rem-per-vh));
+        padding-bottom: 1.75rem;
         .speechbubble_next {
             display: flex;
         }
     }
 }
-

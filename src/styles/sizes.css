@@ -1,20 +1,20 @@
-/* Text sizes. Most of the layout scales with the window's height, but text
-   sized in vh alone doesn't grow with browser zoom (WCAG 1.4.4), so each size
-   has a floor in rem. The floor matches the vh size in a window 800px tall:
-   text grows with zoom in windows up to that height, and keeps scaling with
-   the window in taller ones.
+/* Sizes are in rem, so everything grows with the browser's text size and zoom
+   (WCAG 1.4.4). Widths that should be a share of the screen, like Teddy's,
+   are in %.
 
-   Short phones, like an iPhone SE, get a lower floor so a long sentence still
-   fits on screen. That's limited to touch screens: a laptop zoomed in is
-   short in CSS pixels too, and its text should still grow.
-
-   A text size of N is written max(Nvh, Nrem * var(--rem-per-vh)). */
-:root {
-  --rem-per-vh: 0.5;
+   On screens taller than 800px, rem grows with the window too, so Teddy fills
+   a big monitor the way he fills a phone. Zooming in makes the window shorter
+   in CSS pixels, so past that point it's the 100% (the browser's text size,
+   zoomed) that wins. */
+html {
+  font-size: max(100%, 2vh);
 }
 
+/* Short phones, like an iPhone SE, get slightly smaller everything so a long
+   sentence still fits on screen. That's limited to touch screens: a laptop
+   zoomed in is short in CSS pixels too, and its text should still grow. */
 @media (pointer: coarse) and (max-height: 700px) {
-  :root {
-    --rem-per-vh: 0.42;
+  html {
+    font-size: 84%;
   }
 }
