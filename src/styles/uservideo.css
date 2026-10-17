@@ -72,7 +72,7 @@
       aspect-ratio: 1;
       mask-image: url("../assets/images/silhouette.png");
       mask-size: cover;
-      background: #ccc;
+      background: var(--muted-color);
       margin-bottom: 2%;
 
       &.outline-icon {
@@ -93,7 +93,7 @@
   margin: 3vh 0;
   background-color: white;
   box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-  border: 1px solid #efefef;
+  border: 1px solid var(--border-color);
   border-radius: 2.5vh;
   padding: 0 1.5em;
   white-space: nowrap;
@@ -151,7 +151,7 @@
 
   .indicator {
     mask-image: url("../assets/images/microphone-levels.svg");
-    background-color: #ccc;
+    background-color: var(--muted-color);
     mask-size: cover;
     height: 100%;
     width: 100%;

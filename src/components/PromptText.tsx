@@ -1,8 +1,6 @@
 import * as React from "react";
 import {useImperativeHandle, useRef} from "react";
 import {buildStyles, CircularProgressbar, CircularProgressbarWithChildren} from "react-circular-progressbar";
-import {interpolateColors} from "@/utils/utils.tsx";
-import {Colors} from "@/utils/colors.tsx";
 import * as events from "@/utils/events.tsx";
 
 export interface PromptTextProps {

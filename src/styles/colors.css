@@ -14,4 +14,12 @@
   --uservideo-bg: #D8E2E9;
 
   --recording-color: #c30303;
+
+  /* The calibration countdown */
+  --countdown-color: #8BB2E9;
+  --countdown-color-dark: #5A96DB;
+
+  /* Rules, empty tracks and the switch when it's off */
+  --muted-color: #ccc;
+  --border-color: #f0f0f0;
 }

@@ -32,7 +32,7 @@
       position:absolute;
       top:0.45rem;
       left:0;
-      background-color: #ccc;
+      background-color: var(--muted-color);
 
     }
     &.filled .fill {
@@ -81,7 +81,7 @@
     position:absolute;
     top:0;
     left:20%;
-    background-color: #ccc;
+    background-color: var(--muted-color);
   }
   &::after {
     top:auto;

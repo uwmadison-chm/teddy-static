@@ -35,7 +35,7 @@
     border-radius: 1.5vh;
     justify-content: center;
     box-shadow: rgba(0,0,0,.2) 2px 4px 4px;
-    border: 1px solid #f0f0f0;
+    border: 1px solid var(--border-color);
     z-index: 100;
     font-size: max(2.4vh, 2.4rem * var(--rem-per-vh));
     text-align: center;

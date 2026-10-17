@@ -2,8 +2,7 @@ import * as React from "react";
 import {useImperativeHandle} from "react";
 import {buildStyles, CircularProgressbarWithChildren} from "react-circular-progressbar";
 import {FaCheck, FaUser} from "react-icons/fa";
-import {interpolateColors} from "@/utils/utils.tsx";
-import {Colors} from "@/utils/colors.tsx";
+import {mixColors} from "@/utils/colors.tsx";
 import * as events from "@/utils/events.tsx";
 import {loadFaceApi} from "@/utils/faceApi.ts";
 import {abortable, Aborted, sleep} from "@/utils/script.ts";
@@ -247,15 +246,15 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
                     maxValue={100}
                     strokeWidth={10}
                     styles={buildStyles({
-                        backgroundColor: '#ccc',
+                        backgroundColor: 'var(--muted-color)',
                         pathTransition: 'all .5s',
                         strokeLinecap: 'round',
-                        pathColor: interpolateColors(Colors.primary, Colors.primaryDark, progress),
+                        pathColor: mixColors("var(--primary-color)", "var(--primary-color-3)", progress),
                     })}
                 >
                     <div
                         className={"circle-progress-text"}
-                        style={{color: interpolateColors(Colors.primary, Colors.primaryDark, progress)}}
+                        style={{color: mixColors("var(--primary-color)", "var(--primary-color-3)", progress)}}
                     >{detected ? <FaCheck aria-hidden={true} /> : <FaUser aria-hidden={true} style={{opacity: 0.4}} />}</div>
                 </CircularProgressbarWithChildren>
             </div>
