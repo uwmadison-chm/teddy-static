@@ -90,6 +90,9 @@ body, #root {
   max-width: 30rem;
   overflow-x: hidden;
   overflow-y: auto;
+  /* Room for a scrollbar whether or not there is one, on both sides to keep
+     it centered, so the text doesn't rewrap when the screen starts scrolling */
+  scrollbar-gutter: stable both-edges;
   position: relative;
 }
 
