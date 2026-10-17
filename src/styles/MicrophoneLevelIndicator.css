@@ -1,0 +1,41 @@
+.microphone-level-indicator {
+
+  height: 1.5rem;
+  width: 1.5rem;
+  margin: 1.25rem 5% 0;
+  position: absolute;
+  top:0;
+  right:0;
+
+  .indicator {
+    mask-image: url("../assets/images/microphone-levels.svg");
+    background-color: var(--muted-color);
+    mask-size: cover;
+    height: 100%;
+    width: 100%;
+    position: relative;
+
+    .level {
+      background-color: var(--primary-color-1);
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:0;
+    }
+  }
+
+
+
+  &::before {
+    content: "";
+    width: 70%;
+    height: 70%;
+    background-color: var(--primary-color-4);
+    position: absolute;
+    top:50%;
+    left:-80%;
+    transform: translate(0, -50%);
+    mask-image: url("../assets/images/microphone.svg");
+    mask-size: cover;
+  }
+}

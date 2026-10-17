@@ -1,0 +1,18 @@
+/* The countdown timer and the face detector: a progress ring with text in it */
+.countdown-timer,
+.face-detector {
+  position: relative;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  margin: 1vh auto 0;
+  /* Sized like text, since it holds the countdown's numbers */
+  width: max(20vh, 20rem * var(--rem-per-vh));
+  height: max(20vh, 20rem * var(--rem-per-vh));
+}
+
+.circle-progress-text {
+  cursor: default;
+  font-size: max(6vh, 6rem * var(--rem-per-vh));
+  font-weight: 700;
+  transition-duration: 0.5s;
+}

@@ -11,6 +11,7 @@
   clip-path: inset(0 100% 0 0);
   animation: l12 2s infinite steps(7);
 }
+
 .loader:before {
   content: "";
   width: 4vh;
@@ -22,6 +23,7 @@
           var(--c) top    0 right 15%/20% 20%,
           var(--c) bottom 0 right 15%/20% 20%;
 }
+
 @keyframes l12 {
   100% {clip-path: inset(0 -4vh 0 0)}
 }

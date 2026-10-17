@@ -1,0 +1,27 @@
+.recording-notification {
+  position:absolute;
+  margin: 3vh 0;
+  background-color: white;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  border-radius: 2.5vh;
+  padding: 0 1.5em;
+  white-space: nowrap;
+  line-height: 1.75;
+  text-align: center;
+  font-size: max(1.6vh, 1.6rem * var(--rem-per-vh));
+  top: 0;
+  left: 50%;
+  transform: translate(-50%);
+  cursor:default;
+  font-weight: 600;
+
+  svg {
+    display: inline-block;
+    margin-right: 0.4em;
+    color: var(--recording-color);
+    height: 1.2em;
+    margin-top:-1%;
+    vertical-align: middle;
+  }
+}

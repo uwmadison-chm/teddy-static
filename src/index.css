@@ -1,11 +1,18 @@
+/* Fonts, colors and sizes first, then the page, then each component's styles */
 @import "./styles/fonts.css";
 @import "./styles/colors.css";
 @import "./styles/sizes.css";
 @import "./styles/base.css";
-@import "./styles/loaders.css";
-@import "./styles/widgets.css";
-@import "./styles/reels.css";
-@import "./styles/teddyAnimation.css";
-@import "./styles/fadingPanels.css";
-@import "./styles/uservideo.css";
-@import "./styles/prompttext.css";
+@import "./styles/debug.css";
+
+@import "./styles/Teddy.css";
+@import "./styles/SpeechBubble.css";
+@import "./styles/FadingPanelSet.css";
+@import "./styles/UserVideo.css";
+@import "./styles/MicrophoneLevelIndicator.css";
+@import "./styles/RecordingNotification.css";
+@import "./styles/PromptText.css";
+@import "./styles/CircleProgress.css";
+@import "./styles/FaceDetector.css";
+@import "./styles/ReelsScreen.css";
+@import "./styles/CompleteSessionScreen.css";
