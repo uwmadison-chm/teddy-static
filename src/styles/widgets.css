@@ -1,8 +1,9 @@
 .switch {
   position: relative;
   display: inline-block;
-  width: 4vh;
-  height: 2.4vh;
+  /* At least 24px tall, to be easy to hit (WCAG 2.5.8) */
+  width: 2.5rem;
+  height: 1.5rem;
 
   input {
     opacity: 0;
@@ -13,7 +14,7 @@
   .handle {
     position: absolute;
     cursor: pointer;
-    border-radius: 1.2vh;
+    border-radius: 0.75rem;
     top: 0;
     left: 0;
     right: 0;
@@ -25,10 +26,10 @@
     &:before {
       position: absolute;
       content: "";
-      height: 1.92vh;
+      height: 1.2rem;
       aspect-ratio: 1;
-      left: 0.24vh;
-      bottom: 0.24vh;
+      left: 0.15rem;
+      bottom: 0.15rem;
       background-color: white;
       -webkit-transition: .4s;
       transition: .4s;
@@ -46,9 +47,7 @@
   }
 
   input:checked + .handle:before {
-    -webkit-transform: translateX(84%);
-    -ms-transform: translateX(84%);
-    transform: translateX(84%);
+    transform: translateX(1rem);
   }
 
 }

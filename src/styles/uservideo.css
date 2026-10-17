@@ -51,19 +51,16 @@
 
   .silhouette-controls {
     position: absolute;
-    bottom: -2.5vh;
+    bottom: -1.25rem;
     left:50%;
     transform: translateX(-50%);
-    width:13vh;
-    height: 4vh;
+    height: 2.25rem;
     background-color: white;
     box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-    border-radius: 1vh;
-    font-size: 1.1vh;
-    font-weight: 600;
-    padding: 0 5%;
-    line-height:100%;
+    border-radius: 0.5rem;
+    padding: 0 0.5rem;
     display: flex;
+    gap: 0.35rem;
     justify-content: center;
     align-items: center;
     z-index: 20000;
@@ -85,7 +82,6 @@
     }
 
     .switch {
-      margin:0 .7vh;
       flex-shrink: 0;
     }
   }
@@ -146,10 +142,9 @@
 
 .microphone-level-indicator {
 
-  height: 3vh;
-  width: 3vh;
-  margin: 2.5vh 5% 0;
-  aspect-ratio: 1;
+  height: 1.5rem;
+  width: 1.5rem;
+  margin: 1.25rem 5% 0;
   position: absolute;
   top:0;
   right:0;
