@@ -14,3 +14,5 @@ stats.html
 
 # Don't include reels in the repo
 /example-study/reels/
+
+.DS_Store
