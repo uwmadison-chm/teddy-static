@@ -59,7 +59,7 @@ export default function CompleteSessionScreen() {
                 ...(waited ? ["Uploads complete! Hooray! Thank you for waiting."] : []),
                 nextURL == null ?
                     "You're all set! Thank you for your time. You may close this tab at any time. Bye bye!" :
-                    "Please press this button to continue your session. Bye!",
+                    "Please press the button below to continue back to the surveys. Bye!",
             ],
             signal);
         if (nextURL) {

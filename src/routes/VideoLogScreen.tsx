@@ -102,7 +102,7 @@ export default function VideoLogScreen() {
         teddy.playAnimation(TeddyAnimations.IDLE);
         const hasMoreModules = CurrentSessionData.hasMoreModules();
         await teddy.say(TeddyAnimations.SUCCESS,
-            ["I knew you could do it!",
+            ["Thank you for sharing!",
                 hasMoreModules ? "Are you ready for the next module?" : "Now all we have to do is finish up our session."],
             signal);
         panels.showStartPanel(hasMoreModules ? "nextModule" : "finishSession");
