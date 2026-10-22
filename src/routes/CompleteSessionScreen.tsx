@@ -16,7 +16,7 @@ import {firstOf, sleep, useScript} from "@/utils/script.ts";
 // out anyway. Sending carries on while the page is open, and whatever's left
 // when it closes stays on the device, for pig's client to send the next time
 // Teddy runs there.
-const STALL_MS = 60_000;
+const STALL_MS = 10_000;
 
 
 export default function CompleteSessionScreen() {
