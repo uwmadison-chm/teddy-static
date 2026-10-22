@@ -133,7 +133,7 @@ export default function CompleteSessionScreen() {
                                 setCanLeavePageSafely()
                                 window.location.assign(CurrentSessionData.nextURL);
                             }}>
-                        Continue to REDCap
+                        Continue to Surveys
                     </button>
                 </FadingPanel>
             </FadingPanelSet>

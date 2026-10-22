@@ -64,7 +64,7 @@ export async function showPlainWayOut(): Promise<void> {
     if (Config.nextUrlAfterFailure && CurrentSessionData.nextURL) {
         // Laid out like a FadingPanelSet, for its button style.
         const button = document.createElement("button");
-        button.textContent = "Continue";
+        button.textContent = "Continue to Surveys";
         button.addEventListener("click", () => window.location.assign(CurrentSessionData.nextURL));
         const set = document.createElement("div");
         set.className = "fade-panel-set";

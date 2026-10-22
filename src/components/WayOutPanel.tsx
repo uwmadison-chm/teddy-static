@@ -10,7 +10,7 @@ export const WayOutPanel = (props: {label: string}) => {
     return (
         <FadingPanel {...props}>
             <button onClick={() => window.location.assign(CurrentSessionData.nextURL)}>
-                Continue
+                Continue to Surveys
             </button>
         </FadingPanel>
     );
