@@ -14,9 +14,8 @@ import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {videoLogPrompts} from "virtual:teddy-study";
 import {PromptText, type PromptTextFunctions} from "@/components/PromptText.tsx";
 import {FaQuestionCircle} from "react-icons/fa";
-import {firstOf, sleep, useChoice, useScript} from "@/utils/script.ts";
+import {firstOf, useChoice, useScript} from "@/utils/script.ts";
 
-const BUTTON_POPUP_DELAY = 5000;
 const MAX_RECORDING_DURATION = 90 * 1000;
 
 export default function VideoLogScreen() {
@@ -84,15 +83,14 @@ export default function VideoLogScreen() {
             const recording = userVideoRef.current.record({kind: "videolog", item: id},
                 {timeout: MAX_RECORDING_DURATION, signal});
             teddy.say(TeddyAnimations.LISTEN, "Please answer the prompt out loud.", undefined, {skipAnimation: true})
-            panels.showPanel(null);
+            panels.showPanel("completeRecordingButton");
 
-            // The participant says when they're done, once the button shows up,
-            // or the recording runs out of time.
+            // The participant says when they're done, or the recording runs out
+            // of time. The button is there from the start: one that shows up
+            // partway through reads as a hint to wrap up.
             await firstOf(signal,
                 () => recording.done,
                 async (signal) => {
-                    await sleep(BUTTON_POPUP_DELAY, signal);
-                    panels.showStartPanel("completeRecordingButton");
                     await done.next(signal);
                     recording.stop("done_button");
                     await recording.done;
