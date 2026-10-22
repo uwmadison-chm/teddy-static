@@ -162,7 +162,7 @@ export default function CalibrationScreen() {
                 </FadingPanel>
                 <FadingPanel label={"nextModule"}>
                     <button onClick={() => next.pick()}>
-                        I'm So Ready!
+                        I'm Ready!
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"finishSession"}>
