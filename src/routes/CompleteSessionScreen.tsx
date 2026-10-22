@@ -12,6 +12,12 @@ import {
 import {stopCameraStream} from "@/data/camera.ts";
 import {firstOf, sleep, useScript} from "@/utils/script.ts";
 
+// How long sending can go without making progress before Teddy offers the way
+// out anyway. Sending carries on while the page is open, and whatever's left
+// when it closes stays on the device, for pig's client to send the next time
+// Teddy runs there.
+const STALL_MS = 60_000;
+
 
 export default function CompleteSessionScreen() {
     const teddyRef = useRef<TeddyFunctions>(null);
@@ -21,13 +27,21 @@ export default function CompleteSessionScreen() {
     const [bytesLeft, setBytesLeft] = useState<number>(0);
     const [bytesMost, setBytesMost] = useState<number>(0);
     const [sending, setSending] = useState<boolean>(true);
+    // When the bytes left to send last went down.
+    const progressAtRef = useRef(0);
 
     useScript(async (signal) => {
         const teddy = teddyRef.current;
         CurrentSessionData.complete()
         stopCameraStream()
+        progressAtRef.current = Date.now();
         const sent = pig.finishRun((pending) => {
-            setBytesLeft(pending.bytes);
+            setBytesLeft((left) => {
+                if (pending.bytes < left) {
+                    progressAtRef.current = Date.now();
+                }
+                return pending.bytes;
+            });
             setBytesMost((most) => Math.max(most, pending.bytes));
         }).catch((error) => {
             console.error("Couldn't finish sending to pig:", error);
@@ -35,6 +49,7 @@ export default function CompleteSessionScreen() {
             setSending(false);
         });
 
+        const nextURL = CurrentSessionData.nextURL;
         await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY, "You're all finished! Hooray!", signal);
         // Still sending: say so, rather than go quiet.
         const waited = await firstOf(signal,
@@ -46,11 +61,33 @@ export default function CompleteSessionScreen() {
                         "We just have to wait for your videos to finish sending.",
                         "Please don't close this window until they're done.",
                     ]);
-                await sent;
+                await firstOf(signal,
+                    () => sent,
+                    async (signal) => {
+                        // Stuck, likely offline: don't keep them here for good.
+                        while (Date.now() - progressAtRef.current < STALL_MS) {
+                            await sleep(1000, signal);
+                        }
+                        // Too late for an event: the run is finalized.
+                        console.warn("Sending has stalled");
+                        setCanLeavePageSafely();
+                        await teddy.say(TeddyAnimations.SADNESS,
+                            [
+                                "Your videos are having trouble sending. Please check your internet connection.",
+                                "They'll keep trying for as long as this page is open.",
+                                nextURL == null ?
+                                    "If you can't wait, you can close this tab." :
+                                    "If you can't wait, press the button below to continue.",
+                            ],
+                            signal);
+                        if (nextURL) {
+                            fadingPanelRef.current.showStartPanel();
+                        }
+                        await sent;
+                    });
                 return true;
             });
 
-        const nextURL = CurrentSessionData.nextURL;
         if (!nextURL) {
             setCanLeavePageSafely()
         }
