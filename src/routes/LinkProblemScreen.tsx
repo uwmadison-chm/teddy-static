@@ -3,14 +3,17 @@ import {useScript} from "@/utils/script.ts";
 import {useLocation} from "react-router";
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
-import {CurrentSessionData, setCanLeavePageSafely} from "@/data/sessionData.tsx";
+import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {Config} from "@/data/config.ts";
-import {stopCameraStream} from "@/data/camera.ts";
+import {FadingPanelSet, type FadingPanelFunctions} from "@/components/FadingPanelSet.tsx";
+import {WAY_OUT_PANEL, WayOutPanel} from "@/components/WayOutPanel.tsx";
+import {endSessionEarly, showWayOut} from "@/utils/wayOut.ts";
 
 
 export interface LinkProblemState {
-    // Why pig wouldn't start the run: a PigError code, or "unsupported".
-    // Absent when the problem is in the link itself.
+    // Why pig wouldn't start the run: a PigError code, or "unsupported"; or
+    // "script-error" when a screen broke partway through the session. Absent
+    // when the problem is in the link itself.
     code?: string;
 }
 
@@ -27,6 +30,12 @@ function explanation(code?: string): string[] {
                 "Oh no, this activity isn't open right now!",
                 "If you think it should be, please contact your study coordinator.",
             ];
+        case "script-error":
+            return [
+                "Oh no, something went wrong on my end!",
+                "It isn't anything you did.",
+                "Reloading this page might help. If it doesn't, please contact your study coordinator.",
+            ];
         case "unsupported":
             return [
                 "Oh no, this browser can't save your answers the way I need it to!",
@@ -41,19 +50,20 @@ function explanation(code?: string): string[] {
     }
 }
 
-// Shown instead of the session when it can't go ahead: the link is wrong, or
-// pig wouldn't start a run for it. What's wrong is in the console; the
-// participant just needs to know it isn't their fault and what to do.
+// Shown instead of the session when it can't go ahead: the link is wrong, pig
+// wouldn't start a run for it, or a screen broke. What's wrong is in the
+// console; the participant just needs to know it isn't their fault, what to
+// do, and how to move on.
 export default function LinkProblemScreen() {
     const teddyRef = useRef<TeddyFunctions>(null);
+    const fadingPanelRef = useRef<FadingPanelFunctions>(null);
     const location = useLocation();
     const state = (location.state || {}) as LinkProblemState;
 
     useScript(async (signal) => {
-        setCanLeavePageSafely()
-        stopCameraStream()
+        const ended = endSessionEarly();
         await teddyRef.current.say(TeddyAnimations.SADNESS, explanation(state.code), signal);
-        teddyRef.current.playAnimation(TeddyAnimations.WAVE)
+        await showWayOut(teddyRef.current, fadingPanelRef.current, ended, signal);
     });
 
     return (
@@ -65,13 +75,18 @@ export default function LinkProblemScreen() {
             {/* What's wrong, for whoever made the link. Participants don't see this. */}
             {Config.debug && <div className={"debug-link-problems"}>
                 <ul>
-                    {state.code ?
+                    {state.code == "script-error" ?
+                        <li>A screen's script failed; the console has the error</li> :
+                    state.code ?
                         <li>pig wouldn't start the run: {state.code}</li> :
                         CurrentSessionData.linkProblems.map((p, i) => <li key={i}>{p}</li>)}
                 </ul>
                 <a href={"?links&check=" + encodeURIComponent(window.location.href)}
                    target={"_blank"} rel={"noreferrer"}>Check this link in the link builder</a>
             </div>}
+            <FadingPanelSet ref={fadingPanelRef}>
+                <WayOutPanel label={WAY_OUT_PANEL} />
+            </FadingPanelSet>
         </div>
     );
 }

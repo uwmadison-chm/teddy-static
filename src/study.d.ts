@@ -35,7 +35,7 @@ declare module "virtual:teddy-study" {
         taskCode: string;
         debug: boolean;
         nextUrlHosts: string[];
-        nextUrlAfterCameraFailure: boolean;
+        nextUrlAfterFailure: boolean;
         recording: Partial<{
             mimeTypes: string[];
             videoBitsPerSecond: number;

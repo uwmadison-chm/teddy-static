@@ -10,6 +10,9 @@ import {CurrentSessionData, errorFields} from "@/data/sessionData.tsx";
 
 let stream: MediaStream | null = null;
 let opening: Promise<MediaStream> | null = null;
+// Counts stopCameraStream() calls, so a request still waiting on the
+// participant when the camera is turned off doesn't turn it back on.
+let stops = 0;
 
 function isLive(s: MediaStream): boolean {
     const tracks = s.getTracks();
@@ -58,6 +61,7 @@ export function getCameraStream(): Promise<MediaStream> {
     }
     if (opening == null) {
         stopCameraStream();
+        const stopsBefore = stops;
         CurrentSessionData.logEvent("camera_requested");
         const request = navigator.mediaDevices?.getUserMedia ?
             navigator.mediaDevices.getUserMedia({
@@ -72,6 +76,12 @@ export function getCameraStream(): Promise<MediaStream> {
             Promise.reject(new DOMException("This browser can't use a camera here", "NotSupportedError"));
         opening = request
             .then((s) => {
+                if (stops != stopsBefore) {
+                    for (const track of s.getTracks()) {
+                        track.stop();
+                    }
+                    throw new DOMException("The camera was turned off while it was opening", "AbortError");
+                }
                 stream = s;
                 const video = s.getVideoTracks()[0]?.getSettings() ?? {};
                 CurrentSessionData.logEvent("camera_result", {
@@ -104,8 +114,27 @@ export function getCameraStream(): Promise<MediaStream> {
     return opening;
 }
 
+// How long to wait for the browser to give us the camera, which is mostly the
+// participant answering its question about it, before offering help. Some
+// browsers let the question be dismissed without an answer, and then nothing
+// would ever happen.
+const ASK_WAIT_MS = 30_000;
+
+// getCameraStream(), except that it rejects with a TimeoutError when the
+// browser hasn't given its answer in ASK_WAIT_MS. The request carries on: if
+// the participant allows it later, the next call gets the stream at once.
+export function askForCameraStream(): Promise<MediaStream> {
+    return new Promise((resolve, reject) => {
+        const timer = window.setTimeout(() => {
+            reject(new DOMException("The browser didn't answer in time", "TimeoutError"));
+        }, ASK_WAIT_MS);
+        getCameraStream().then(resolve, reject).finally(() => clearTimeout(timer));
+    });
+}
+
 // Turns the camera and microphone off.
 export function stopCameraStream(): void {
+    stops += 1;
     if (stream != null) {
         for (const track of stream.getTracks()) {
             track.stop();

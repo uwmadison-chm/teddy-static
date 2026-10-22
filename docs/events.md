@@ -1,6 +1,6 @@
 # Teddy's events
 
-Event schema **1.0**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event.
+Event schema **1.1**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event.
 
 ## Versioning
 
@@ -89,7 +89,7 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 **`tab_hidden`**, **`tab_shown`**: the browser tab was hidden (the participant switched tabs or apps, minimized the browser, or locked their phone) or shown again.
 
-**`uncaught_exception`**: an error that nothing else in Teddy caught. `name`, `message`, and `stack` (its first few lines), when there is one. Only the first 20 in a session are sent.
+**`uncaught_exception`**: an error that nothing else in Teddy caught. When it stopped a screen, the participant is sent to the problem screen (or, if the page itself broke, a plain page) with a way out, and the session ends there. `name`, `message`, and `stack` (its first few lines), when there is one. Only the first 20 in a session are sent.
 
 ### Camera
 
@@ -105,7 +105,7 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 **`camera_ended`**: a camera or microphone track stopped on its own, such as when a camera was unplugged or permission was revoked mid-session. `track`: `video` or `audio`. If it happens on a screen showing the camera, the camera help screen follows.
 
-**`camera_help_shown`**: the camera help screen started. `name`: the error, `NotFoundError` after a `camera_result` of `missing`, or `ended` after a `camera_ended`.
+**`camera_help_shown`**: the camera help screen started. `name`: the error, `NotFoundError` after a `camera_result` of `missing`, `ended` after a `camera_ended`, or `TimeoutError` when the browser hadn't answered 30 seconds after a `camera_requested` (usually a permission prompt left unanswered). The request stays open after a `TimeoutError`, so its `camera_result` can still come later.
 
 **`camera_help_result`**: how the camera help screen ended.
 
@@ -199,3 +199,4 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 ## Changelog
 
 - **1.0**: the first version.
+- **1.1**: `camera_help_shown` can have `name` `TimeoutError`. `uncaught_exception` is now also sent for a screen that fails, which ends the session.
