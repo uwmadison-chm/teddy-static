@@ -1,14 +1,14 @@
 // Everything Teddy sends to pig goes through here.
 //
-// pig's client (src/vendor/pig/) keeps each event and recording on the device
+// pig's client (@uwmadison-chm/pig-client) keeps each event and recording on the device
 // until pig confirms it has it, and sends them as soon as it can. This file starts
 // the session's run, and in debug mode skips pig entirely and logs to the console
 // instead.
 
-import * as pig from "@/vendor/pig/pig.js";
+import * as pig from "@uwmadison-chm/pig-client";
 import {Config} from "@/data/config.ts";
 // Vite copies the worker into the build and gives us its URL.
-import workerUrl from "@/vendor/pig/pig-worker.js?url";
+import workerUrl from "@uwmadison-chm/pig-client/pig-worker.js?url";
 
 export type Pending = pig.Pending;
 
