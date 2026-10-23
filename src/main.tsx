@@ -55,10 +55,10 @@ createRoot(document.getElementById('root')!, {onUncaughtError}).render(showLinkB
                       <Route path="/calibration" element={
                           <CalibrationScreen />
                       } />
-                      <Route path="/videolog" element={ // videoLog
+                      <Route path="/videologs" element={ // videologs
                           <VideoLogScreen />
                       } />
-                      <Route path="/sentence" element={ // sentence
+                      <Route path="/sentences" element={ // sentences
                           <SentencesScreen />
                       } />
                       <Route path="/reels" element={ // reels

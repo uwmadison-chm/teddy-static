@@ -23,8 +23,8 @@ A study is a folder with Teddy's settings and the items each module can show. It
 ```
 my-study/
   config.js           settings
-  sentence.csv        sentences for the sentence module
-  videolog.csv        prompts for the videolog module
+  sentences.csv       sentences for the sentences module
+  videologs.csv       prompts for the videologs module
   questions.csv       questions for the questions module
   reels/
     reels.csv         reels for the reels module
@@ -53,15 +53,15 @@ Build with `TEDDY_STUDY=path/to/my-study npm run build`, or run the dev server t
 - `debug`: when `true`, nothing is sent to pig; events are logged to the console, and every screen shows a "Debug mode" banner. It can only be set here, not from a link, so a participant can't end up in a session that records nothing.
 - `nextUrlHosts`: the hosts that the `nextURL` link parameter may point to, e.g. `["redcap.example.edu"]`. Teddy only follows `http` and `https` URLs, and when this list isn't empty, only URLs on these hosts. Any other `nextURL` is ignored, and the end screen tells the participant they can close the tab.
 - `nextUrlAfterFailure`: what happens when the session ends early: the camera can't be used (there isn't one, or the participant gives up on getting it working), the link is bad or expired, pig won't start the run, or something in Teddy breaks. Teddy always says what went wrong and what the participant can do about it. When this is `true` (the default) and the link has a `nextURL`, he then offers a button to it; when `false`, he tells the participant to close the tab.
-- `modules`: the modules this study uses, and the CSV of items for each, relative to the study folder: `{sentence: "sentence.csv", reels: "reels/reels.csv"}`. A module left out isn't in this build, and a link that names it gets the "something's wrong with this link" screen. With no `modules`, links can only run the face check and calibration.
+- `modules`: the modules this study uses, and the CSV of items for each, relative to the study folder: `{sentences: "sentences.csv", reels: "reels/reels.csv"}`. A module left out isn't in this build, and a link that names it gets the "something's wrong with this link" screen. With no `modules`, links can only run the face check and calibration.
 - `recording`: how recordings are made. `mimeTypes` is tried in order and the first one the browser can record wins, so WebM is preferred and Safari falls back to MP4. `videoBitsPerSecond` and `audioBitsPerSecond` set the size: the defaults (1 Mbps and 64 kbps) come to about 8 MB a minute. `width`, `height`, and `frameRate` are what Teddy asks the camera for. `maxSeconds` is the longest any one recording can run (default 600, ten minutes), so a session left open doesn't keep recording; modules may stop their recordings sooner. Any of these can be left out to use the default.
 
 ### Item CSVs
 
 Each module's CSV has a header row and one item per row. `id` is what a link uses to name the item; IDs are text, so `01` and `1` are different. The other required columns:
 
-- `sentence`: `text`, the sentence to read aloud.
-- `videolog`: `text`, the prompt.
+- `sentences`: `text`, the sentence to read aloud.
+- `videologs`: `text`, the prompt.
 - `questions`: `text`, the question, and `responses`, its answers in REDCap's choice format: `0, Not at all | 1, Slightly | 2, Very`. Each answer is a code, a comma, and the label shown on its button; labels may have commas of their own. The build stops if an answer has no code or label, or if a code is used twice in one question.
 - `reels`: `file`, the video's path relative to the reels CSV (and inside its folder), or an `http(s)` URL to play it from somewhere else. The build copies each listed file to `assets/reels/`, with a hash in its name; files that the CSV doesn't list are left out.
 
@@ -73,7 +73,7 @@ Teddy passes every parameter in its link to pig when it starts the run. Which on
 
 Teddy also reads `nextURL` (where the end screen sends the participant, and a session that ends early too, unless `nextUrlAfterFailure` is `false`), `expirationTime` (a time in milliseconds after which the link no longer works), and `modules`.
 
-`modules` lists the activities to run, in order, separated by `|`. Each names its items, from the study's CSVs, after a colon: `modules=videolog:01,03|sentence:02|reels:01,02`. A module with no items, a module Teddy doesn't know or the study doesn't use, or an ID that isn't there gets the "something's wrong with this link" screen. A link with no `modules` runs the face check and calibration, then ends.
+`modules` lists the activities to run, in order, separated by `|`. Each names its items, from the study's CSVs, after a colon: `modules=videologs:01,03|sentences:02|reels:01,02`. A module with no items, a module Teddy doesn't know or the study doesn't use, or an ID that isn't there gets the "something's wrong with this link" screen. A link with no `modules` runs the face check and calibration, then ends.
 
 In a debug build, `?links` opens a link builder instead of a session; the debug banner links to it too. Pick modules and their items from the study, add `nextURL`, an expiry, and any parameters pig needs, and it writes the link. Paste a link into it to see what Teddy will make of it: each module's items, where the end screen goes, when it expires, which parameters only go to pig, and any problems. When a link has problems, the "something's wrong with this link" screen lists them in debug builds, with a link that opens the builder on it.
 

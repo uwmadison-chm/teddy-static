@@ -19,8 +19,8 @@ export default {
     // folder. Links can only name these modules. Reel files are found relative
     // to the reels CSV.
     modules: {
-        sentence: "sentence.csv",
-        videolog: "videolog.csv",
+        sentences: "sentences.csv",
+        videologs: "videologs.csv",
         questions: "questions.csv",
         // reels: "reels/reels.csv",
     },
