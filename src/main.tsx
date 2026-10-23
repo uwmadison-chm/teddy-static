@@ -21,6 +21,8 @@ import QuestionnaireScreen from "@/routes/QuestionnaireScreen.tsx";
 import {Config} from "@/data/config.ts";
 import {loadFaceApi} from "@/utils/faceApi.ts";
 import LinkBuilderScreen from "@/routes/LinkBuilderScreen.tsx";
+import {CurrentSessionData, errorFields} from "@/data/sessionData.tsx";
+import {showPlainWayOut} from "@/utils/wayOut.ts";
 
 // In debug mode, ?links opens the link builder instead of a session.
 const showLinkBuilder = Config.debug && new URLSearchParams(window.location.search).has("links");
@@ -29,7 +31,19 @@ const showLinkBuilder = Config.debug && new URLSearchParams(window.location.sear
 RuntimeLoader.setWasmUrl(riveWasmUrl);
 RuntimeLoader.setWasmFallbackUrl(riveFallbackWasmUrl);
 
-createRoot(document.getElementById('root')!).render(showLinkBuilder ? <StrictMode><LinkBuilderScreen /></StrictMode> :
+// A screen that fails while React draws it takes the whole page down, so put up
+// a plain page with a way out instead of leaving the participant a blank one.
+// In the link builder, the console is enough.
+function onUncaughtError(error: unknown) {
+    console.error("The page failed:", error);
+    if (showLinkBuilder) {
+        return;
+    }
+    CurrentSessionData.logEvent("uncaught_exception", errorFields(error), "error");
+    showPlainWayOut();
+}
+
+createRoot(document.getElementById('root')!, {onUncaughtError}).render(showLinkBuilder ? <StrictMode><LinkBuilderScreen /></StrictMode> :
   <StrictMode>
       <MemoryRouter>
           <main className={"phone-screen-wrapper"}>

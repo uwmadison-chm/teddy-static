@@ -12,6 +12,13 @@ import {
 import {stopCameraStream} from "@/data/camera.ts";
 import {firstOf, sleep, useScript} from "@/utils/script.ts";
 
+// How long the participant waits for sending, from when this screen starts,
+// before Teddy offers the way out anyway, so a slow connection doesn't hold
+// them here. Sending carries on while the page is open, and whatever's left
+// when it closes stays on the device, for pig's client to send the next time
+// Teddy runs there.
+const SEND_WAIT_MS = 15_000;
+
 
 export default function CompleteSessionScreen() {
     const teddyRef = useRef<TeddyFunctions>(null);
@@ -26,6 +33,7 @@ export default function CompleteSessionScreen() {
         const teddy = teddyRef.current;
         CurrentSessionData.complete()
         stopCameraStream()
+        const waitUntil = Date.now() + SEND_WAIT_MS;
         const sent = pig.finishRun((pending) => {
             setBytesLeft(pending.bytes);
             setBytesMost((most) => Math.max(most, pending.bytes));
@@ -35,6 +43,7 @@ export default function CompleteSessionScreen() {
             setSending(false);
         });
 
+        const nextURL = CurrentSessionData.nextURL;
         await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY, "You're all finished! Hooray!", signal);
         // Still sending: say so, rather than go quiet.
         const waited = await firstOf(signal,
@@ -46,11 +55,30 @@ export default function CompleteSessionScreen() {
                         "We just have to wait for your videos to finish sending.",
                         "Please don't close this window until they're done.",
                     ]);
-                await sent;
+                await firstOf(signal,
+                    () => sent,
+                    async (signal) => {
+                        await sleep(Math.max(0, waitUntil - Date.now()), signal);
+                        // Too late for an event: the run is finalized.
+                        console.warn("Still sending; offering the way out");
+                        setCanLeavePageSafely();
+                        await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY,
+                            [
+                                "Your videos are taking a while to send.",
+                                "They'll keep sending for as long as this page is open.",
+                                nextURL == null ?
+                                    "If you can't wait, you can close this tab." :
+                                    "If you can't wait, press the button below to continue.",
+                            ],
+                            signal);
+                        if (nextURL) {
+                            fadingPanelRef.current.showStartPanel();
+                        }
+                        await sent;
+                    });
                 return true;
             });
 
-        const nextURL = CurrentSessionData.nextURL;
         if (!nextURL) {
             setCanLeavePageSafely()
         }
@@ -96,7 +124,7 @@ export default function CompleteSessionScreen() {
                                 setCanLeavePageSafely()
                                 window.location.assign(CurrentSessionData.nextURL);
                             }}>
-                        Continue to REDCap
+                        Continue to Surveys
                     </button>
                 </FadingPanel>
             </FadingPanelSet>

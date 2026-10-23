@@ -3,7 +3,10 @@
 // AbortSignal that fires when its screen goes away, and every step that waits
 // takes that signal, so nothing a script started outlives its screen.
 
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useEffectEvent, useRef, useState} from "react";
+import {useLocation, useNavigate} from "react-router";
+import {CurrentSessionData, errorFields} from "@/data/sessionData.tsx";
+import type {LinkProblemState} from "@/routes/LinkProblemScreen.tsx";
 
 // Thrown out of a step whose script was stopped. useScript expects it.
 export class Aborted extends Error {
@@ -64,14 +67,27 @@ export async function firstOf<T>(signal: AbortSignal, ...steps: ((signal: AbortS
 }
 
 // Runs `script` when the screen mounts, and stops it when the screen unmounts.
+// A script that fails would leave the participant with nothing to press, so
+// they go to the problem screen instead, which has a way out.
 export function useScript(script: (signal: AbortSignal) => Promise<void>) {
     // The first render's script; screens don't swap scripts.
     const scriptRef = useRef(script);
+    const navigate = useNavigate();
+    const {pathname} = useLocation();
+    const failed = useEffectEvent((error: unknown) => {
+        console.error("Screen script failed:", error);
+        CurrentSessionData.logEvent("uncaught_exception", errorFields(error), "error");
+        // Unless it's the problem screen that failed.
+        if (pathname != "/linkproblem") {
+            const state: LinkProblemState = {code: "script-error"};
+            navigate("/linkproblem", {state});
+        }
+    });
     useEffect(() => {
         const controller = new AbortController();
         scriptRef.current(controller.signal).catch((error) => {
             if (!(error instanceof Aborted)) {
-                console.error("Screen script failed:", error);
+                failed(error);
             }
         });
         return () => controller.abort();

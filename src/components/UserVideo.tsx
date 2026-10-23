@@ -1,7 +1,7 @@
 import * as React from "react";
 import {useCallback, useEffect, useEffectEvent, useImperativeHandle, useRef, useState} from "react";
 import * as events from "@/utils/events.tsx";
-import {getCameraStream, recorderOptions} from "@/data/camera.ts";
+import {askForCameraStream, recorderOptions} from "@/data/camera.ts";
 import {Config} from "@/data/config.ts";
 import {useLocation} from "react-router";
 import {useAnimatedNavigate} from "@/utils/utils";
@@ -72,7 +72,7 @@ export const UserVideo = React.forwardRef<UserVideoFunctions, UserVideoProps>((p
     // `stopped` fires when this screen goes away, so nothing here acts on the
     // camera after that.
     const startCamera = useEffectEvent((stopped: AbortSignal) => {
-        getCameraStream()
+        askForCameraStream()
             .then((localMediaStream) => {
                 if (stopped.aborted) {
                     return;
