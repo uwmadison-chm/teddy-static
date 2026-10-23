@@ -7,7 +7,7 @@ export const ModuleNames = {
     Questions: "questions",
     Reels: "reels",
     Sentences: "sentences",
-    VideoLog: "videolog",
+    VideoLogs: "videologs",
 }
 
 export class ModuleParam {
@@ -31,7 +31,7 @@ export function moduleItems(moduleName: string): Record<string, StudyItem> {
         [ModuleNames.Questions]: questions,
         [ModuleNames.Reels]: reels,
         [ModuleNames.Sentences]: sentences,
-        [ModuleNames.VideoLog]: videoLogPrompts,
+        [ModuleNames.VideoLogs]: videoLogPrompts,
     }[moduleName] ?? {};
 }
 
@@ -40,7 +40,7 @@ export function studyModules(): string[] {
     return Object.values(ModuleNames).filter((name) => modules.includes(name));
 }
 
-// Parses `modulesText`, like "videolog:01,03|sentences:02". Returns the modules
+// Parses `modulesText`, like "videologs:01,03|sentences:02". Returns the modules
 // that could be read, and a sentence for each problem that means the session
 // can't run as asked.
 export function parseModules(modulesText: string): {modules: ModuleParam[], problems: string[]} {

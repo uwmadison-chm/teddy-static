@@ -24,7 +24,7 @@ A study is a folder with Teddy's settings and the items each module can show. It
 my-study/
   config.js           settings
   sentences.csv       sentences for the sentences module
-  videolog.csv        prompts for the videolog module
+  videologs.csv       prompts for the videologs module
   questions.csv       questions for the questions module
   reels/
     reels.csv         reels for the reels module
@@ -61,7 +61,7 @@ Build with `TEDDY_STUDY=path/to/my-study npm run build`, or run the dev server t
 Each module's CSV has a header row and one item per row. `id` is what a link uses to name the item; IDs are text, so `01` and `1` are different. The other required columns:
 
 - `sentences`: `text`, the sentence to read aloud.
-- `videolog`: `text`, the prompt.
+- `videologs`: `text`, the prompt.
 - `questions`: `text`, the question, and `responses`, its answers in REDCap's choice format: `0, Not at all | 1, Slightly | 2, Very`. Each answer is a code, a comma, and the label shown on its button; labels may have commas of their own. The build stops if an answer has no code or label, or if a code is used twice in one question.
 - `reels`: `file`, the video's path relative to the reels CSV (and inside its folder), or an `http(s)` URL to play it from somewhere else. The build copies each listed file to `assets/reels/`, with a hash in its name; files that the CSV doesn't list are left out.
 
@@ -73,7 +73,7 @@ Teddy passes every parameter in its link to pig when it starts the run. Which on
 
 Teddy also reads `nextURL` (where the end screen sends the participant), `expirationTime` (a time in milliseconds after which the link no longer works), and `modules`.
 
-`modules` lists the activities to run, in order, separated by `|`. Each names its items, from the study's CSVs, after a colon: `modules=videolog:01,03|sentences:02|reels:01,02`. A module with no items, a module Teddy doesn't know or the study doesn't use, or an ID that isn't there gets the "something's wrong with this link" screen. A link with no `modules` runs the face check and calibration, then ends.
+`modules` lists the activities to run, in order, separated by `|`. Each names its items, from the study's CSVs, after a colon: `modules=videologs:01,03|sentences:02|reels:01,02`. A module with no items, a module Teddy doesn't know or the study doesn't use, or an ID that isn't there gets the "something's wrong with this link" screen. A link with no `modules` runs the face check and calibration, then ends.
 
 In a debug build, `?links` opens a link builder instead of a session; the debug banner links to it too. Pick modules and their items from the study, add `nextURL`, an expiry, and any parameters pig needs, and it writes the link. Paste a link into it to see what Teddy will make of it: each module's items, where the end screen goes, when it expires, which parameters only go to pig, and any problems. When a link has problems, the "something's wrong with this link" screen lists them in debug builds, with a link that opens the builder on it.
 

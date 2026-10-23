@@ -42,7 +42,7 @@ export default function VideoLogScreen() {
         const panels = fadingPanelRef.current;
         const promptIDs = CurrentSessionData.getCurrentModuleArgs();
 
-        console.log("Starting videoLog module with prompts:", promptIDs)
+        console.log("Starting videologs module with prompts:", promptIDs)
         CurrentSessionData.startModule()
 
         const promptDescription = promptIDs.length == 1 ?

@@ -19,7 +19,7 @@ export default {
     // to the reels CSV.
     modules: {
         sentences: "sentences.csv",
-        videolog: "videolog.csv",
+        videologs: "videologs.csv",
         questions: "questions.csv",
         // reels: "reels/reels.csv",
     },
