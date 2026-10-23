@@ -44,7 +44,7 @@ createRoot(document.getElementById('root')!).render(showLinkBuilder ? <StrictMod
                       <Route path="/videolog" element={ // videoLog
                           <VideoLogScreen />
                       } />
-                      <Route path="/sentence" element={ // sentence
+                      <Route path="/sentences" element={ // sentences
                           <SentencesScreen />
                       } />
                       <Route path="/reels" element={ // reels

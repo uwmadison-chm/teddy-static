@@ -40,7 +40,7 @@ const RECORDING_KEYS: Record<string, string> = {
 // The columns each module's CSV has to have. Other columns are allowed, and
 // come along with each item.
 const MODULE_COLUMNS: Record<string, string[]> = {
-    sentence: ["id", "text"],
+    sentences: ["id", "text"],
     videolog: ["id", "text"],
     reels: ["id", "file"],
     questions: ["id", "text", "responses"],
@@ -369,7 +369,7 @@ export default function teddyStudy(): Plugin {
                 `export const build = ${JSON.stringify(buildInfo(studyDir, hashed))};`,
                 `export const config = ${JSON.stringify(settings)};`,
                 `export const modules = ${JSON.stringify(Object.keys(moduleFiles))};`,
-                `export const sentences = ${JSON.stringify(items.sentence)};`,
+                `export const sentences = ${JSON.stringify(items.sentences)};`,
                 `export const videoLogPrompts = ${JSON.stringify(items.videolog)};`,
                 `export const reels = ${JSON.stringify(items.reels)};`,
                 `export const questions = ${JSON.stringify(questions)};`,

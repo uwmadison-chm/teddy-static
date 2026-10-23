@@ -40,7 +40,7 @@ export default function SentencesScreen() {
         const panels = fadingPanelRef.current;
         const sentenceIDs = CurrentSessionData.getCurrentModuleArgs();
 
-        console.log("Starting sentence module with sentences:", sentenceIDs)
+        console.log("Starting sentences module with sentences:", sentenceIDs)
         CurrentSessionData.startModule()
 
         const sentenceDescription = sentenceIDs.length == 1 ?

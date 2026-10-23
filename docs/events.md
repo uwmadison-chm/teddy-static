@@ -17,7 +17,7 @@ Each session is one pig run. Every event Teddy sends has:
 
 - `type`: what happened, in snake_case. See [Naming](#naming).
 - `level`: how it went this time: `info`, `warning` (the session carried on, but its data may be affected), or `error` (something didn't work). The same type can have different levels; a `face_check_result` is `info` when a face was found and `error` when the detector couldn't run. Filtering on `level` finds a run's problems without knowing every type. See [Levels](#levels).
-- `module`: the module running: `null` on the intro and camera screens before calibration, `calibration`, then the module name (`sentence`, `videolog`, `questions`, `reels`), and `null` again on the end screen.
+- `module`: the module running: `null` on the intro and camera screens before calibration, `calibration`, then the module name (`sentences`, `videolog`, `questions`, `reels`), and `null` again on the end screen.
 - `recording`: the number of the recording running when the event happened, or `null` if none was. Recordings are numbered from 1 within the session.
 
 pig's client adds `_client`, with `wall_time` (the participant's clock, with its UTC offset) and `performance_now` (milliseconds on the page's monotonic clock). The session stays on one page, so `performance_now` is comparable across the whole run. pig's own first event in each run (`_client.event: "run_start"`) has the browser, screen and window size, and the pig client's version.
@@ -78,7 +78,7 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 | `teddy` | `{version, commit, dirty}`: Teddy's `package.json` version, its git commit, and whether the checkout had changes, at build time |
 | `study` | `{task_code, commit, dirty, hash}`: the study's pig task code, the study folder's git commit and whether it had changes (not counting Teddy as a submodule), and a SHA-256 of `config.js`, the CSVs and the reel files. Two builds with the same `hash` showed participants the same things. |
 | `debug` | whether this was a debug build. Debug builds don't send to pig, so this is always `false` in pig's data. |
-| `modules` | the modules the link asked for, in order, each as `{"module_name": ["item", ...]}`, like `[{"sentence": ["00", "01"]}, {"questions": ["relaxed"]}]` |
+| `modules` | the modules the link asked for, in order, each as `{"module_name": ["item", ...]}`, like `[{"sentences": ["00", "01"]}, {"questions": ["relaxed"]}]` |
 | `link_problems` | sentences describing what's wrong with the link, if anything. A link with problems doesn't start a pig run, so this is normally empty. |
 | `next_url` | where the end screen sends the participant, or `null` |
 | `next_url_rejected` | the link's `nextURL`, when it wasn't allowed; otherwise `null` |
@@ -150,7 +150,7 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 | module | fields |
 |---|---|
-| `sentence` | `item`, `text` |
+| `sentences` | `item`, `text` |
 | `videolog` | `item`, `text`. The prompt shows before recording starts, so the participant can think about it. |
 | `questions` | `item`, `text`, `responses` (as the CSV has them), `choices` (a list of `{code, label}`), `number` and `of` (its position in the module) |
 | `reels` | `item`, `file` |
