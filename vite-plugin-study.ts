@@ -23,7 +23,7 @@ const CONFIG_KEYS: Record<string, string> = {
     taskCode: "string",
     debug: "boolean",
     nextUrlHosts: "string[]",
-    nextUrlAfterCameraFailure: "boolean",
+    nextUrlAfterFailure: "boolean",
     recording: "object",
     modules: "object",
 };

@@ -10,7 +10,7 @@ import {
 } from "@/components/FadingPanelSet.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {useNavigate} from "react-router";
-import {getCameraStream, lacksCamera} from "@/data/camera.ts";
+import {askForCameraStream, lacksCamera} from "@/data/camera.ts";
 import * as pig from "@/data/pig.ts";
 import type {LinkProblemState} from "@/routes/LinkProblemScreen.tsx";
 import type {CameraHelpState} from "@/routes/CameraHelpScreen.tsx";
@@ -69,7 +69,7 @@ export default function IntroScreen() {
         panels.showPanel(null);
         teddy.say(null, "Your browser may ask to use your camera and microphone. Please allow both!");
         try {
-            await abortable(getCameraStream(), signal);
+            await abortable(askForCameraStream(), signal);
         } catch (error) {
             if (error instanceof Aborted) {
                 throw error;

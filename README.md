@@ -52,7 +52,7 @@ Build with `TEDDY_STUDY=path/to/my-study npm run build`, or run the dev server t
 - `taskCode`: the task this deployment sends data to, as pig's configuration names it. The task needs `media = true`.
 - `debug`: when `true`, nothing is sent to pig; events are logged to the console, and every screen shows a "Debug mode" banner. It can only be set here, not from a link, so a participant can't end up in a session that records nothing.
 - `nextUrlHosts`: the hosts that the `nextURL` link parameter may point to, e.g. `["redcap.example.edu"]`. Teddy only follows `http` and `https` URLs, and when this list isn't empty, only URLs on these hosts. Any other `nextURL` is ignored, and the end screen tells the participant they can close the tab.
-- `nextUrlAfterCameraFailure`: what happens when the camera can't be used (there isn't one, or the participant gives up on getting it working). Teddy always says the activity needs a working camera, and to try another device with the same link or contact the study coordinator. When this is `true` and the link has a `nextURL`, he then offers a button to it; when `false` (the default), he tells the participant to close the tab.
+- `nextUrlAfterFailure`: what happens when the session ends early: the camera can't be used (there isn't one, or the participant gives up on getting it working), the link is bad or expired, pig won't start the run, or something in Teddy breaks. Teddy always says what went wrong and what the participant can do about it. When this is `true` (the default) and the link has a `nextURL`, he then offers a button to it; when `false`, he tells the participant to close the tab.
 - `modules`: the modules this study uses, and the CSV of items for each, relative to the study folder: `{sentences: "sentences.csv", reels: "reels/reels.csv"}`. A module left out isn't in this build, and a link that names it gets the "something's wrong with this link" screen. With no `modules`, links can only run the face check and calibration.
 - `recording`: how recordings are made. `mimeTypes` is tried in order and the first one the browser can record wins, so WebM is preferred and Safari falls back to MP4. `videoBitsPerSecond` and `audioBitsPerSecond` set the size: the defaults (1 Mbps and 64 kbps) come to about 8 MB a minute. `width`, `height`, and `frameRate` are what Teddy asks the camera for. `maxSeconds` is the longest any one recording can run (default 600, ten minutes), so a session left open doesn't keep recording; modules may stop their recordings sooner. Any of these can be left out to use the default.
 
@@ -71,7 +71,7 @@ Other columns are allowed and are kept with each item. Excel's UTF-8 CSV export 
 
 Teddy passes every parameter in its link to pig when it starts the run. Which ones are required, and which identify the participant, is up to the task's definition in pig's configuration. Pig records the rest. If pig refuses the run (a required parameter is missing, or the task is closed), Teddy says so before asking for the camera.
 
-Teddy also reads `nextURL` (where the end screen sends the participant), `expirationTime` (a time in milliseconds after which the link no longer works), and `modules`.
+Teddy also reads `nextURL` (where the end screen sends the participant, and a session that ends early too, unless `nextUrlAfterFailure` is `false`), `expirationTime` (a time in milliseconds after which the link no longer works), and `modules`.
 
 `modules` lists the activities to run, in order, separated by `|`. Each names its items, from the study's CSVs, after a colon: `modules=videologs:01,03|sentences:02|reels:01,02`. A module with no items, a module Teddy doesn't know or the study doesn't use, or an ID that isn't there gets the "something's wrong with this link" screen. A link with no `modules` runs the face check and calibration, then ends.
 
@@ -79,7 +79,7 @@ In a debug build, `?links` opens a link builder instead of a session; the debug 
 
 ## What Teddy sends to pig
 
-Each session is one pig run. It starts as soon as Teddy loads, with every link parameter, and is finalized on the end screen once everything has been sent. A session the participant leaves early is finalized the next time this browser opens Teddy, or expires on pig's schedule.
+Each session is one pig run. It starts as soon as Teddy loads, with every link parameter, and is finalized on the end screen once everything has been sent. If sending takes more than 15 seconds, the end screen offers its way out anyway, and sending carries on while the page stays open. A session the participant leaves early is finalized the next time this browser opens Teddy, or expires on pig's schedule.
 
 Everything Teddy logs is a pig event with a `type`, the `module` running, and the number of the `recording` running, if any. Each recording is a pig media item, stamped with the moment its recorder started on the same clock as every event, which is what lines events up with the video. The first event, `session_started`, says which version of Teddy and of the study made the run, and which version of the event schema its events follow. [docs/events.md](docs/events.md) describes every event and field, how to line events up with recordings, and how to join a recording's parts into a playable file.
 
