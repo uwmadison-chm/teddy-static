@@ -79,7 +79,7 @@ In a debug build, `?links` opens a link builder instead of a session; the debug 
 
 ## What Teddy sends to pig
 
-Each session is one pig run. It starts as soon as Teddy loads, with every link parameter, and is finalized on the end screen once everything has been sent. If sending makes no progress for 10 seconds (the participant is likely offline), the end screen offers its way out anyway, and sending carries on while the page stays open. A session the participant leaves early is finalized the next time this browser opens Teddy, or expires on pig's schedule.
+Each session is one pig run. It starts as soon as Teddy loads, with every link parameter, and is finalized on the end screen once everything has been sent. If sending takes more than 15 seconds, the end screen offers its way out anyway, and sending carries on while the page stays open. A session the participant leaves early is finalized the next time this browser opens Teddy, or expires on pig's schedule.
 
 Everything Teddy logs is a pig event with a `type`, the `module` running, and the number of the `recording` running, if any. Each recording is a pig media item, stamped with the moment its recorder started on the same clock as every event, which is what lines events up with the video. The first event, `session_started`, says which version of Teddy and of the study made the run, and which version of the event schema its events follow. [docs/events.md](docs/events.md) describes every event and field, how to line events up with recordings, and how to join a recording's parts into a playable file.
 

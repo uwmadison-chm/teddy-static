@@ -12,11 +12,12 @@ import {
 import {stopCameraStream} from "@/data/camera.ts";
 import {firstOf, sleep, useScript} from "@/utils/script.ts";
 
-// How long sending can go without making progress before Teddy offers the way
-// out anyway. Sending carries on while the page is open, and whatever's left
+// How long the participant waits for sending, from when this screen starts,
+// before Teddy offers the way out anyway, so a slow connection doesn't hold
+// them here. Sending carries on while the page is open, and whatever's left
 // when it closes stays on the device, for pig's client to send the next time
 // Teddy runs there.
-const STALL_MS = 10_000;
+const SEND_WAIT_MS = 15_000;
 
 
 export default function CompleteSessionScreen() {
@@ -27,21 +28,14 @@ export default function CompleteSessionScreen() {
     const [bytesLeft, setBytesLeft] = useState<number>(0);
     const [bytesMost, setBytesMost] = useState<number>(0);
     const [sending, setSending] = useState<boolean>(true);
-    // When the bytes left to send last went down.
-    const progressAtRef = useRef(0);
 
     useScript(async (signal) => {
         const teddy = teddyRef.current;
         CurrentSessionData.complete()
         stopCameraStream()
-        progressAtRef.current = Date.now();
+        const waitUntil = Date.now() + SEND_WAIT_MS;
         const sent = pig.finishRun((pending) => {
-            setBytesLeft((left) => {
-                if (pending.bytes < left) {
-                    progressAtRef.current = Date.now();
-                }
-                return pending.bytes;
-            });
+            setBytesLeft(pending.bytes);
             setBytesMost((most) => Math.max(most, pending.bytes));
         }).catch((error) => {
             console.error("Couldn't finish sending to pig:", error);
@@ -64,17 +58,14 @@ export default function CompleteSessionScreen() {
                 await firstOf(signal,
                     () => sent,
                     async (signal) => {
-                        // Stuck, likely offline: don't keep them here for good.
-                        while (Date.now() - progressAtRef.current < STALL_MS) {
-                            await sleep(1000, signal);
-                        }
+                        await sleep(Math.max(0, waitUntil - Date.now()), signal);
                         // Too late for an event: the run is finalized.
-                        console.warn("Sending has stalled");
+                        console.warn("Still sending; offering the way out");
                         setCanLeavePageSafely();
-                        await teddy.say(TeddyAnimations.SADNESS,
+                        await teddy.say(TeddyAnimations.SLIGHTLY_HAPPY,
                             [
-                                "Your videos are having trouble sending. Please check your internet connection.",
-                                "They'll keep trying for as long as this page is open.",
+                                "Your videos are taking a while to send.",
+                                "They'll keep sending for as long as this page is open.",
                                 nextURL == null ?
                                     "If you can't wait, you can close this tab." :
                                     "If you can't wait, press the button below to continue.",
