@@ -85,7 +85,7 @@ Everything Teddy logs is a pig event with a `type`, the `module` running, and th
 
 ## Updating pig's client
 
-Pig's JavaScript client is copied into this repository, in `src/vendor/pig/`. Vite bundles it into Teddy, and copies `pig-worker.js` into the build as its own file, since a worker has to be loaded from Teddy's own site. `src/vendor/pig/VERSION` says which client it is. To update it, run `scripts/update-pig-client.sh path/to/psych-ingestor` and commit the result.
+Teddy uses pig's JavaScript client from npm, [`@uwmadison-chm/pig-client`](https://www.npmjs.com/package/@uwmadison-chm/pig-client). Vite bundles it into Teddy, and copies `pig-worker.js` into the build as its own file, since a worker has to be loaded from Teddy's own site. To update it, run `npm install @uwmadison-chm/pig-client@latest`, check the client's changelog for anything that changes what Teddy sends, and commit `package.json` and `package-lock.json`.
 
 ## Production Build
 
