@@ -59,12 +59,14 @@ Its `_client.performance_now` is the moment the recorder started, which is the v
 
 Each recording ends with a `recording_stopped` event, logged when Teddy asked the recorder to stop. The recorder delivers its last frames a moment later.
 
-To get a playable file, join a media item's parts in order and remux it:
+To get a playable file, join a media item's parts in order and remux it. In a `pig organize` tree, the item's directory is named for its event ID:
 
 ```
-cat media/00003/*.part > recording.webm
+cat media/37/*.part > recording.webm
 ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration and seek index
 ```
+
+[teddy-study-example](https://github.com/uwmadison-chm/teddy-study-example)'s `prepare.py` does this for every recording in an organized tree, and turns the events into CSVs, with `recording_ms` already worked out. It's a starting point to copy and change.
 
 ## Event types
 
