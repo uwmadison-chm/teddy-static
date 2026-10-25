@@ -41,6 +41,6 @@ export default {
     // What the tester is asked to talk about, one recording each.
     prompts: [
         "Tell us what you had for breakfast today.",
-        "Describe the room you're in right now.",
+        "Tell us about a place you like to visit.",
     ],
 };

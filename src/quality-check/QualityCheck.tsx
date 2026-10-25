@@ -218,7 +218,8 @@ function Intro({returning, onDone}: {returning: boolean, onDone: () => void}) {
                 [returning ? "Welcome back! This is the quality check, to see how recordings look on this device." :
                     "Hi! This is a quality check, to see how recordings look on this device.",
                     "You'll pick how your camera records, then record a couple of short clips.",
-                    "After each one, you'll watch it back and tell us whether it looks right."],
+                    "After each one, you'll watch it back and tell us whether it looks right.",
+                    "Your recordings will be watched by people checking them, who might know you. So only say and show what you'd be happy for them to see."],
                 controller.signal);
             panelsRef.current.showStartPanel();
         })().catch(() => {});
@@ -592,6 +593,10 @@ export default function QualityCheck() {
                         </p>
                     </div>
                 </div>
+                <p className={"qc-notice"}>
+                    People checking quality will watch your recordings, and they might know you.
+                    Only say and show what you'd be happy for them to see, and keep other people out of the frame.
+                </p>
                 <button className={"qc-primary"} disabled={!tester || formatIndex == null || !bitrateOK || !stream} onClick={start}>
                     Start Recording With These Settings
                 </button>
