@@ -2,6 +2,10 @@ import {allowedNextURL, Config} from "@/data/config.ts";
 import {sendEvent} from "@/data/pig.ts";
 import {type ModuleParam, parseModules} from "@/data/links.ts";
 import {build} from "virtual:teddy-study";
+import {errorFields, type Level, setEventSink} from "@/data/log.ts";
+
+export {errorFields} from "@/data/log.ts";
+export type {Level} from "@/data/log.ts";
 
 // The version of the events Teddy sends, documented in docs/events.md. Bump
 // the minor version for anything added, and the major version for anything
@@ -11,9 +15,8 @@ export const EVENT_SCHEMA = "1.1";
 // The most uncaught_exception events one session sends.
 const MAX_SCRIPT_ERRORS = 20;
 
-// How an event went. "warning": the session carried on, but its data may be
-// affected. "error": something didn't work.
-export type Level = "info" | "warning" | "error";
+// How an event went (Level): "warning" means the session carried on, but its
+// data may be affected; "error", that something didn't work.
 
 // The session's state. What happens in it goes to pig as events, through
 // logEvent(); the link's parameters reach pig when the run starts (see pig.ts).
@@ -150,19 +153,9 @@ class SessionData {
 }
 
 // An error's name, message, and the start of its stack, for an event.
-export function errorFields(error: unknown): {name: string, message: string, stack?: string} {
-    if (error instanceof Error || (error != null && typeof error == "object" && "name" in error)) {
-        const e = error as Error;
-        const fields: {name: string, message: string, stack?: string} = {name: String(e.name), message: String(e.message ?? "")};
-        if (e.stack) {
-            fields.stack = e.stack.split("\n").slice(0, 6).join("\n");
-        }
-        return fields;
-    }
-    return {name: "Error", message: String(error)};
-}
-
 export const CurrentSessionData = new SessionData();
+// Shared components log through log.ts; in a session, their events are the session's.
+setEventSink((type, fields, level) => CurrentSessionData.logEvent(type, fields, level));
 
 const pageStatus = {
     canLeave:false

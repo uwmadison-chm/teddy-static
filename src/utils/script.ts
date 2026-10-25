@@ -5,7 +5,7 @@
 
 import {useEffect, useEffectEvent, useRef, useState} from "react";
 import {useLocation, useNavigate} from "react-router";
-import {CurrentSessionData, errorFields} from "@/data/sessionData.tsx";
+import {errorFields, logEvent} from "@/data/log.ts";
 import type {LinkProblemState} from "@/routes/LinkProblemScreen.tsx";
 
 // Thrown out of a step whose script was stopped. useScript expects it.
@@ -76,7 +76,7 @@ export function useScript(script: (signal: AbortSignal) => Promise<void>) {
     const {pathname} = useLocation();
     const failed = useEffectEvent((error: unknown) => {
         console.error("Screen script failed:", error);
-        CurrentSessionData.logEvent("uncaught_exception", errorFields(error), "error");
+        logEvent("uncaught_exception", errorFields(error), "error");
         // Unless it's the problem screen that failed.
         if (pathname != "/linkproblem") {
             const state: LinkProblemState = {code: "script-error"};
