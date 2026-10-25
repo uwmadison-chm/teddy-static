@@ -83,10 +83,10 @@ In a debug build, `?links` opens a link builder instead of a session; the debug 
 
 ```
 TEDDY_STUDY=path/to/my-study npm run generate-lists -- --out-dir=lists/ --count=100 --events=base,pw1 \
-    --modules='questions:1,2,3,4,5|reels=pick(3)|sentences=pick(3)|videologs=1,2'
+    --modules='questions:1,2,3,4,5|reels:pick(3)|sentences:pick(3)|videologs:1,2'
 ```
 
-This writes `lists/base.csv` and `lists/pw1.csv`, 100 rows each. `--modules` is a `modules` parameter, except a module's items can be `pick(N)`: N of the study's items for that module, drawn at random for each row with no repeats within the row. Each row of each event gets its own draw, so a participant can see an item again in a later event. A module's name and items may be separated by `:` or `=`. Listed IDs are checked against the study, as the build would. Quote `--modules`, since `|` means something to the shell. `--seed=N` makes the lists the same each time; `--study=DIR` names the study instead of `TEDDY_STUDY`. It needs Node 22.18 or later, which runs TypeScript directly.
+This writes `lists/base.csv` and `lists/pw1.csv`, 100 rows each. `--modules` is a `modules` parameter, except a module's items can be `pick(N)`: N of the study's items for that module, drawn at random for each row with no repeats within the row. Each row of each event gets its own draw, so a participant can see an item again in a later event. Listed IDs are checked against the study, as the build would. Quote `--modules`, since `|` means something to the shell. `--seed=N` makes the lists the same each time; `--study=DIR` names the study instead of `TEDDY_STUDY`. It needs Node 22.18 or later, which runs TypeScript directly.
 
 ## What Teddy sends to pig
 

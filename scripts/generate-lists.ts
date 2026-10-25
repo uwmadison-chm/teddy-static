@@ -7,12 +7,11 @@
 // pick(N): N of that module's items, chosen at random for each row with no
 // repeats in the row. Every row of every event gets its own draw. Items are
 // the study's, from its config.js, so pick() only chooses items the build has
-// and listed IDs are checked against it. A module's name and items may be
-// separated by : or =.
+// and listed IDs are checked against it.
 //
 // Usage:
 //   node scripts/generate-lists.ts --out-dir=lists/ --count=100 --events=base,pw1 \
-//       --modules='questions:1,2,3,4,5|reels=pick(3)|sentences=pick(3)|videologs=1,2'
+//       --modules='questions:1,2,3,4,5|reels:pick(3)|sentences:pick(3)|videologs:1,2'
 //
 // Quote --modules, since | means something to the shell. The study is
 // TEDDY_STUDY, or example-study/, as for the build; --study overrides it.
@@ -25,7 +24,7 @@ import {loadConfig, loadItems, MODULE_COLUMNS, StudyError} from "../vite-plugin-
 
 const USAGE = `Usage: node scripts/generate-lists.ts --out-dir=DIR --count=N --events=EVENT,... --modules=MODULES [--study=DIR] [--seed=N]
 
-  --modules   a modules parameter, like 'questions:1,2,3|reels=pick(3)'. pick(N) chooses
+  --modules   a modules parameter, like 'questions:1,2,3|reels:pick(3)'. pick(N) chooses
               N of the module's items for each row, with no repeats in the row.
   --study     the study folder (default: TEDDY_STUDY, or example-study)
   --seed      makes the lists the same each time`;
@@ -50,9 +49,9 @@ function parseModuleSpecs(text: string, itemIDs: Record<string, string[]>): {spe
     const specs: ModuleSpec[] = [];
     const problems: string[] = [];
     for (const moduleText of text.split("|").filter(x => !!x)) {
-        const m = moduleText.match(/^([^:=]+)[:=](.*)$/);
+        const m = moduleText.match(/^([^:]+):(.*)$/);
         if (!m) {
-            problems.push(`${moduleText} needs items, like ${moduleText}:01,02 or ${moduleText}=pick(3)`);
+            problems.push(`${moduleText} needs a colon before its items, like sentences:01,02 or sentences:pick(3)`);
             continue;
         }
         const module = m[1].trim().toLowerCase();
@@ -77,7 +76,7 @@ function parseModuleSpecs(text: string, itemIDs: Record<string, string[]>): {spe
         }
         const ids = args.split(",").map(x => x.trim()).filter(x => !!x);
         if (!ids.length) {
-            problems.push(`${module} needs items, like ${module}:01,02 or ${module}=pick(3)`);
+            problems.push(`${module} needs items, like ${module}:01,02 or ${module}:pick(3)`);
         }
         for (const id of ids) {
             if (!known.includes(id)) {
