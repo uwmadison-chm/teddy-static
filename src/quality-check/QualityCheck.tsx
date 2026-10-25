@@ -31,9 +31,9 @@ interface Choice {
 // What the browser says about recording a format, at the chosen bitrate and size.
 interface Capability {
     canRecord: boolean;
-    // From navigator.mediaCapabilities.encodingInfo(). Chrome doesn't answer
-    // for type "record", so it's asked about the same codec for "webrtc",
-    // which uses the same encoders; `source` says which answered.
+    // From navigator.mediaCapabilities.encodingInfo(). Chrome only answers
+    // for type "record" with experimental web platform features on, so it's
+    // also asked about the same codec for "webrtc"; `source` says which answered.
     source: "record" | "webrtc" | null;
     supported: boolean | null;
     smooth: boolean | null;
@@ -101,8 +101,7 @@ async function capability(format: Format, bitrate: number, size: Size): Promise<
                 continue;
             }
             try {
-                // "record" isn't in TypeScript's types, since it's left the spec.
-                const info = await navigator.mediaCapabilities.encodingInfo({type: type as MediaEncodingType, video: {contentType, ...video}});
+                const info = await navigator.mediaCapabilities.encodingInfo({type, video: {contentType, ...video}});
                 Object.assign(result, {source: type, supported: info.supported, smooth: info.smooth, powerEfficient: info.powerEfficient});
                 break;
             } catch {
