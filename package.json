@@ -7,8 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "generate-lists": "node scripts/generate-lists.ts"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@rive-app/react-canvas-lite": "^4.36.0",

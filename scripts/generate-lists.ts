@@ -10,23 +10,22 @@
 // and listed IDs are checked against it.
 //
 // Usage:
-//   node scripts/generate-lists.ts --out-dir=lists/ --count=100 --events=base,pw1 \
+//   node scripts/generate-lists.ts --study=../my-study --out-dir=lists/ --count=100 --events=base,pw1 \
 //       --modules='questions:1,2,3,4,5|reels:pick(3)|sentences:pick(3)|videologs:1,2'
 //
-// Quote --modules, since | means something to the shell. The study is
-// TEDDY_STUDY, or example-study/, as for the build; --study overrides it.
-// --seed makes the lists repeatable.
+// Quote --modules, since | means something to the shell. --study is the study
+// folder, the one holding config.js. --seed makes the lists repeatable.
 
 import {mkdirSync, writeFileSync} from "node:fs";
 import {join, resolve} from "node:path";
 import {parseArgs} from "node:util";
 import {loadConfig, loadItems, MODULE_COLUMNS, StudyError} from "../vite-plugin-study.ts";
 
-const USAGE = `Usage: node scripts/generate-lists.ts --out-dir=DIR --count=N --events=EVENT,... --modules=MODULES [--study=DIR] [--seed=N]
+const USAGE = `Usage: node scripts/generate-lists.ts --study=DIR --out-dir=DIR --count=N --events=EVENT,... --modules=MODULES [--seed=N]
 
   --modules   a modules parameter, like 'questions:1,2,3|reels:pick(3)'. pick(N) chooses
               N of the module's items for each row, with no repeats in the row.
-  --study     the study folder (default: TEDDY_STUDY, or example-study)
+  --study     the study folder, the one holding config.js
   --seed      makes the lists the same each time`;
 
 // One module of --modules: its listed item IDs, or how many to pick.
@@ -138,7 +137,7 @@ async function main() {
         return;
     }
     const problems: string[] = [];
-    for (const required of ["out-dir", "count", "events", "modules"] as const) {
+    for (const required of ["study", "out-dir", "count", "events", "modules"] as const) {
         if (!values[required]) {
             problems.push(`--${required} is required`);
         }
@@ -162,7 +161,7 @@ async function main() {
         throw new StudyError(problems.join("\n") + "\n\n" + USAGE);
     }
 
-    const studyDir = resolve(values.study || process.env.TEDDY_STUDY || "example-study");
+    const studyDir = resolve(values.study!);
     const itemIDs = await studyItemIDs(studyDir);
     const parsed = parseModuleSpecs(values.modules!, itemIDs);
     if (!parsed.specs.length && !parsed.problems.length) {
