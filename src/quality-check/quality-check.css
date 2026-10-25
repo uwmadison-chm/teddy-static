@@ -304,11 +304,3 @@
   display: inline;
   vertical-align: -0.1em;
 }
-
-.qc-notice {
-  max-width: 40rem;
-  border-left: 4px solid var(--primary-color-1);
-  padding: 0.4rem 0.75rem;
-  background: white;
-  border-radius: 0.25rem;
-}

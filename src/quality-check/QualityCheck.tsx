@@ -593,10 +593,6 @@ export default function QualityCheck() {
                         </p>
                     </div>
                 </div>
-                <p className={"qc-notice"}>
-                    People checking quality will watch your recordings, and they might know you.
-                    Only say and show what you'd be happy for them to see, and keep other people out of the frame.
-                </p>
                 <button className={"qc-primary"} disabled={!tester || formatIndex == null || !bitrateOK || !stream} onClick={start}>
                     Start Recording With These Settings
                 </button>
