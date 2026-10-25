@@ -77,6 +77,14 @@ Teddy also reads `nextURL` (where the end screen sends the participant, and a se
 
 In a debug build, `?links` opens a link builder instead of a session; the debug banner links to it too. Pick modules and their items from the study, add `nextURL`, an expiry, and any parameters pig needs, and it writes the link. Paste a link into it to see what Teddy will make of it: each module's items, where the end screen goes, when it expires, which parameters only go to pig, and any problems. When a link has problems, the "something's wrong with this link" screen lists them in debug builds, with a link that opens the builder on it.
 
+### Signed links
+
+A participant can edit their link, and so change which modules they do, or their own ID. To stop that, have pig's task check signatures: list the parameters to sign under `signed_parameters` in pig's configuration, usually the ones that identify the participant plus `modules`, and sign each link on pig's secure side with `pigsty sign`. The signature is one more parameter, `pig_sig`, which Teddy passes to pig with the rest. Teddy needs no setting for it. A link with no signature, or with a value changed since it was signed, gets the "something's wrong with this link" screen before the camera is asked for. See pig's [configuration.md](https://github.com/uwmadison-chm/psych-ingestor/blob/main/docs/configuration.md#parameter-signing).
+
+`nextURL` and `expirationTime` can be signed the same way, or left out of the list so they stay free to change. Signing `modules` needs a version of pig's client newer than 0.2.0: 0.2.0 refuses any parameter pig needs that isn't safe in a file name, and a signed `modules` is one.
+
+The link builder can't sign links, so a link it writes won't start a run for a task that checks signatures. `pigsty sign --url` makes a whole signed link to test with.
+
 ## What Teddy sends to pig
 
 Each session is one pig run. It starts as soon as Teddy loads, with every link parameter, and is finalized on the end screen once everything has been sent. If sending takes more than 15 seconds, the end screen offers its way out anyway, and sending carries on while the page stays open. A session the participant leaves early is finalized the next time this browser opens Teddy, or expires on pig's schedule.
