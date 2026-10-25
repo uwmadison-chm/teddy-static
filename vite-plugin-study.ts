@@ -50,7 +50,7 @@ type Row = Record<string, string>;
 
 class StudyError extends Error {}
 
-function typeOf(value: unknown): string {
+export function typeOf(value: unknown): string {
     if (Array.isArray(value)) {
         return value.every(x => typeof x == "string") ? "string[]" : "array";
     }
@@ -217,7 +217,7 @@ function parseResponses(responses: string): {choices: {code: string, label: stri
 
 // The git commit `dir` is at, and whether anything tracked or new in it has
 // changed since. Nulls when it isn't in git, or git isn't installed.
-function gitState(dir: string, ignoreSubmodules = false): {commit: string | null, dirty: boolean | null} {
+export function gitState(dir: string, ignoreSubmodules = false): {commit: string | null, dirty: boolean | null} {
     try {
         const git = (...args: string[]) => execFileSync("git", ["-C", dir, ...args], {encoding: "utf8", stdio: ["ignore", "pipe", "ignore"]}).trim();
         const commit = git("rev-parse", "HEAD");

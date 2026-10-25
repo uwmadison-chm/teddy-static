@@ -87,6 +87,47 @@ Everything Teddy logs is a pig event with a `type`, the `module` running, and th
 
 Teddy uses pig's JavaScript client from npm, [`@uwmadison-chm/pig-client`](https://www.npmjs.com/package/@uwmadison-chm/pig-client). Vite bundles it into Teddy, and copies `pig-worker.js` into the build as its own file, since a worker has to be loaded from Teddy's own site. To update it, run `npm install @uwmadison-chm/pig-client@latest`, check the client's changelog for anything that changes what Teddy sends, and commit `package.json` and `package-lock.json`.
 
+## Quality check
+
+`quality-check.html` is a separate page for trying recording settings on a device, not part of any study. Teddy introduces it, then steps aside. The tester enters an ID and picks a format, a video bitrate and a size, with a live view of what the camera is sending. They then record each prompt, watch the recording itself played back, and give it a thumbs up or down. "Try Other Settings" goes round again with different choices; "I'm Done" sends everything and finishes the run.
+
+For each format, the setup screen says whether this browser can record it, and what it says about encoding it at the chosen bitrate and size: whether it'll be smooth and power-efficient (`navigator.mediaCapabilities.encodingInfo()`), and whether there's a hardware encoder (WebCodecs). Chrome doesn't answer `encodingInfo()` for `"record"`, so the page asks about the same codec for `"webrtc"`, which uses the same encoders.
+
+It isn't built with a study. Build it on its own:
+
+```
+npm run build:quality-check                                 # into dist-quality-check/
+QC_SETTINGS=path/to/settings.js npm run build:quality-check   # with other settings
+npm run dev:quality-check                                   # dev server at http://localhost:9001/quality-check.html
+```
+
+Its settings are in `quality-check/settings.js`: pig's address and task code, `debug`, the formats, bitrates and sizes to offer, the frame rate and audio bitrate, the longest a recording can run, and the prompts. Testers can also type a bitrate. Nothing in a study's link or config can choose a recording's format or bitrate; only this page can.
+
+The pig task needs `media = true` and one parameter, the tester's ID, which the page cleans up to letters, digits, `_` and `-`:
+
+```toml
+[task.teddy_qc]
+parameters = ["tester"]
+run_key = ["tester"]
+media = true
+open = true
+```
+
+Each visit is one run. Its events have `type`, `level`, `module` (`quality_check`), `round` (each set of settings is a round, from 1) and `recording`, plus pig's `_client`. The schema is `1.0`, on the first event:
+
+| type | fields |
+|---|---|
+| `quality_check_started` | `schema`, `teddy` (version, commit, dirty), `debug` |
+| `teddy_said` | as in a session |
+| `camera_result` | `result` (`started` or `failed`); `width`, `height`, `frame_rate`; or `name`, `message` |
+| `quality_check_settings` | `format` (`label`, `mime_type`), `video_bits_per_second`, `audio_bits_per_second`, `size` (`label`, `width`, `height`), `frame_rate`, `camera` (what it's actually sending), `capabilities` (for every format: `can_record`, `encoding_info_type`, `supported`, `smooth`, `power_efficient`, `hardware_encoder`), `hardware_concurrency` |
+| `item_shown` | `item` (like `r2_01`: round 2, prompt 1), `text` |
+| `recording` | the media item: `kind` (`quality_check`), `item`, `limit_seconds`, the round's `format`, bitrates and `size`, `camera`, and `content_type` from pig's client |
+| `recording_stopped` | `kind`, `item`, `reason` (`done_button`, `timed_out`, `failed`), `bytes`, `duration_ms` |
+| `quality_rating` | `item`, `rating` (`up` or `down`) |
+| `quality_check_finished` | |
+| `uncaught_exception` | `name`, `message`, `stack` |
+
 ## Production Build
 
 To build the production bundle, run `TEDDY_STUDY=path/to/my-study npm run build`. Without `TEDDY_STUDY`, it builds `example-study/`, which has `debug` on. Copy the contents of `dist/` to the web server; reels are included. For example, `rsync -a --delete dist/ server:/var/www/teddy/`.
