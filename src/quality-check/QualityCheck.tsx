@@ -119,6 +119,14 @@ const COLUMN_HELP = {
     hardwareEncoder: "Whether the browser has a hardware encoder for this codec at this size and bitrate (WebCodecs). Software encoding works, but uses more CPU and battery.",
 };
 
+// How many recordings with some settings got a thumbs up and down.
+function Ratings({tried}: {tried: Tried}) {
+    return <span className={"qc-ratings"}>
+        <FaThumbsUp aria-label={"looks good"} /> {tried.up}
+        {" "}<FaThumbsDown aria-label={"something's wrong"} /> {tried.down}
+    </span>;
+}
+
 function YesNo({value}: {value: boolean | null | undefined}) {
     if (value == null) {
         return <span className={"qc-unknown"} aria-label={"unknown"} title={"The browser didn't say"}>?</span>;
@@ -537,7 +545,7 @@ export default function QualityCheck() {
                                            }} />
                                     {kbps(b)}
                                     {b == suggestedPreset && <span className={"qc-tag"}>suggested</span>}
-                                    {t && <span className={"qc-tag tried"}>tried: {t.up} up, {t.down} down</span>}
+                                    {t && <span className={"qc-tag tried"}>tried: <Ratings tried={t} /></span>}
                                 </label>;
                             })}
                             <label>
@@ -568,9 +576,7 @@ export default function QualityCheck() {
                             <ul>
                                 {tried.map((t) => (
                                     <li key={`${t.mimeType} ${t.bitrate} ${t.sizeLabel}`}>
-                                        {t.formatLabel}, {kbps(t.bitrate)}, {t.sizeLabel}:
-                                        {" "}<FaThumbsUp aria-label={"looks good"} /> {t.up}
-                                        {" "}<FaThumbsDown aria-label={"something's wrong"} /> {t.down}
+                                        {t.formatLabel}, {kbps(t.bitrate)}, {t.sizeLabel}: <Ratings tried={t} />
                                     </li>
                                 ))}
                             </ul>

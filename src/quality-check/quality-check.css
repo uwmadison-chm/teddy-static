@@ -298,8 +298,9 @@
     list-style: disc;
   }
 
-  svg {
-    display: inline;
-    vertical-align: -0.1em;
-  }
+}
+
+.qc-ratings svg {
+  display: inline;
+  vertical-align: -0.1em;
 }
