@@ -77,6 +77,17 @@ Teddy also reads `nextURL` (where the end screen sends the participant, and a se
 
 In a debug build, `?links` opens a link builder instead of a session; the debug banner links to it too. Pick modules and their items from the study, add `nextURL`, an expiry, and any parameters pig needs, and it writes the link. Paste a link into it to see what Teddy will make of it: each module's items, where the end screen goes, when it expires, which parameters only go to pig, and any problems. When a link has problems, the "something's wrong with this link" screen lists them in debug builds, with a link that opens the builder on it.
 
+### REDCap randomization lists
+
+`scripts/generate-lists.ts` writes REDCap randomization allocation tables of `modules` parameters, one CSV per event, with `redcap_randomization_number` and `redcap_randomization_group` both set to the row's `modules`:
+
+```
+node scripts/generate-lists.ts --study=../my-study --out-dir=lists/ --count=100 --events=base,pw1 \
+    --modules='questions:1,2,3,4,5|reels:pick(3)|sentences:pick(3)|videologs:1,2'
+```
+
+This writes `lists/base.csv` and `lists/pw1.csv`, 100 rows each. `--modules` is a `modules` parameter, except a module's items can be `pick(N)`: N of the study's items for that module, drawn at random for each row with no repeats within the row. Each row of each event gets its own draw, so a participant can see an item again in a later event. Listed IDs are checked against the study, as the build would. Quote `--modules`, since `|` means something to the shell. `--study` is the study folder, the one holding `config.js`. `--seed=N` makes the lists the same each time. It needs Node 22.18 or later, which runs TypeScript directly, and Teddy's `npm ci`. A study with Teddy as a submodule can wrap this in a script, as [teddy-study-example](https://github.com/uwmadison-chm/teddy-study-example)'s `generate-lists.sh` does.
+
 ## What Teddy sends to pig
 
 Each session is one pig run. It starts as soon as Teddy loads, with every link parameter, and is finalized on the end screen once everything has been sent. If sending takes more than 15 seconds, the end screen offers its way out anyway, and sending carries on while the page stays open. A session the participant leaves early is finalized the next time this browser opens Teddy, or expires on pig's schedule.

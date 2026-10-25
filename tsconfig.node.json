@@ -20,5 +20,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["vite.config.ts", "vite-plugin-study.ts", "vite-plugin-compress.ts", "vite.quality-check.config.ts", "vite-plugin-quality-check.ts"]
+  "include": ["vite.config.ts", "vite-plugin-study.ts", "vite-plugin-compress.ts", "vite.quality-check.config.ts", "vite-plugin-quality-check.ts", "scripts"]
 }

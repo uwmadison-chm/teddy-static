@@ -39,7 +39,7 @@ const RECORDING_KEYS: Record<string, string> = {
 
 // The columns each module's CSV has to have. Other columns are allowed, and
 // come along with each item.
-const MODULE_COLUMNS: Record<string, string[]> = {
+export const MODULE_COLUMNS: Record<string, string[]> = {
     sentences: ["id", "text"],
     videologs: ["id", "text"],
     reels: ["id", "file"],
@@ -48,7 +48,7 @@ const MODULE_COLUMNS: Record<string, string[]> = {
 
 type Row = Record<string, string>;
 
-class StudyError extends Error {}
+export class StudyError extends Error {}
 
 export function typeOf(value: unknown): string {
     if (Array.isArray(value)) {
@@ -67,7 +67,7 @@ function checkKeys(where: string, obj: Record<string, unknown>, keys: Record<str
     }
 }
 
-async function loadConfig(path: string): Promise<Record<string, unknown>> {
+export async function loadConfig(path: string): Promise<Record<string, unknown>> {
     if (!existsSync(path)) {
         throw new StudyError(`${path} doesn't exist`);
     }
@@ -99,7 +99,7 @@ async function loadConfig(path: string): Promise<Record<string, unknown>> {
     return config;
 }
 
-function loadItems(path: string, columns: string[]): Row[] {
+export function loadItems(path: string, columns: string[]): Row[] {
     if (!existsSync(path)) {
         throw new StudyError(`${path} doesn't exist`);
     }
