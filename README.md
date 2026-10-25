@@ -91,7 +91,11 @@ Teddy uses pig's JavaScript client from npm, [`@uwmadison-chm/pig-client`](https
 
 `quality-check.html` is a separate page for trying recording settings on a device, not part of any study. Teddy introduces it, then steps aside. The tester enters an ID and picks a format, a video bitrate and a size, with a live view of what the camera is sending. They then record each prompt, watch the recording itself played back, and give it a thumbs up or down. Each set of settings is its own run: when the prompts are done, the page sends everything and finalizes the run, then "Try Other Settings" starts a new run with different choices and "I'm Done" ends the visit.
 
-For each format, the setup screen says whether this browser can record it, and what it says about encoding it at the chosen bitrate and size: whether it'll be smooth and power-efficient (`navigator.mediaCapabilities.encodingInfo()`), and whether there's a hardware encoder (WebCodecs). Chrome only answers `encodingInfo()` for `"record"` with experimental web platform features turned on, so the page also asks about the same codec for `"webrtc"`. That's the WebRTC encoder's answer, not MediaRecorder's, though in Chrome they likely use the same encoders. `encoding_info_type` in the data says which answered.
+The setup screen shows the formats in a table, the ones this browser can't record last. For each format, it says whether this browser can record it, and what it says about encoding it at the chosen bitrate and size: whether it'll be smooth and power-efficient (`navigator.mediaCapabilities.encodingInfo()`), and whether there's a hardware encoder (WebCodecs). Chrome only answers `encodingInfo()` for `"record"` with experimental web platform features turned on, so the page also asks about the same codec for `"webrtc"`. That's the WebRTC encoder's answer, not MediaRecorder's, though in Chrome they likely use the same encoders. `encoding_info_type` in the data says which answered.
+
+It also suggests a video bitrate for the chosen format at the size the camera is sending, from a rough bits-per-pixel figure for each codec (`CODECS` in `QualityCheck.tsx`).
+
+The browser remembers the tester's ID and the settings tried on that device, with how many recordings got a thumbs up or down, so a tester who comes back sees what they've done; Teddy welcomes them back. This is only a convenience, kept in `localStorage`; pig has the real record.
 
 It isn't built with a study. Build it on its own:
 
@@ -120,7 +124,7 @@ Each set of settings is one run, so a tester who tries three gets runs 1 to 3 un
 | `quality_check_started` | `schema`, `teddy` (version, commit, dirty), `debug` |
 | `teddy_said` | as in a session |
 | `camera_result` | `result` (`started` or `failed`); `width`, `height`, `frame_rate`; or `name`, `message` |
-| `quality_check_settings` | `format` (`label`, `mime_type`), `video_bits_per_second`, `audio_bits_per_second`, `size` (`label`, `width`, `height`), `frame_rate`, `camera` (what it's actually sending), `capabilities` (for every format: `can_record`, `encoding_info_type`, `supported`, `smooth`, `power_efficient`, `hardware_encoder`), `hardware_concurrency` |
+| `quality_check_settings` | `format` (`label`, `mime_type`), `video_bits_per_second`, `suggested_video_bits_per_second`, `audio_bits_per_second`, `size` (`label`, `width`, `height`), `frame_rate`, `camera` (what it's actually sending), `capabilities` (for every format: `can_record`, `encoding_info_type`, `supported`, `smooth`, `power_efficient`, `hardware_encoder`), `hardware_concurrency` |
 | `item_shown` | `item` (the prompt, like `01`), `text` |
 | `recording` | the media item: `kind` (`quality_check`), `item`, `limit_seconds`, the run's `format`, bitrates and `size`, `camera`, and `content_type` from pig's client |
 | `recording_stopped` | `kind`, `item`, `reason` (`done_button`, `timed_out`, `failed`), `bytes`, `duration_ms` |

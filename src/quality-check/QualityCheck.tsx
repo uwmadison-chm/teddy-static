@@ -18,6 +18,7 @@ import {
 import {errorFields} from "@/data/log.ts";
 import * as pig from "@/quality-check/pig.ts";
 import {cleanTesterID, logEvent, QC_EVENT_SCHEMA, session} from "@/quality-check/session.ts";
+import {forgetTried, loadTester, loadTried, rememberRating, rememberTried, saveTester, sameSettings, type Tried} from "@/quality-check/tried.ts";
 
 type Stage = "intro" | "setup" | "record" | "review" | "end" | "sending" | "sent";
 
@@ -69,23 +70,60 @@ function kbps(bitsPerSecond: number): string {
     return `${Math.round(bitsPerSecond / 1000).toLocaleString()} kbps`;
 }
 
-// A format's video codec, as encodingInfo() for webrtc and WebCodecs name it.
-const CODECS: [RegExp, string, string][] = [
-    [/^vp0?8/i, "video/VP8", "vp8"],
-    [/^vp0?9/i, "video/VP9", "vp09.00.10.08"],
-    [/^av0?1/i, "video/AV1", "av01.0.08M.08"],
-    [/^(avc1|avc3|h264)/i, "video/H264", "avc1.42E028"],
+interface Codec {
+    pattern: RegExp;
+    name: string;
+    // As encodingInfo() for webrtc and WebCodecs name it.
+    webrtc: string;
+    webcodecs: string;
+    // Bits per pixel per frame for a webcam recording of a person talking
+    // that should look good. A rough rule of thumb for suggesting a bitrate:
+    // newer codecs need fewer bits for the same quality.
+    bitsPerPixel: number;
+}
+
+// A format's video codec.
+const CODECS: Codec[] = [
+    {pattern: /^vp0?8/i, name: "VP8", webrtc: "video/VP8", webcodecs: "vp8", bitsPerPixel: 0.065},
+    {pattern: /^vp0?9/i, name: "VP9", webrtc: "video/VP9", webcodecs: "vp09.00.10.08", bitsPerPixel: 0.04},
+    {pattern: /^av0?1/i, name: "AV1", webrtc: "video/AV1", webcodecs: "av01.0.08M.08", bitsPerPixel: 0.03},
+    {pattern: /^(avc1|avc3|h264)/i, name: "H.264", webrtc: "video/H264", webcodecs: "avc1.42E028", bitsPerPixel: 0.06},
 ];
 
-function videoCodec(mimeType: string): {webrtc: string, webcodecs: string} | null {
+function videoCodec(mimeType: string): Codec | null {
     const codecs = /codecs="?([^";]*)/i.exec(mimeType)?.[1].split(",").map(c => c.trim()) ?? [];
     for (const codec of codecs) {
-        const match = CODECS.find(([pattern]) => pattern.test(codec));
+        const match = CODECS.find(({pattern}) => pattern.test(codec));
         if (match) {
-            return {webrtc: match[1], webcodecs: match[2]};
+            return match;
         }
     }
     return null;
+}
+
+// A starting point for a format's video bitrate at a size, rounded to 50 kbps.
+function suggestedBitrate(format: Format, width: number, height: number): number | null {
+    const codec = videoCodec(format.mimeType);
+    if (!codec) {
+        return null;
+    }
+    const bits = width * height * settings.frameRate * codec.bitsPerPixel;
+    return Math.max(50_000, Math.round(bits / 50_000) * 50_000);
+}
+
+// What the format table's columns mean, shown as tooltips on their headings.
+const COLUMN_HELP = {
+    canRecord: "Whether this browser can record the format at all (MediaRecorder.isTypeSupported).",
+    smooth: "Whether the browser expects to encode at this size, bitrate and frame rate without dropping frames (MediaCapabilities.encodingInfo).",
+    powerEfficient: "Whether the browser expects encoding to be easy on the battery and CPU, usually because a hardware encoder does it (MediaCapabilities.encodingInfo).",
+    hardwareEncoder: "Whether the browser has a hardware encoder for this codec at this size and bitrate (WebCodecs). Software encoding works, but uses more CPU and battery.",
+};
+
+function YesNo({value}: {value: boolean | null | undefined}) {
+    if (value == null) {
+        return <span className={"qc-unknown"} aria-label={"unknown"} title={"The browser didn't say"}>?</span>;
+    }
+    return value ? <span className={"qc-yes"} aria-label={"yes"}>✓</span> : <span className={"qc-no"} aria-label={"no"}>✗</span>;
 }
 
 async function capability(format: Format, bitrate: number, size: Size): Promise<Capability> {
@@ -160,7 +198,8 @@ function VideoFrame({stream, src, mirrored = false, label}: {stream?: MediaStrea
     );
 }
 
-function Intro({onDone}: {onDone: () => void}) {
+// `returning` when this device has been here before.
+function Intro({returning, onDone}: {returning: boolean, onDone: () => void}) {
     const teddyRef = useRef<TeddyFunctions>(null);
     const panelsRef = useRef<FadingPanelFunctions>(null);
 
@@ -168,14 +207,15 @@ function Intro({onDone}: {onDone: () => void}) {
         const controller = new AbortController();
         (async () => {
             await teddyRef.current.say(TeddyAnimations.WAVE,
-                ["Hi! This is a quality check, to see how recordings look on this device.",
+                [returning ? "Welcome back! This is the quality check, to see how recordings look on this device." :
+                    "Hi! This is a quality check, to see how recordings look on this device.",
                     "You'll pick how your camera records, then record a couple of short clips.",
                     "After each one, you'll watch it back and tell us whether it looks right."],
                 controller.signal);
             panelsRef.current.showStartPanel();
         })().catch(() => {});
         return () => controller.abort();
-    }, []);
+    }, [returning]);
 
     return (
         <main className={"phone-screen-wrapper"}>
@@ -193,7 +233,8 @@ function Intro({onDone}: {onDone: () => void}) {
 
 export default function QualityCheck() {
     const [stage, setStage] = useState<Stage>("intro");
-    const [rawTester, setRawTester] = useState("");
+    const [rawTester, setRawTester] = useState(loadTester);
+    const [tried, setTried] = useState<Tried[]>(loadTried);
     const [runStarted, setRunStarted] = useState(false);
     const [formatIndex, setFormatIndex] = useState<number | null>(null);
     const [bitrate, setBitrate] = useState(settings.bitrates[Math.floor(settings.bitrates.length / 2)]);
@@ -216,6 +257,15 @@ export default function QualityCheck() {
     const typedBitrate = Number(customBitrate) * 1000;
     const chosenBitrate = customBitrate != "" ? typedBitrate : bitrate;
     const bitrateOK = Number.isFinite(chosenBitrate) && chosenBitrate >= 50_000;
+    const chosenFormat = formatIndex == null ? null : settings.formats[formatIndex];
+    // For the size the camera is actually sending, when it's sending this size.
+    const suggestion = chosenFormat && suggestedBitrate(chosenFormat, camera.width ?? size.width, camera.height ?? size.height);
+    const suggestedPreset = suggestion == null ? null :
+        settings.bitrates.reduce((best, b) => Math.abs(b - suggestion) < Math.abs(best - suggestion) ? b : best);
+    const triedHere = (b: number) => chosenFormat && tried.find(t => sameSettings(t, {mimeType: chosenFormat.mimeType, bitrate: b, sizeLabel: size.label}));
+    // Formats the browser can record first, in the settings' order.
+    const formatOrder = settings.formats.map((_, i) => i).sort((a, b) =>
+        Number(capabilities[b]?.canRecord ?? true) - Number(capabilities[a]?.canRecord ?? true));
 
     // The camera, from setup to the end, at the chosen size.
     const needsCamera = stage == "setup" || stage == "record" || stage == "review" || stage == "end";
@@ -288,9 +338,12 @@ export default function QualityCheck() {
         }
         const format = settings.formats[formatIndex];
         setChoice({format, bitrate: chosenBitrate, size});
+        saveTester(rawTester);
+        setTried(rememberTried({mimeType: format.mimeType, formatLabel: format.label, bitrate: chosenBitrate, sizeLabel: size.label}));
         logEvent("quality_check_settings", {
             format: {label: format.label, mime_type: format.mimeType},
             video_bits_per_second: chosenBitrate,
+            suggested_video_bits_per_second: suggestion,
             audio_bits_per_second: settings.audioBitsPerSecond,
             size: {label: size.label, width: size.width, height: size.height},
             frame_rate: settings.frameRate,
@@ -309,7 +362,7 @@ export default function QualityCheck() {
         });
         setPromptIndex(0);
         setStage("record");
-    }, [runStarted, tester, formatIndex, chosenBitrate, size, camera, capabilities]);
+    }, [runStarted, tester, rawTester, formatIndex, chosenBitrate, suggestion, size, camera, capabilities]);
 
     const startRecording = useCallback(async () => {
         const item = itemID(promptIndex);
@@ -379,6 +432,7 @@ export default function QualityCheck() {
 
     const rate = useCallback((rating: "up" | "down") => {
         logEvent("quality_rating", {item: take.item, rating, recording: session.recordings});
+        setTried(rememberRating(rating));
         URL.revokeObjectURL(take.url);
         setTake(null);
         if (promptIndex + 1 < settings.prompts.length) {
@@ -409,7 +463,7 @@ export default function QualityCheck() {
     }, [stream]);
 
     if (stage == "intro") {
-        return <Intro onDone={() => setStage("setup")} />;
+        return <Intro returning={tried.length > 0 || rawTester != ""} onDone={() => setStage("setup")} />;
     }
 
     return (
@@ -429,39 +483,72 @@ export default function QualityCheck() {
 
                         <fieldset>
                             <legend>Format</legend>
-                            {settings.formats.map((format, i) => {
-                                const cap = capabilities[i];
-                                const notes = !cap ? [] : !cap.canRecord ? ["this browser can't record it"] : [
-                                    cap.smooth == null ? null : cap.smooth ? "smooth" : "may stutter",
-                                    cap.powerEfficient == null ? null : cap.powerEfficient ? "power-efficient" : "not power-efficient",
-                                    cap.hardwareEncoder == null ? null : cap.hardwareEncoder ? "hardware encoder" : "software encoder",
-                                ].filter(Boolean);
-                                return <label key={format.mimeType} className={cap && !cap.canRecord ? "unavailable" : undefined}>
-                                    <input type={"radio"} name={"format"} checked={formatIndex == i}
-                                           disabled={!cap?.canRecord} onChange={() => setFormatIndex(i)} />
-                                    {format.label}
-                                    {notes.length > 0 && <span className={"qc-note"}> ({notes.join(", ")})</span>}
-                                </label>;
-                            })}
+                            <table className={"qc-formats"}>
+                                <thead>
+                                    <tr>
+                                        <th scope={"col"}>Format</th>
+                                        <th scope={"col"} title={COLUMN_HELP.canRecord}>Can record</th>
+                                        <th scope={"col"} title={COLUMN_HELP.smooth}>Smooth</th>
+                                        <th scope={"col"} title={COLUMN_HELP.powerEfficient}>Power-efficient</th>
+                                        <th scope={"col"} title={COLUMN_HELP.hardwareEncoder}>Hardware encoder</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {formatOrder.map((i) => {
+                                        const format = settings.formats[i];
+                                        const cap = capabilities[i];
+                                        const available = cap?.canRecord ?? false;
+                                        return <tr key={format.mimeType} className={cap && !available ? "unavailable" : undefined}
+                                                   onClick={() => available && setFormatIndex(i)}>
+                                            <th scope={"row"}>
+                                                <label>
+                                                    <input type={"radio"} name={"format"} checked={formatIndex == i}
+                                                           disabled={!available} onChange={() => setFormatIndex(i)} />
+                                                    {format.label}
+                                                </label>
+                                            </th>
+                                            <td><YesNo value={cap?.canRecord} /></td>
+                                            <td><YesNo value={available ? cap.smooth : null} /></td>
+                                            <td><YesNo value={available ? cap.powerEfficient : null} /></td>
+                                            <td><YesNo value={available ? cap.hardwareEncoder : null} /></td>
+                                        </tr>;
+                                    })}
+                                </tbody>
+                            </table>
+                            <p className={"qc-note"}>
+                                Hover over a heading for what it means. Smooth and power-efficient are for {bitrateOK ? kbps(chosenBitrate) : "this bitrate"} at {size.label}
+                                {capabilities.some(c => c?.source == "webrtc") ? ", as the browser answers for video calls, since it won't say for recording" : ""}.
+                            </p>
                         </fieldset>
 
                         <fieldset>
                             <legend>Video bitrate</legend>
-                            {settings.bitrates.map((b) => (
-                                <label key={b}>
+                            {suggestion != null && <p className={"qc-note"}>
+                                For {chosenFormat.label} at {camera.width ?? size.width} × {camera.height ?? size.height}, {settings.frameRate} fps,
+                                about <strong>{kbps(suggestion)}</strong> should look good. Talking heads often look fine at half that.
+                            </p>}
+                            {settings.bitrates.map((b) => {
+                                const t = triedHere(b);
+                                return <label key={b}>
                                     <input type={"radio"} name={"bitrate"} checked={customBitrate == "" && bitrate == b}
                                            onChange={() => {
                                                setBitrate(b);
                                                setCustomBitrate("");
                                            }} />
                                     {kbps(b)}
-                                </label>
-                            ))}
+                                    {b == suggestedPreset && <span className={"qc-tag"}>suggested</span>}
+                                    {t && <span className={"qc-tag tried"}>tried: {t.up} up, {t.down} down</span>}
+                                </label>;
+                            })}
                             <label>
                                 Other:
                                 <input type={"number"} min={50} step={50} inputMode={"numeric"} value={customBitrate}
                                        onChange={(e) => setCustomBitrate(e.target.value)} />
                                 kbps
+                                {suggestion != null && suggestion != suggestedPreset &&
+                                    <button type={"button"} className={"qc-small"} onClick={() => setCustomBitrate(String(suggestion / 1000))}>
+                                        Use {kbps(suggestion)}
+                                    </button>}
                             </label>
                             {customBitrate != "" && !bitrateOK && <p className={"qc-note"}>At least 50 kbps, please.</p>}
                         </fieldset>
@@ -475,6 +562,20 @@ export default function QualityCheck() {
                                 </label>
                             ))}
                         </fieldset>
+
+                        {tried.length > 0 && <section className={"qc-tried"}>
+                            <h2>Tried on this device</h2>
+                            <ul>
+                                {tried.map((t) => (
+                                    <li key={`${t.mimeType} ${t.bitrate} ${t.sizeLabel}`}>
+                                        {t.formatLabel}, {kbps(t.bitrate)}, {t.sizeLabel}:
+                                        {" "}<FaThumbsUp aria-label={"looks good"} /> {t.up}
+                                        {" "}<FaThumbsDown aria-label={"something's wrong"} /> {t.down}
+                                    </li>
+                                ))}
+                            </ul>
+                            <button type={"button"} className={"qc-small"} onClick={() => setTried(forgetTried())}>Forget These</button>
+                        </section>}
                     </div>
 
                     <div className={"qc-preview"}>
