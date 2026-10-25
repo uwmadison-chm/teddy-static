@@ -6,7 +6,7 @@
 
 import {useCallback, useEffect, useRef, useState} from "react";
 import {FaThumbsDown, FaThumbsUp} from "react-icons/fa";
-import {settings, type Format, type Size} from "virtual:quality-check-settings";
+import {build, settings, type Format, type Size} from "virtual:quality-check-settings";
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {
@@ -17,11 +17,11 @@ import {
 } from "@/components/FadingPanelSet.tsx";
 import {errorFields} from "@/data/log.ts";
 import * as pig from "@/quality-check/pig.ts";
-import {cleanTesterID, logEvent, session} from "@/quality-check/session.ts";
+import {cleanTesterID, logEvent, QC_EVENT_SCHEMA, session} from "@/quality-check/session.ts";
 
 type Stage = "intro" | "setup" | "record" | "review" | "end" | "sending" | "sent";
 
-// What the tester picked for a round.
+// What the tester picked for a run.
 interface Choice {
     format: Format;
     bitrate: number;
@@ -60,10 +60,9 @@ interface Take {
     durationMs: number;
 }
 
-// A prompt's ID in a round, like r2_01, so each recording's name says which
-// settings it was made with.
-function itemID(round: number, index: number): string {
-    return `r${round}_${String(index + 1).padStart(2, "0")}`;
+// A prompt's ID, like 01.
+function itemID(index: number): string {
+    return String(index + 1).padStart(2, "0");
 }
 
 function kbps(bitsPerSecond: number): string {
@@ -278,6 +277,8 @@ export default function QualityCheck() {
     const start = useCallback(async () => {
         setProblem(null);
         if (!runStarted) {
+            session.recordings = 0;
+            logEvent("quality_check_started", {schema: QC_EVENT_SCHEMA, teddy: build.teddy, debug: settings.debug});
             const failure = await pig.startRun(tester);
             if (failure) {
                 setProblem(`Couldn't start sending to pig: ${failure}`);
@@ -287,7 +288,6 @@ export default function QualityCheck() {
         }
         const format = settings.formats[formatIndex];
         setChoice({format, bitrate: chosenBitrate, size});
-        session.round += 1;
         logEvent("quality_check_settings", {
             format: {label: format.label, mime_type: format.mimeType},
             video_bits_per_second: chosenBitrate,
@@ -312,7 +312,7 @@ export default function QualityCheck() {
     }, [runStarted, tester, formatIndex, chosenBitrate, size, camera, capabilities]);
 
     const startRecording = useCallback(async () => {
-        const item = itemID(session.round, promptIndex);
+        const item = itemID(promptIndex);
         const text = settings.prompts[promptIndex];
         let recorder: MediaRecorder;
         try {
@@ -357,7 +357,6 @@ export default function QualityCheck() {
                 type: "recording",
                 level: "info",
                 module: "quality_check",
-                round: session.round,
                 recording: session.recording,
                 kind: "quality_check",
                 item,
@@ -390,14 +389,20 @@ export default function QualityCheck() {
         }
     }, [take, promptIndex]);
 
-    const finish = useCallback(async () => {
+    // Sends everything and finalizes the run. Other settings go in a new run,
+    // so it's done after each set of prompts either way.
+    const finish = useCallback(async (another: boolean) => {
         setStage("sending");
-        logEvent("quality_check_finished");
-        stream?.getTracks().forEach(t => t.stop());
-        setStream(null);
+        logEvent("quality_check_finished", {another});
+        if (!another) {
+            stream?.getTracks().forEach(t => t.stop());
+            setStream(null);
+        }
         try {
             await pig.finishRun((pending) => setBytesLeft(pending.bytes));
-            setStage("sent");
+            setRunStarted(false);
+            setBytesLeft(null);
+            setStage(another ? "setup" : "sent");
         } catch (error) {
             setProblem(`Couldn't finish sending: ${error.message}`);
         }
@@ -417,7 +422,7 @@ export default function QualityCheck() {
                     <div className={"qc-settings"}>
                         <label className={"qc-field"}>
                             Your ID, so we can find your recordings
-                            <input type={"text"} value={rawTester} disabled={runStarted}
+                            <input type={"text"} value={rawTester}
                                    onChange={(e) => setRawTester(e.target.value)} />
                         </label>
                         {rawTester && <p className={"qc-note"}>Saved as <strong>{tester || "(nothing usable yet)"}</strong></p>}
@@ -512,8 +517,8 @@ export default function QualityCheck() {
             {stage == "end" && <>
                 <p>That's every prompt for these settings. You can try other settings, or finish up.</p>
                 <div className={"qc-rating"}>
-                    <button onClick={() => setStage("setup")}>Try Other Settings</button>
-                    <button onClick={finish}>I'm Done</button>
+                    <button onClick={() => finish(true)}>Try Other Settings</button>
+                    <button onClick={() => finish(false)}>I'm Done</button>
                 </div>
             </>}
 

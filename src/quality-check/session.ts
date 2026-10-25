@@ -8,18 +8,15 @@ import {sendEvent} from "@/quality-check/pig.ts";
 export const QC_EVENT_SCHEMA = "1.0";
 
 export const session = {
-    // Each time the tester picks settings and records with them is a round,
-    // numbered from 1.
-    round: 0,
-    // The recording running now, numbered from 1 within the visit, if any.
+    // The recording running now, numbered from 1 within the run, if any.
     recording: null as number | null,
     recordings: 0,
 };
 
-// Every event says which round and recording it happened in, like Teddy's say
-// which module and recording.
+// Every event says which recording it happened in, like Teddy's say which
+// module and recording.
 export function logEvent(type: string, fields: Record<string, unknown> = {}, level: Level = "info"): void {
-    sendEvent({type, level, module: "quality_check", round: session.round || null, recording: session.recording, ...fields});
+    sendEvent({type, level, module: "quality_check", recording: session.recording, ...fields});
 }
 
 setEventSink(logEvent);

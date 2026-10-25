@@ -17,7 +17,7 @@ let run: pig.Run | null = null;
 let waiting: Record<string, unknown>[] = [];
 let finishing: Promise<void> | null = null;
 
-// Starts the run for `tester`, once. Resolves with null when it started (or in
+// Starts a run for `tester`, unless one is going. Resolves with null when it started (or in
 // debug mode), or with what went wrong.
 export async function startRun(tester: string): Promise<string | null> {
     if (settings.debug || run != null) {
@@ -64,7 +64,8 @@ export async function record(recorder: MediaRecorder, data: Record<string, unkno
 }
 
 // Finalizes the run and resolves once everything has reached pig, calling
-// `onProgress` with what's left to send as it goes.
+// `onProgress` with what's left to send as it goes. After that, startRun()
+// starts a new one.
 export async function finishRun(onProgress: (pending: Pending) => void): Promise<void> {
     if (run == null) {
         return;
@@ -75,7 +76,11 @@ export async function finishRun(onProgress: (pending: Pending) => void): Promise
         finishing ??= run.finalize().then(() => run.sent());
         onProgress(await run.pending());
         await finishing;
-    } finally {
         run.removeEventListener("progress", listener);
+        run = null;
+        finishing = null;
+    } catch (error) {
+        run.removeEventListener("progress", listener);
+        throw error;
     }
 }

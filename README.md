@@ -89,9 +89,9 @@ Teddy uses pig's JavaScript client from npm, [`@uwmadison-chm/pig-client`](https
 
 ## Quality check
 
-`quality-check.html` is a separate page for trying recording settings on a device, not part of any study. Teddy introduces it, then steps aside. The tester enters an ID and picks a format, a video bitrate and a size, with a live view of what the camera is sending. They then record each prompt, watch the recording itself played back, and give it a thumbs up or down. "Try Other Settings" goes round again with different choices; "I'm Done" sends everything and finishes the run.
+`quality-check.html` is a separate page for trying recording settings on a device, not part of any study. Teddy introduces it, then steps aside. The tester enters an ID and picks a format, a video bitrate and a size, with a live view of what the camera is sending. They then record each prompt, watch the recording itself played back, and give it a thumbs up or down. Each set of settings is its own run: when the prompts are done, the page sends everything and finalizes the run, then "Try Other Settings" starts a new run with different choices and "I'm Done" ends the visit.
 
-For each format, the setup screen says whether this browser can record it, and what it says about encoding it at the chosen bitrate and size: whether it'll be smooth and power-efficient (`navigator.mediaCapabilities.encodingInfo()`), and whether there's a hardware encoder (WebCodecs). Chrome doesn't answer `encodingInfo()` for `"record"`, so the page asks about the same codec for `"webrtc"`, which uses the same encoders.
+For each format, the setup screen says whether this browser can record it, and what it says about encoding it at the chosen bitrate and size: whether it'll be smooth and power-efficient (`navigator.mediaCapabilities.encodingInfo()`), and whether there's a hardware encoder (WebCodecs). Chrome only answers `encodingInfo()` for `"record"` with experimental web platform features turned on, so the page also asks about the same codec for `"webrtc"`. That's the WebRTC encoder's answer, not MediaRecorder's, though in Chrome they likely use the same encoders. `encoding_info_type` in the data says which answered.
 
 It isn't built with a study. Build it on its own:
 
@@ -113,7 +113,7 @@ media = true
 open = true
 ```
 
-Each visit is one run. Its events have `type`, `level`, `module` (`quality_check`), `round` (each set of settings is a round, from 1) and `recording`, plus pig's `_client`. The schema is `1.0`, on the first event:
+Each set of settings is one run, so a tester who tries three gets runs 1 to 3 under their ID. Its events have `type`, `level`, `module` (`quality_check`) and `recording`, plus pig's `_client`. The schema is `1.0`, on `quality_check_started`:
 
 | type | fields |
 |---|---|
@@ -121,11 +121,11 @@ Each visit is one run. Its events have `type`, `level`, `module` (`quality_check
 | `teddy_said` | as in a session |
 | `camera_result` | `result` (`started` or `failed`); `width`, `height`, `frame_rate`; or `name`, `message` |
 | `quality_check_settings` | `format` (`label`, `mime_type`), `video_bits_per_second`, `audio_bits_per_second`, `size` (`label`, `width`, `height`), `frame_rate`, `camera` (what it's actually sending), `capabilities` (for every format: `can_record`, `encoding_info_type`, `supported`, `smooth`, `power_efficient`, `hardware_encoder`), `hardware_concurrency` |
-| `item_shown` | `item` (like `r2_01`: round 2, prompt 1), `text` |
-| `recording` | the media item: `kind` (`quality_check`), `item`, `limit_seconds`, the round's `format`, bitrates and `size`, `camera`, and `content_type` from pig's client |
+| `item_shown` | `item` (the prompt, like `01`), `text` |
+| `recording` | the media item: `kind` (`quality_check`), `item`, `limit_seconds`, the run's `format`, bitrates and `size`, `camera`, and `content_type` from pig's client |
 | `recording_stopped` | `kind`, `item`, `reason` (`done_button`, `timed_out`, `failed`), `bytes`, `duration_ms` |
 | `quality_rating` | `item`, `rating` (`up` or `down`) |
-| `quality_check_finished` | |
+| `quality_check_finished` | `another` (whether the tester went on to try other settings) |
 | `uncaught_exception` | `name`, `message`, `stack` |
 
 ## Production Build

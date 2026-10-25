@@ -8,15 +8,13 @@ import riveFallbackWasmUrl from "@rive-app/canvas-lite/rive_fallback.wasm?url";
 import SpeechBubbleBlocker from "@/components/SpeechBubbleBlocker.tsx";
 import Announcer from "@/components/Announcer.tsx";
 import {errorFields} from "@/data/log.ts";
-import {build, settings} from "virtual:quality-check-settings";
-import {logEvent, QC_EVENT_SCHEMA} from "@/quality-check/session.ts";
+import {logEvent} from "@/quality-check/session.ts";
 import QualityCheck from "@/quality-check/QualityCheck.tsx";
 
 // Serve Rive's WASM ourselves instead of from its default CDNs
 RuntimeLoader.setWasmUrl(riveWasmUrl);
 RuntimeLoader.setWasmFallbackUrl(riveFallbackWasmUrl);
 
-logEvent("quality_check_started", {schema: QC_EVENT_SCHEMA, teddy: build.teddy, debug: settings.debug});
 window.addEventListener("error", (e) => logEvent("uncaught_exception", errorFields(e.error ?? e.message), "error"));
 window.addEventListener("unhandledrejection", (e) => logEvent("uncaught_exception", errorFields(e.reason), "error"));
 
