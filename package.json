@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@rive-app/react-canvas-lite": "^4.36.0",
-    "@uwmadison-chm/pig-client": "^0.2.0",
+    "@uwmadison-chm/pig-client": "^1.0.0-pre.2",
     "face-api.js": "^0.22.2",
     "react": "^19.3.0",
     "react-circular-progressbar": "^2.2.0",

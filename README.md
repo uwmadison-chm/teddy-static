@@ -77,6 +77,14 @@ Teddy also reads `nextURL` (where the end screen sends the participant, and a se
 
 In a debug build, `?links` opens a link builder instead of a session; the debug banner links to it too. Pick modules and their items from the study, add `nextURL`, an expiry, and any parameters pig needs, and it writes the link. Paste a link into it to see what Teddy will make of it: each module's items, where the end screen goes, when it expires, which parameters only go to pig, and any problems. When a link has problems, the "something's wrong with this link" screen lists them in debug builds, with a link that opens the builder on it.
 
+### Signed links
+
+A participant can edit their link, and so change which modules they do, or their own ID. To stop that, have pig's task check signatures: list the parameters to sign under `signed_parameters` in pig's configuration, usually the ones that identify the participant plus `modules`, name the signing key under `signed_by`, and sign each link on pig's secure side with `pigsty sign`. The signature is one more parameter in the link, `sig`, which pig's client takes out of the parameters and sends to pig on its own. Teddy needs no setting for it. A link with no signature, or with a value changed since it was signed, gets the "something's wrong with this link" screen before the camera is asked for. See pig's [configuration.md](https://github.com/uwmadison-chm/psych-ingestor/blob/main/docs/configuration.md#parameter-signing).
+
+`nextURL` and `expirationTime` can be signed the same way, or left out of the list so they stay free to change.
+
+The link builder can't sign links, so a link it writes won't start a run for a task that checks signatures. `pigsty sign --url` makes a whole signed link to test with.
+
 ### REDCap randomization lists
 
 `scripts/generate-lists.ts` writes REDCap randomization allocation tables of `modules` parameters, one CSV per event, with `redcap_randomization_number` and `redcap_randomization_group` both set to the row's `modules`:
@@ -96,7 +104,7 @@ Everything Teddy logs is a pig event with a `type`, the `module` running, and th
 
 ## Updating pig's client
 
-Teddy uses pig's JavaScript client from npm, [`@uwmadison-chm/pig-client`](https://www.npmjs.com/package/@uwmadison-chm/pig-client). Vite bundles it into Teddy, and copies `pig-worker.js` into the build as its own file, since a worker has to be loaded from Teddy's own site. To update it, run `npm install @uwmadison-chm/pig-client@latest`, check the client's changelog for anything that changes what Teddy sends, and commit `package.json` and `package-lock.json`.
+Teddy uses pig's JavaScript client from npm, [`@uwmadison-chm/pig-client`](https://www.npmjs.com/package/@uwmadison-chm/pig-client). Vite bundles it into Teddy, and copies `pig-worker.js` into the build as its own file, since a worker has to be loaded from Teddy's own site. Teddy needs 1.0 or later, which speaks pig's `/v1/` API; 0.2.0 can't talk to a current pig. Until 1.0.0 is released, its prereleases are under npm's `next` tag, so to update it, run `npm install @uwmadison-chm/pig-client@next` (`@latest` once 1.0.0 is out), check the client's changelog for anything that changes what Teddy sends, and commit `package.json` and `package-lock.json`.
 
 ## Quality check
 
