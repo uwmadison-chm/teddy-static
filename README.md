@@ -130,8 +130,8 @@ The pig task needs `media = true` and one parameter, the tester's ID, which the 
 
 ```toml
 [task.teddy_qc]
-parameters = ["tester"]
-run_key = ["tester"]
+path_parameters = ["tester"]
+run_key_parameters = ["tester"]
 media = true
 open = true
 ```
