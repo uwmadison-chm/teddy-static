@@ -85,6 +85,17 @@ A participant can edit their link, and so change which modules they do, or their
 
 The link builder can't sign links, so a link it writes won't start a run for a task that checks signatures. `pigsty sign --url` makes a whole signed link to test with.
 
+### REDCap randomization lists
+
+`scripts/generate-lists.ts` writes REDCap randomization allocation tables of `modules` parameters, one CSV per event, with `redcap_randomization_number` and `redcap_randomization_group` both set to the row's `modules`:
+
+```
+node scripts/generate-lists.ts --study=../my-study --out-dir=lists/ --count=100 --events=base,pw1 \
+    --modules='questions:1,2,3,4,5|reels:pick(3)|sentences:pick(3)|videologs:1,2'
+```
+
+This writes `lists/base.csv` and `lists/pw1.csv`, 100 rows each. `--modules` is a `modules` parameter, except a module's items can be `pick(N)`: N of the study's items for that module, drawn at random for each row with no repeats within the row. Each row of each event gets its own draw, so a participant can see an item again in a later event. Listed IDs are checked against the study, as the build would. Quote `--modules`, since `|` means something to the shell. `--study` is the study folder, the one holding `config.js`. `--seed=N` makes the lists the same each time. It needs Node 22.18 or later, which runs TypeScript directly, and Teddy's `npm ci`. A study with Teddy as a submodule can wrap this in a script, as [teddy-study-example](https://github.com/uwmadison-chm/teddy-study-example)'s `generate-lists.sh` does.
+
 ## What Teddy sends to pig
 
 Each session is one pig run. It starts as soon as Teddy loads, with every link parameter, and is finalized on the end screen once everything has been sent. If sending takes more than 15 seconds, the end screen offers its way out anyway, and sending carries on while the page stays open. A session the participant leaves early is finalized the next time this browser opens Teddy, or expires on pig's schedule.
@@ -94,6 +105,51 @@ Everything Teddy logs is a pig event with a `type`, the `module` running, and th
 ## Updating pig's client
 
 Teddy uses pig's JavaScript client from npm, [`@uwmadison-chm/pig-client`](https://www.npmjs.com/package/@uwmadison-chm/pig-client). Vite bundles it into Teddy, and copies `pig-worker.js` into the build as its own file, since a worker has to be loaded from Teddy's own site. To update it, run `npm install @uwmadison-chm/pig-client@latest`, check the client's changelog for anything that changes what Teddy sends, and commit `package.json` and `package-lock.json`.
+
+## Quality check
+
+`quality-check.html` is a separate page for trying recording settings on a device, not part of any study. Teddy introduces it, warns that the people checking recordings might know the tester, then steps aside. The tester enters an ID and picks a format, a video bitrate and a size, with a live view of what the camera is sending. They then record each prompt, watch the recording itself played back, and give it a thumbs up or down. Each set of settings is its own run: when the prompts are done, the page sends everything and finalizes the run, then "Try Other Settings" starts a new run with different choices and "I'm Done" ends the visit.
+
+The setup screen shows the formats in a table, the ones this browser can't record last. For each format, it says whether this browser can record it, and what it says about encoding it at the chosen bitrate and size: whether it'll be smooth and power-efficient (`navigator.mediaCapabilities.encodingInfo()`), and whether there's a hardware encoder (WebCodecs). Chrome only answers `encodingInfo()` for `"record"` with experimental web platform features turned on, so the page also asks about the same codec for `"webrtc"`. That's the WebRTC encoder's answer, not MediaRecorder's, though in Chrome they likely use the same encoders. `encoding_info_type` in the data says which answered.
+
+It also suggests a video bitrate for the chosen format at the size the camera is sending, from a rough bits-per-pixel figure for each codec (`CODECS` in `QualityCheck.tsx`).
+
+The browser remembers the tester's ID and the settings tried on that device, with how many recordings got a thumbs up or down, so a tester who comes back sees what they've done; Teddy welcomes them back. This is only a convenience, kept in `localStorage`; pig has the real record.
+
+It isn't built with a study. Build it on its own:
+
+```
+npm run build:quality-check                                 # into dist-quality-check/
+QC_SETTINGS=path/to/settings.js npm run build:quality-check   # with other settings
+npm run dev:quality-check                                   # dev server at http://localhost:9001/quality-check.html
+```
+
+Its settings are in `quality-check/settings.js`: pig's address and task code, `debug`, the formats, bitrates and sizes to offer, the frame rate and audio bitrate, the longest a recording can run, and the prompts. Testers can also type a bitrate. Nothing in a study's link or config can choose a recording's format or bitrate; only this page can.
+
+The pig task needs `media = true` and one parameter, the tester's ID, which the page cleans up to letters, digits, `_` and `-`:
+
+```toml
+[task.teddy_qc]
+parameters = ["tester"]
+run_key = ["tester"]
+media = true
+open = true
+```
+
+Each set of settings is one run, so a tester who tries three gets runs 1 to 3 under their ID. Its events have `type`, `level`, `module` (`quality_check`) and `recording`, plus pig's `_client`. The schema is `1.0`, on `quality_check_started`:
+
+| type | fields |
+|---|---|
+| `quality_check_started` | `schema`, `teddy` (version, commit, dirty), `debug` |
+| `teddy_said` | as in a session |
+| `camera_result` | `result` (`started` or `failed`); `width`, `height`, `frame_rate`; or `name`, `message` |
+| `quality_check_settings` | `format` (`label`, `mime_type`), `video_bits_per_second`, `suggested_video_bits_per_second`, `audio_bits_per_second`, `size` (`label`, `width`, `height`), `frame_rate`, `camera` (what it's actually sending), `capabilities` (for every format: `can_record`, `encoding_info_type`, `supported`, `smooth`, `power_efficient`, `hardware_encoder`), `hardware_concurrency` |
+| `item_shown` | `item` (the prompt, like `01`), `text` |
+| `recording` | the media item: `kind` (`quality_check`), `item`, `limit_seconds`, the run's `format`, bitrates and `size`, `camera`, and `content_type` from pig's client |
+| `recording_stopped` | `kind`, `item`, `reason` (`done_button`, `timed_out`, `failed`), `bytes`, `duration_ms` |
+| `quality_rating` | `item`, `rating` (`up` or `down`) |
+| `quality_check_finished` | `another` (whether the tester went on to try other settings) |
+| `uncaught_exception` | `name`, `message`, `stack` |
 
 ## Production Build
 

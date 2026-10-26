@@ -3,6 +3,7 @@ node_modules
 
 # Output directory
 dist
+dist-quality-check
 
 # @vitjs/vit temporary directory
 .vit
