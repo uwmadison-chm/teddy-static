@@ -8,7 +8,7 @@
 // README's "Quality check" section.
 export default {
     // pig's address, and the task the recordings go to. The task needs
-    // media = true, and run_key = ["tester"].
+    // media = true, and run_key_parameters = ["tester"].
     pigServer: "",
     taskCode: "teddy_qc",
     // When true, nothing is sent to pig; events go to the browser console.
