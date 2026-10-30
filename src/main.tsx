@@ -24,6 +24,7 @@ import LinkBuilderScreen from "@/routes/LinkBuilderScreen.tsx";
 import {CurrentSessionData, errorFields} from "@/data/sessionData.tsx";
 import {showPlainWayOut} from "@/utils/wayOut.ts";
 import {preloadReels} from "@/data/reelPreload.ts";
+import {preloadChime} from "@/data/chimePreload.ts";
 
 // In debug mode, ?links opens the link builder instead of a session.
 const showLinkBuilder = Config.debug && new URLSearchParams(window.location.search).has("links");
@@ -99,3 +100,4 @@ if (!showLinkBuilder) loadFaceApi().catch(error => console.error("Couldn't load 
 // Start downloading the session's reels once the page itself has loaded, so
 // they don't hold up Teddy or the face detector
 if (!showLinkBuilder) window.addEventListener("load", preloadReels, {once: true});
+if (!showLinkBuilder) window.addEventListener("load", preloadChime, {once: true});
