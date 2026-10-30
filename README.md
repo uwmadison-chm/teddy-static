@@ -1,6 +1,6 @@
 # TeddyWeb Static
 
-This is a standalone, static adaptation of the [React version of Teddy(https://github.com/MITMediaLabAffectiveComputing/Teddy), written by Craig Ferguson at the MIT Media Lab.
+This is a standalone, static adaptation of the [React version of Teddy](https://github.com/MITMediaLabAffectiveComputing/Teddy), by [Craig Ferguson](https://www.media.mit.edu/people/fergusoc/overview/) and [Nelson Hidalgo](https://www.media.mit.edu/people/nelsonh/overview/) at the MIT Media Lab.
 
 This version of Teddy is intended to be launched via a link from REDCap (or survey software of your choosing) and to send data to an installation of [pig](https://github.com/uwmadison-chm/psych-ingestor).
 
@@ -33,7 +33,7 @@ my-study/
 
 Only `config.js` has a fixed name; it says where everything else is.
 
-One way to set this up is a repository per study with this one as a git submodule, which pins the version of Teddy the study runs:
+One way to set this up is a repository per study with this one as a git submodule. See our [study template](https://github.com/uwmadison-chm/teddy-study-example) for an example.
 
 ```
 my-study/
