@@ -85,7 +85,9 @@ export default function CalibrationScreen() {
                     "Your camera's working and I can see your face. You look great!" :
                     "I didn't see your face, but that's okay. Let's keep going!",
                 "Next, you'll see a countdown, during which you should close your eyes and relax your face.",
-                "Keep them closed and your face relaxed for about ten seconds, until you hear a chime.",
+                // Play the chime once this line is all showing.
+                ["Keep them closed and your face relaxed for about ten seconds, until you hear a chime, like this:",
+                    () => timerCompleteAudio.play()],
                 "Ready?",
             ],
             signal);
