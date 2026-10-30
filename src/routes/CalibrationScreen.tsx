@@ -1,5 +1,4 @@
 import {useAnimatedNavigate} from "@/utils/utils"
-import timerCompleteUrl from "@/assets/audio/timer_complete.mp3";
 import {Teddy, type TeddyFunctions} from "@/components/Teddy.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {
@@ -14,6 +13,7 @@ import {FaceDetector, type FaceDetectorFunctions} from "@/components/FaceDetecto
 import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.tsx";
 import {CountdownTimer, type CountdownTimerFunctions} from "@/components/CountdownTimer.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
+import {chimeSource} from "@/data/chimePreload.ts";
 import {abortable, firstOf, sleep, useChoice, useScript} from "@/utils/script.ts";
 
 export default function CalibrationScreen() {
@@ -45,7 +45,7 @@ export default function CalibrationScreen() {
         // Running out of time is how this recording usually ends.
         const faceRecording = video.record({kind: "face_check"}, {timeout: 15000, timeoutIsNormal: true, signal});
         CurrentSessionData.logEvent("face_check_started")
-        const timerCompleteAudio = new Audio(timerCompleteUrl);
+        const timerCompleteAudio = new Audio(chimeSource());
         const sawFace = await firstOf(signal,
             async (signal) => {
                 const result = await faceDetectorRef.current.detect(signal, {

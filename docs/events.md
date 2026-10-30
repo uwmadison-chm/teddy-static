@@ -145,7 +145,9 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 **`eyes_closed_started`**: the eyes-closed period started.
 
-**`eyes_closed_finished`**: the gong; the eyes-closed period is over.
+**`eyes_closed_finished`**: the chime; the eyes-closed period is over.
+
+**`chime_preload_failed`**: Teddy couldn't download the chime at the start of the session. `name` and `message` say why. The chime still plays, from its URL, and may start late.
 
 ### Items and responses
 
@@ -207,3 +209,4 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 - **1.1**: `camera_help_shown` can have `name` `TimeoutError`. `uncaught_exception` is now also sent for a screen that fails, which ends the session.
 - **1.2**: `face_check_result` has `detector_backend`.
 - **1.3**: `reel_preloaded` and `reel_preload_failed`. `item_shown` for a reel has `preloaded`.
+- **1.4**: `chime_preload_failed`.
