@@ -80,7 +80,6 @@ export default function IntroScreen() {
             navigate("camerahelp", {state});
             return;
         }
-        await teddy.say(TeddyAnimations.PEERING, "Now I'm going to check if I can see your face...", signal);
         navigate("calibration");
     });
 
