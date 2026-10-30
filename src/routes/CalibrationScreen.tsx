@@ -78,6 +78,7 @@ export default function CalibrationScreen() {
         // This seems weird, but if we go straight from listening to success, his eyebrow loops. So we go to idle quickly first.
         teddy.playAnimation(TeddyAnimations.IDLE)
         await sleep(100, signal);
+        const chimeLine = 2;
         await teddy.say(TeddyAnimations.SUCCESS,
             [
                 // Only claim to see a face if the detector found one.
@@ -85,10 +86,16 @@ export default function CalibrationScreen() {
                     "Your camera's working and I can see your face. You look great!" :
                     "I didn't see your face, but that's okay. Let's keep going!",
                 "Next, you'll see a countdown, during which you should close your eyes and relax your face.",
-                "Keep them closed and your face relaxed for about ten seconds, until you hear a chime.",
+                "Keep them closed and your face relaxed for about ten seconds, until you hear a chime, like this:",
                 "Ready?",
             ],
-            signal);
+            signal,
+            // Play the chime as soon as its line is all showing.
+            {onLineShown: (index) => {
+                if (index == chimeLine) {
+                    timerCompleteAudio.play();
+                }
+            }});
         panels.showStartPanel("startFaceCalibration");
         await calibrate.next(signal);
 

@@ -30,6 +30,8 @@ export interface TeddyProps {
 export interface SayOptions {
     // Show the line all at once rather than typing it out.
     skipAnimation?: boolean;
+    // Called with a line's index once it's all showing.
+    onLineShown?: (index: number) => void;
 }
 
 export interface TeddyFunctions {
@@ -149,7 +151,7 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
                     lines: all.length,
                     animation: animation,
                 });
-            }) ?? Promise.resolve();
+            }, options?.onLineShown) ?? Promise.resolve();
             return signal ? abortable(said, signal) : said;
         },
         playAnimation: (animation) => {
