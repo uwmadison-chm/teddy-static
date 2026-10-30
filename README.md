@@ -1,6 +1,6 @@
 # TeddyWeb Static
 
-This is a standalone, static adaptation of the [React version of Teddy](https://github.com/MITMediaLabAffectiveComputing/Teddy), by [Craig Ferguson](https://www.media.mit.edu/people/fergusoc/overview/) and [Nelson Hidalgo](https://www.media.mit.edu/people/nelsonh/overview/) at the MIT Media Lab.
+This is a standalone, static adaptation of the [React + Django version of Teddy](https://github.com/MITMediaLabAffectiveComputing/Teddy), by [Craig Ferguson](https://www.media.mit.edu/people/fergusoc/overview/) and [Nelson Hidalgo](https://www.media.mit.edu/people/nelsonh/overview/) at the MIT Media Lab.
 
 This version of Teddy is intended to be launched via a link from REDCap (or survey software of your choosing) and to send data to an installation of [pig](https://github.com/uwmadison-chm/psych-ingestor).
 
