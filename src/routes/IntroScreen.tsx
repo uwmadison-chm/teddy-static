@@ -48,7 +48,7 @@ export default function IntroScreen() {
         // as far as the permission prompt.
         const noCamera = lacksCamera();
         await teddy.say(TeddyAnimations.WAVE,
-            ["Hello there! It's great to see you!", "We'd like you to do a quick interaction using the camera.", "It should take a couple minutes and should be done in one sitting."],
+            ["Hello there! It's great to see you!", "We'd like you to do a quick interaction using the camera.", "It should take a couple minutes and should be done in one sitting.", "When we start, your browser may ask to use your camera and microphone. Please allow both!"],
             signal);
         const failure = await abortable(started, signal);
         if (failure) {
@@ -66,8 +66,10 @@ export default function IntroScreen() {
 
         // Asking for the stream is the permission check: it works the same in
         // every browser, and it covers the microphone as well as the camera.
+        // Teddy already said to allow it; anything he said now would be cut
+        // off by the browser's prompt, so he waits quietly.
         panels.showPanel(null);
-        teddy.say(null, "Your browser may ask to use your camera and microphone. Please allow both!");
+        teddy.hideTextbox();
         try {
             await abortable(askForCameraStream(), signal);
         } catch (error) {
