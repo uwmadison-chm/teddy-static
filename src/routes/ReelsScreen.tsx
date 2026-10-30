@@ -90,10 +90,8 @@ export default function ReelsScreen() {
         console.log("Starting reels module with reels:", reelIDs)
         CurrentSessionData.startModule()
 
-        // A reel can be a compilation of several videos, so don't say how
-        // many videos there are, only how many things to rate.
         const reelDescription = reelIDs.length == 1 ?
-            "something funny" : "a few funny things";
+            "a funny video" : "a couple funny videos";
         const rateWhen = reelIDs.length == 1 ?
             "when it's done" : "after each one";
         await teddy.say(TeddyAnimations.WAVE_SHORT,
