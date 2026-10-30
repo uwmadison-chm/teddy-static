@@ -23,6 +23,7 @@ import {loadFaceApi} from "@/utils/faceApi.ts";
 import LinkBuilderScreen from "@/routes/LinkBuilderScreen.tsx";
 import {CurrentSessionData, errorFields} from "@/data/sessionData.tsx";
 import {showPlainWayOut} from "@/utils/wayOut.ts";
+import {preloadReels} from "@/data/reelPreload.ts";
 
 // In debug mode, ?links opens the link builder instead of a session.
 const showLinkBuilder = Config.debug && new URLSearchParams(window.location.search).has("links");
@@ -95,3 +96,6 @@ createRoot(document.getElementById('root')!, {onUncaughtError}).render(showLinkB
 // Start loading the face detector now, in a worker, so it's ready
 // and warmed up by the calibration screen
 if (!showLinkBuilder) loadFaceApi().catch(error => console.error("Couldn't load face detector", error));
+// Start downloading the session's reels once the page itself has loaded, so
+// they don't hold up Teddy or the face detector
+if (!showLinkBuilder) window.addEventListener("load", preloadReels, {once: true});

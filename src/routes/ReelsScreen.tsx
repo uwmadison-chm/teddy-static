@@ -13,6 +13,7 @@ import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.ts
 import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {reels} from "virtual:teddy-study";
 import {sleep, useChoice, useScript} from "@/utils/script.ts";
+import {isPreloading, reelSource} from "@/data/reelPreload.ts";
 
 const MAX_RATING_RECORDING_DURATION = 15000;
 const MAX_RECORDING_DURATION = 120 * 1000;
@@ -51,12 +52,22 @@ export default function ReelsScreen() {
         const panels = fadingPanelRef.current;
         const reelIDs = CurrentSessionData.getCurrentModuleArgs();
 
-        // Load every reel now, so each is ready when its turn comes.
+        // Each reel's source, once it's set. A reel still downloading gets its
+        // source when it plays; the rest start loading now, so each is ready
+        // when its turn comes.
+        const preloaded = new Map<string, boolean>();
+        const setSource = (videoElement: HTMLVideoElement, reelID: string) => {
+            const source = reelSource(reelID);
+            preloaded.set(reelID, source.preloaded);
+            videoElement.setAttribute("src", source.src);
+            videoElement.load();
+        };
         const videoElements = reelIDs.map((reelID) => {
             const videoElement = document.createElement('video');
-            videoElement.setAttribute('src', reels[reelID].url);
             videoElement.setAttribute("playsinline", "true");
-            videoElement.load()
+            if (!isPreloading(reelID)) {
+                setSource(videoElement, reelID);
+            }
             videoElement.addEventListener("playing", ()=> {
                 CurrentSessionData.logEvent("reel_playing", {item: reelID});
             })
@@ -106,8 +117,11 @@ export default function ReelsScreen() {
 
             setVideoWrapperShown(true);
             const reel = reels[id];
-            CurrentSessionData.logEvent("item_shown", {item: reel.id, file: reel.file})
             const video = videoElements[index];
+            if (!video.hasAttribute("src")) {
+                setSource(video, id);
+            }
+            CurrentSessionData.logEvent("item_shown", {item: reel.id, file: reel.file, preloaded: preloaded.get(id)})
             videoElementWrapperRef.current.innerHTML = "";
             videoElementWrapperRef.current.appendChild(video);
             const stopAtEnd = () => recording.stop("reel_ended");

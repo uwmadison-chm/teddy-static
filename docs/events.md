@@ -1,6 +1,6 @@
 # Teddy's events
 
-Event schema **1.2**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event.
+Event schema **1.3**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event.
 
 ## Versioning
 
@@ -156,7 +156,7 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 | `sentences` | `item`, `text` |
 | `videologs` | `item`, `text`. The prompt shows before recording starts, so the participant can think about it. |
 | `questions` | `item`, `text`, `responses` (as the CSV has them), `choices` (a list of `{code, label}`), `number` and `of` (its position in the module) |
-| `reels` | `item`, `file` |
+| `reels` | `item`, `file`, `preloaded` (whether it played from the copy downloaded earlier in the session, rather than streaming) |
 
 **`response`**: the participant answered a question or rated a reel. One per answer, so filtering on `type == "response"` gives a table of every answer in the run.
 
@@ -171,6 +171,8 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It; the question is "What did you think of that video?".
 
 **`reel_playing`**, **`reel_stalled`**, **`reel_ended`**: the reel's video started or resumed playing, stopped to wait for data, or reached its end. `item`.
+
+**`reel_preloaded`**, **`reel_preload_failed`**: Teddy downloads every reel the link names, one at a time, from the start of the session, so each plays without waiting. `reel_preloaded` is sent when one is in, with `item`, `bytes`, and `seconds` (how long the download took). `reel_preload_failed` has `item`, `name` and `message`; that reel streams when it plays instead. A reel whose turn comes before its download is done streams too, and its download is dropped without an event. A reel that two IDs share is downloaded once, under the first ID.
 
 ### Recordings
 
@@ -204,3 +206,4 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 - **1.0**: the first version.
 - **1.1**: `camera_help_shown` can have `name` `TimeoutError`. `uncaught_exception` is now also sent for a screen that fails, which ends the session.
 - **1.2**: `face_check_result` has `detector_backend`.
+- **1.3**: `reel_preloaded` and `reel_preload_failed`. `item_shown` for a reel has `preloaded`.

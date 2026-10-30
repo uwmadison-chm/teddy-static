@@ -10,7 +10,7 @@ export type {Level} from "@/data/log.ts";
 // The version of the events Teddy sends, documented in docs/events.md. Bump
 // the minor version for anything added, and the major version for anything
 // renamed, removed, or changed in meaning.
-export const EVENT_SCHEMA = "1.2";
+export const EVENT_SCHEMA = "1.3";
 
 // The most uncaught_exception events one session sends.
 const MAX_SCRIPT_ERRORS = 20;
