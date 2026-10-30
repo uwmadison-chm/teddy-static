@@ -83,7 +83,7 @@ export default function CalibrationScreen() {
                 // Only claim to see a face if the detector found one.
                 sawFace ?
                     "Your camera's working and I can see your face. You look great!" :
-                    "Your camera's working. You look great!",
+                    "I didn't see your face, but that's okay. Let's keep going!",
                 "Next, I'd like you to close your eyes and relax your face.",
                 "You'll see a countdown, during which you should close your eyes.",
                 "Keep them closed and keep your face relaxed until you hear a gong. (After about 8 seconds)",
