@@ -4,14 +4,12 @@ import {buildStyles, CircularProgressbarWithChildren} from "react-circular-progr
 import {FaCheck, FaUser} from "react-icons/fa";
 import {mixColors} from "@/utils/colors.tsx";
 import * as events from "@/utils/events.tsx";
-import {loadFaceApi} from "@/utils/faceApi.ts";
+import {type Box, type Face, loadFaceApi} from "@/utils/faceApi.ts";
 import {abortable, Aborted, sleep} from "@/utils/script.ts";
 import {errorFields} from "@/data/sessionData.tsx";
 
 // A face counts when the detector is at least this sure of it.
 const FACE_SCORE = 0.5;
-// Fainter guesses than that still say where a face probably is, for the tips.
-const GUESS_SCORE = 0.2;
 // How long to look without holding a face before showing tips.
 const TROUBLE_AFTER_MS = 2000;
 // Checks that fail this many times in a row mean the detector doesn't work here.
@@ -46,13 +44,16 @@ export type FaceCheckSummary = {
     // without one) neither too dark nor washed out.
     light_ok: boolean;
     tips_shown: boolean;
+    // TensorFlow.js's backend for the detector, "webgl" or "cpu"; null if it
+    // never loaded.
+    detector_backend: string | null;
     // Each time the detector failed, up to MAX_ERRORS_KEPT: `stage` is "load"
-    // (face-api or its model wouldn't load) or "detect" (one check failed).
+    // (face-api or its model wouldn't load or start) or "detect" (one check failed).
     detector_errors: ({stage: string} & ReturnType<typeof errorFields>)[];
 };
 
 function emptySummary(): FaceCheckSummary {
-    return {best_score: null, centered: false, light_ok: false, tips_shown: false, detector_errors: []};
+    return {best_score: null, centered: false, light_ok: false, tips_shown: false, detector_backend: null, detector_errors: []};
 }
 
 export interface FaceDetectorOptions {
@@ -69,8 +70,6 @@ export interface FaceDetectorFunctions {
     summary: () => FaceCheckSummary;
     hide: () => void;
 }
-
-interface Box {x: number, y: number, width: number, height: number}
 
 // The part of the camera's picture the participant sees in the circle: the
 // biggest centered square, since the video is shown with object-fit: cover.
@@ -134,9 +133,10 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
         canvasRef.current ??= document.createElement("canvas");
         const video = document.getElementById('userVideo') as HTMLVideoElement;
 
-        let faceapi;
+        let detector;
         try {
-            faceapi = await abortable(loadFaceApi(), signal);
+            detector = await abortable(loadFaceApi(), signal);
+            summaryRef.current.detector_backend = detector.backend;
         } catch (error) {
             if (error instanceof Aborted) {
                 throw error;
@@ -145,7 +145,6 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
             summaryRef.current.detector_errors.push({stage: "load", ...errorFields(error)});
             return {found: false};
         }
-        const detectorOptions = new faceapi.TinyFaceDetectorOptions({inputSize: 224, scoreThreshold: GUESS_SCORE});
 
         let firstSeen: number | null = null;
         // Since when we've been looking without holding a face.
@@ -153,10 +152,10 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
         let failedChecks = 0;
         for (;;) {
             await sleep(100, signal);
-            let detection: {score: number, box: Box} | undefined;
+            let detection: Face | undefined;
             let light: number | null;
             try {
-                detection = await abortable(faceapi.detectSingleFace(video, detectorOptions).run(), signal);
+                detection = await abortable(detector.detect(video), signal);
                 const square = visibleSquare(video);
                 light = brightness(video, detection?.box ?? square, canvasRef.current);
                 failedChecks = 0;

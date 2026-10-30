@@ -92,5 +92,6 @@ createRoot(document.getElementById('root')!, {onUncaughtError}).render(showLinkB
   </StrictMode>,
 )
 
-// Start downloading the face detector now so it's ready by the calibration screen
+// Start loading the face detector now, in a worker, so it's ready
+// and warmed up by the calibration screen
 if (!showLinkBuilder) loadFaceApi().catch(error => console.error("Couldn't load face detector", error));
