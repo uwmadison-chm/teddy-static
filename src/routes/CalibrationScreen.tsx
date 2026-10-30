@@ -48,6 +48,14 @@ export default function CalibrationScreen() {
         await firstOf(signal,
             async (signal) => {
                 const result = await faceDetectorRef.current.detect(signal, {
+                    // Only where the detector can't run in a worker, so the
+                    // page freezing for a moment looks like loading.
+                    onWarmingUp: () => {
+                        teddy.say(TeddyAnimations.PEERING, "One moment while I get ready to look...", undefined, {skipAnimation: true});
+                    },
+                    onWarmedUp: () => {
+                        teddy.say(TeddyAnimations.PEERING, "Checking to see if I can detect your face...", undefined, {skipAnimation: true});
+                    },
                     onTrouble: () => {
                         CurrentSessionData.logEvent("face_check_tips_shown")
                         teddy.say(TeddyAnimations.PEERING, "I can't quite see you yet. These might help.");
