@@ -18,7 +18,7 @@ import {isPreloading, reelSource} from "@/data/reelPreload.ts";
 const MAX_RATING_RECORDING_DURATION = 15000;
 const MAX_RECORDING_DURATION = 120 * 1000;
 
-const RATING_QUESTION = "What did you think of that video?";
+const RATING_QUESTION = "What did you think?";
 // The rating buttons, best first. Codes and labels go to pig with each rating,
 // like a question's choices.
 const RATINGS = [

@@ -168,7 +168,7 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 | `label` | the label on the button they pressed |
 | `choices` | every answer that was offered, as a list of `{code, label}` |
 
-Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It; the question is "What did you think of that video?".
+Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It; the question is "What did you think?".
 
 **`reel_playing`**, **`reel_stalled`**, **`reel_ended`**: the reel's video started or resumed playing, stopped to wait for data, or reached its end. `item`.
 
