@@ -38,8 +38,9 @@ export default function CalibrationScreen() {
 
         // Look for a face. It's only there to help the participant frame
         // themselves, so after a while they can move on without one, and if
-        // the detector can't run at all we just log it and carry on.
-        teddy.say(TeddyAnimations.PEERING, "Checking to see if I can detect your face...");
+        // the detector can't run at all we just log it and carry on. Teddy said
+        // what this is on the way in, and the face circle shows it, so he
+        // stays quiet unless the participant needs tips.
         await abortable(video.ready(), signal);
         // Running out of time is how this recording usually ends.
         const faceRecording = video.record({kind: "face_check"}, {timeout: 15000, timeoutIsNormal: true, signal});
