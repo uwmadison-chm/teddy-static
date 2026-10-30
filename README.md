@@ -63,7 +63,7 @@ Each module's CSV has a header row and one item per row. `id` is what a link use
 - `sentences`: `text`, the sentence to read aloud.
 - `videologs`: `text`, the prompt.
 - `questions`: `text`, the question, and `responses`, its answers in REDCap's choice format: `0, Not at all | 1, Slightly | 2, Very`. Each answer is a code, a comma, and the label shown on its button; labels may have commas of their own. The build stops if an answer has no code or label, or if a code is used twice in one question.
-- `reels`: `file`, the video's path relative to the reels CSV (and inside its folder), or an `http(s)` URL to play it from somewhere else. The build copies each listed file to `assets/reels/`, with a hash in its name; files that the CSV doesn't list are left out.
+- `reels`: `file`, the video's path relative to the reels CSV (and inside its folder), or an `http(s)` URL to play it from somewhere else. The build copies each listed file to `assets/reels/`, with a hash in its name; files that the CSV doesn't list are left out. Teddy downloads the link's reels in the background from the start of the session, so they play without waiting; a reel at an `http(s)` URL on another host needs to be served with CORS headers (`Access-Control-Allow-Origin`) for that, and otherwise streams when it plays.
 
 Other columns are allowed and are kept with each item. Excel's UTF-8 CSV export works; use "CSV UTF-8" so curly quotes and accents survive.
 
