@@ -1,5 +1,3 @@
-import type * as FaceApi from 'face-api.js';
-import faceModelManifest from "@/assets/facemodels/tiny_face_detector_model-weights_manifest.json";
 import faceModelWeightsUrl from "@/assets/facemodels/tiny_face_detector_model-shard1.shard?url";
 
 // The detector looks at the camera's picture at this size, in pixels.
@@ -16,15 +14,10 @@ export interface Face {
 }
 
 export interface FaceDetection {
-    // Where detection runs: in a worker, or on the page itself when a worker
-    // can't use WebGL there (older Safari, for one).
-    where: "worker" | "page";
-    // TensorFlow.js's backend, normally "webgl".
+    // TensorFlow.js's backend in the worker: "webgl", or "cpu" where a worker
+    // can't use WebGL (Safari before 17), which is slower but still keeps
+    // detection off the page.
     backend: string;
-    // Whether the first detection will freeze the page while TensorFlow.js
-    // compiles its shaders. warmUp() gets that over with.
-    needsWarmUp: boolean;
-    warmUp: () => Promise<void>;
     detect: (video: HTMLVideoElement) => Promise<Face | undefined>;
 }
 
@@ -45,8 +38,9 @@ function toError(fields: {name: string, message: string, stack?: string}): Error
 }
 
 // Loads face-api.js and the model in a worker, which also gets the slow first
-// detection out of the way. Rejects if the worker can't run it, or would have
-// to without WebGL, which is too slow to be worth it.
+// detection out of the way. face-api.js pulls in all of TensorFlow.js, about
+// half the app's JS, and the first detection compiles its WebGL shaders, which
+// would freeze the page for a second or more; the worker keeps both off it.
 function loadInWorker(): Promise<FaceDetection> {
     return new Promise((resolve, reject) => {
         const worker = new Worker(new URL("./faceApiWorker.ts", import.meta.url), {type: "module"});
@@ -70,19 +64,16 @@ function loadInWorker(): Promise<FaceDetection> {
         worker.onmessage = (event: MessageEvent<FaceApiReply>) => {
             const message = event.data;
             if (message.type == "loaded") {
-                if (message.backend != "webgl") {
-                    fail(new Error(`The face detector's worker has no WebGL (backend ${message.backend})`));
-                    return;
-                }
                 loaded = true;
                 resolve({
-                    where: "worker",
                     backend: message.backend,
-                    needsWarmUp: false,
-                    warmUp: () => Promise.resolve(),
                     detect: async (video) => {
                         if (failed != null) {
                             throw failed;
+                        }
+                        // No picture yet, so no face in it.
+                        if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || video.videoWidth == 0) {
+                            return undefined;
                         }
                         const frame = await createImageBitmap(video);
                         const id = nextId++;
@@ -113,62 +104,16 @@ function loadInWorker(): Promise<FaceDetection> {
     });
 }
 
-// face-api.js pulls in all of TensorFlow.js, about half the app's JS, so on
-// the page it gets its own chunk too.
-async function loadOnPage(): Promise<FaceDetection> {
-    const [faceapi, weights] = await Promise.all([
-        import('face-api.js'),
-        // Loaded from the bundle's hashed URL instead of with loadFromUri, which
-        // finds the weights file by its unhashed name in the manifest.
-        fetch(faceModelWeightsUrl).then(response => response.arrayBuffer()),
-    ]);
-    faceapi.nets.tinyFaceDetector.loadFromWeightMap(
-        faceapi.tf.io.decodeWeights(weights, faceModelManifest[0].weights as FaceApi.tf.io.WeightsManifestEntry[]));
-    await faceapi.tf.ready();
-    const options = new faceapi.TinyFaceDetectorOptions({inputSize: INPUT_SIZE, scoreThreshold: GUESS_SCORE});
-    let warming: Promise<void> | null = null;
-    const detection: FaceDetection = {
-        where: "page",
-        backend: faceapi.tf.getBackend(),
-        needsWarmUp: true,
-        warmUp: () => warming ??= (async () => {
-            const blank = faceapi.tf.zeros([INPUT_SIZE, INPUT_SIZE, 3]) as FaceApi.tf.Tensor3D;
-            try {
-                await faceapi.detectSingleFace(blank, options).run();
-            } finally {
-                blank.dispose();
-            }
-            detection.needsWarmUp = false;
-        })(),
-        detect: async (video) => {
-            const found = await faceapi.detectSingleFace(video, options).run();
-            if (found == null) {
-                return undefined;
-            }
-            const {x, y, width, height} = found.box;
-            return {score: found.score, box: {x, y, width, height}};
-        },
-    };
-    return detection;
-}
-
 let loading: Promise<FaceDetection> | null = null;
 
-// Resolves with the face detector once its model is loaded: in a worker if
-// possible, otherwise on the page. Safe to call repeatedly; a failed load is
-// retried on the next call.
+// Resolves with the face detector once its model is loaded and warmed up.
+// Safe to call repeatedly; a failed load is retried on the next call.
 export function loadFaceApi(): Promise<FaceDetection> {
     loading ??= (async () => {
         performance.mark("face-api-load-start");
-        let detection: FaceDetection;
-        try {
-            detection = await loadInWorker();
-        } catch (error) {
-            console.warn("Running the face detector on the page instead of in a worker:", error);
-            detection = await loadOnPage();
-        }
+        const detection = await loadInWorker();
         performance.measure("face-api-load", "face-api-load-start");
-        console.log(`Loaded Face Detector Model (${detection.where}, ${detection.backend})`);
+        console.log(`Loaded Face Detector Model (${detection.backend})`);
         return detection;
     })().catch(error => {
         loading = null;

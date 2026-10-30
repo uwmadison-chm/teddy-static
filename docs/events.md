@@ -138,8 +138,7 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 | `centered` | whether the last check saw a face in the middle of the camera preview |
 | `light_ok` | whether the last check found the face (or the middle of the picture, without one) neither too dark nor washed out |
 | `tips_shown` | whether the tips had come up |
-| `detector_where` | where the face detector ran: `worker`, normally, or `page` where a worker can't use WebGL, in which case the page froze for a moment while the detector warmed up and Teddy said he was getting ready; `null` if it never loaded |
-| `detector_backend` | TensorFlow.js's backend for the detector, normally `webgl`; `null` if it never loaded |
+| `detector_backend` | TensorFlow.js's backend for the face detector, which runs in a worker: `webgl`, or `cpu` where a worker can't use WebGL (Safari before 17), which makes each check slower; `null` if it never loaded |
 | `detector_errors` | each time the face detector failed during the check, up to 10, as `{stage, name, message, stack}`. `stage` is `load` (face-api or its model wouldn't load or start) or `detect` (one check of the camera failed). Empty when nothing went wrong. |
 
 **`eyes_closed_countdown_started`**: the countdown before the eyes-closed period started; the participant should be closing their eyes.
@@ -204,4 +203,4 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 
 - **1.0**: the first version.
 - **1.1**: `camera_help_shown` can have `name` `TimeoutError`. `uncaught_exception` is now also sent for a screen that fails, which ends the session.
-- **1.2**: `face_check_result` has `detector_where` and `detector_backend`.
+- **1.2**: `face_check_result` has `detector_backend`.

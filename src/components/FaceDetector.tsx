@@ -44,9 +44,8 @@ export type FaceCheckSummary = {
     // without one) neither too dark nor washed out.
     light_ok: boolean;
     tips_shown: boolean;
-    // Where the detector ran, "worker" or "page", and TensorFlow.js's backend
-    // there; null if it never loaded.
-    detector_where: string | null;
+    // TensorFlow.js's backend for the detector, "webgl" or "cpu"; null if it
+    // never loaded.
     detector_backend: string | null;
     // Each time the detector failed, up to MAX_ERRORS_KEPT: `stage` is "load"
     // (face-api or its model wouldn't load or start) or "detect" (one check failed).
@@ -54,17 +53,13 @@ export type FaceCheckSummary = {
 };
 
 function emptySummary(): FaceCheckSummary {
-    return {best_score: null, centered: false, light_ok: false, tips_shown: false, detector_where: null, detector_backend: null, detector_errors: []};
+    return {best_score: null, centered: false, light_ok: false, tips_shown: false, detector_backend: null, detector_errors: []};
 }
 
 export interface FaceDetectorOptions {
     // Called once, if a face hasn't been held in view for a while and the tips
     // have come up.
     onTrouble?: () => void;
-    // Called if the detector has to get going on the page itself, which
-    // freezes it for a moment: just before, and once it's done.
-    onWarmingUp?: () => void;
-    onWarmedUp?: () => void;
 }
 
 export interface FaceDetectorFunctions {
@@ -141,15 +136,7 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
         let detector;
         try {
             detector = await abortable(loadFaceApi(), signal);
-            summaryRef.current.detector_where = detector.where;
             summaryRef.current.detector_backend = detector.backend;
-            if (detector.needsWarmUp) {
-                options.onWarmingUp?.();
-                // Let that show before the page stops drawing.
-                await sleep(300, signal);
-                await abortable(detector.warmUp(), signal);
-                options.onWarmedUp?.();
-            }
         } catch (error) {
             if (error instanceof Aborted) {
                 throw error;
