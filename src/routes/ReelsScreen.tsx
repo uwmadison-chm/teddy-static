@@ -18,7 +18,7 @@ import {isPreloading, reelSource} from "@/data/reelPreload.ts";
 const MAX_RATING_RECORDING_DURATION = 15000;
 const MAX_RECORDING_DURATION = 120 * 1000;
 
-const RATING_QUESTION = "What did you think of that video?";
+const RATING_QUESTION = "What did you think?";
 // The rating buttons, best first. Codes and labels go to pig with each rating,
 // like a question's choices.
 const RATINGS = [
@@ -92,11 +92,11 @@ export default function ReelsScreen() {
 
         const reelDescription = reelIDs.length == 1 ?
             "a funny video" : "a couple funny videos";
-        const reelWord = reelIDs.length == 1 ?
-            "video" : "videos";
+        const rateWhen = reelIDs.length == 1 ?
+            "when it's done" : "after each one";
         await teddy.say(TeddyAnimations.WAVE_SHORT,
             [`For this next part, I'm going to show you ${reelDescription}.`,
-                `Please just watch the ${reelWord}, and rate it when it's done.`,
+                `Please just watch, and rate it ${rateWhen}.`,
                 "And please keep your face in frame the whole time!"],
             signal);
         panels.showStartPanel();
