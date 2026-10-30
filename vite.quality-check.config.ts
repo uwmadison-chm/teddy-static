@@ -18,6 +18,9 @@ export default defineConfig({
     teddyCompress(),
   ],
   base: './',
+  optimizeDeps: {
+    entries: ['quality-check.html'],
+  },
   build: {
     outDir: 'dist-quality-check',
     rollupOptions: {
