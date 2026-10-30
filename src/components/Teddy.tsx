@@ -9,7 +9,7 @@ import {
     useRive,
     useStateMachineInput
 } from "@rive-app/react-canvas-lite";
-import {SpeechBubble, type SpeechBubbleFunctions} from "@/components/SpeechBubble.tsx";
+import {type Line, SpeechBubble, type SpeechBubbleFunctions} from "@/components/SpeechBubble.tsx";
 import {TeddyAnimations} from "@/components/teddyAnimations.ts";
 import {prefersReducedMotion} from "@/utils/utils.tsx";
 import {abortable} from "@/utils/script.ts";
@@ -30,16 +30,15 @@ export interface TeddyProps {
 export interface SayOptions {
     // Show the line all at once rather than typing it out.
     skipAnimation?: boolean;
-    // Called with a line's index once it's all showing.
-    onLineShown?: (index: number) => void;
 }
 
 export interface TeddyFunctions {
-    // Plays `animation` and says `lines` in the speech bubble, one at a time.
+    // Plays `animation` and says `lines` in the speech bubble, one at a time. A
+    // line can be [text, onShown] to do something once it's all showing.
     // Resolves when the last line is all showing, or when Teddy is given
     // something else to say first. With a signal, rejects with Aborted when it
     // fires.
-    say: (animation: string | null, lines: string | string[], signal?: AbortSignal, options?: SayOptions) => Promise<void>;
+    say: (animation: string | null, lines: string | Line[], signal?: AbortSignal, options?: SayOptions) => Promise<void>;
     hideTextbox: () => void;
     showTextbox: () => void;
     playAnimation:(animation:string) => void;
@@ -145,13 +144,14 @@ export const Teddy = React.forwardRef<TeddyFunctions, TeddyProps>(({initialAnima
             // Each line goes to pig as it starts to show, so the video shows
             // what Teddy was saying when.
             const said = speechBubbleRef.current?.say(all, options?.skipAnimation, (index) => {
+                const line = all[index];
                 logEvent("teddy_said", {
-                    text: all[index],
+                    text: typeof line == "string" ? line : line[0],
                     line: index + 1,
                     lines: all.length,
                     animation: animation,
                 });
-            }, options?.onLineShown) ?? Promise.resolve();
+            }) ?? Promise.resolve();
             return signal ? abortable(said, signal) : said;
         },
         playAnimation: (animation) => {

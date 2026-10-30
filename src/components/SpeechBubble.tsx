@@ -4,13 +4,16 @@ import * as React from "react";
 import { FaPlay } from "react-icons/fa";
 import {TypeWriter, type TypeWriterFunctions} from "@/components/TypeWriter.tsx";
 
+// A line to say: its text, or its text and something to do once it's all
+// showing.
+export type Line = string | [text: string, onShown: () => void];
+
 export interface SpeechBubbleFunctions {
     // Shows each line in turn, typing it out. The participant taps (or presses
     // Enter) to skip the typing, and to move on to the next line. Resolves when
     // the last line is all showing, or when something else is said or the
-    // bubble is hidden first. Calls onLine as each line starts to show, and
-    // onLineShown once it's all showing.
-    say: (lines: string[], skipAnimation?: boolean, onLine?: (index: number) => void, onLineShown?: (index: number) => void) => Promise<void>;
+    // bubble is hidden first. Calls onLine as each line starts to show.
+    say: (lines: Line[], skipAnimation?: boolean, onLine?: (index: number) => void) => Promise<void>;
     hide: () => void;
     show: () => void;
 }
@@ -49,18 +52,20 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions>((_props, ref
         events.emit("speechbubblestatus", isBlockerUp);
     }, [isBlockerUp]);
 
-    async function say(lines: string[], skipAnimation = false, onLine?: (index: number) => void, onLineShown?: (index: number) => void) {
+    async function say(lines: Line[], skipAnimation = false, onLine?: (index: number) => void) {
         const saying = ++sayingRef.current;
         releaseTap();
         setIsVisible(true);
         setIsBlockerUp(true);
         for (let i = 0; i < lines.length; i++) {
             const isLast = i == lines.length - 1;
-            setText(lines[i]);
+            const said = lines[i];
+            const [line, onShown] = typeof said == "string" ? [said, undefined] : said;
+            setText(line);
             setHasNextText(!isLast);
-            events.announce(lines[i]);
+            events.announce(line);
             onLine?.(i);
-            const typed = typeWriterRef.current.type(lines[i]);
+            const typed = typeWriterRef.current.type(line);
             if (skipAnimation) {
                 typeWriterRef.current.skipToEnd();
             }
@@ -68,7 +73,7 @@ export const SpeechBubble = React.forwardRef<SpeechBubbleFunctions>((_props, ref
             if (saying != sayingRef.current) {
                 return;
             }
-            onLineShown?.(i);
+            onShown?.();
             if (!isLast) {
                 await new Promise<void>((resolve) => {
                     tappedRef.current = resolve;
