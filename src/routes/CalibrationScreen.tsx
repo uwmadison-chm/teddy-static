@@ -46,7 +46,7 @@ export default function CalibrationScreen() {
         const faceRecording = video.record({kind: "face_check"}, {timeout: 15000, timeoutIsNormal: true, signal});
         CurrentSessionData.logEvent("face_check_started")
         const timerCompleteAudio = new Audio(timerCompleteUrl);
-        await firstOf(signal,
+        const sawFace = await firstOf(signal,
             async (signal) => {
                 const result = await faceDetectorRef.current.detect(signal, {
                     onTrouble: () => {
@@ -60,12 +60,14 @@ export default function CalibrationScreen() {
                 CurrentSessionData.logEvent("face_check_result",
                     {result: result.found ? "found" : "unavailable", ...summary},
                     !result.found ? "error" : summary.detector_errors.length ? "warning" : "info")
+                return result.found;
             },
             async (signal) => {
                 await sleep(6000, signal);
                 panels.showStartPanel();
                 await bypass.next(signal);
                 CurrentSessionData.logEvent("face_check_result", {result: "bypassed", ...faceDetectorRef.current.summary()}, "warning")
+                return false;
             });
 
         panels.showPanel(null);
@@ -78,7 +80,10 @@ export default function CalibrationScreen() {
         await sleep(100, signal);
         await teddy.say(TeddyAnimations.SUCCESS,
             [
-                "There you are! You look wonderful!",
+                // Only claim to see a face if the detector found one.
+                sawFace ?
+                    "Your camera's working and I can see your face. You look great!" :
+                    "Your camera's working. You look great!",
                 "Next, I'd like you to close your eyes and relax your face.",
                 "You'll see a countdown, during which you should close your eyes.",
                 "Keep them closed and keep your face relaxed until you hear a gong. (After about 8 seconds)",
