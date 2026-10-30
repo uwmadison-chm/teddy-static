@@ -84,9 +84,8 @@ export default function CalibrationScreen() {
                 sawFace ?
                     "Your camera's working and I can see your face. You look great!" :
                     "I didn't see your face, but that's okay. Let's keep going!",
-                "Next, I'd like you to close your eyes and relax your face.",
-                "You'll see a countdown, during which you should close your eyes.",
-                "Keep them closed and keep your face relaxed until you hear a gong. (After about 8 seconds)",
+                "Next, you'll see a countdown, during which you should close your eyes and relax your face.",
+                "Keep them closed and your face relaxed for about ten seconds, until you hear a chime.",
                 "Ready?",
             ],
             signal);
