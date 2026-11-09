@@ -17,8 +17,6 @@ import {isPreloading, reelSource} from "@/data/reelPreload.ts";
 
 const MAX_RATING_RECORDING_DURATION = 15000;
 const MAX_RECORDING_DURATION = 120 * 1000;
-// How long the reel takes to fade out (.video-reel in ReelsScreen.css).
-const REEL_FADE_MS = 400;
 
 const RATING_QUESTION = "What did you think?";
 // The rating buttons, best first. Codes and labels go to pig with each rating,
@@ -164,7 +162,9 @@ export default function ReelsScreen() {
             await recording.done;
             video.removeEventListener("ended", stopAtEnd);
             setVideoWrapperShown(false);
-            teardown(video, REEL_FADE_MS);
+            // The fade is set in ReelsScreen.css; read it rather than repeat it.
+            const fadeMs = parseFloat(getComputedStyle(videoElementWrapperRef.current).transitionDuration) * 1000;
+            teardown(video, fadeMs || 0);
 
             teddy.playAnimation(TeddyAnimations.IDLE);
             teddy.say(TeddyAnimations.LISTEN, RATING_QUESTION);
