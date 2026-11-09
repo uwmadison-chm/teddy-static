@@ -17,6 +17,8 @@ import {isPreloading, reelSource} from "@/data/reelPreload.ts";
 
 const MAX_RATING_RECORDING_DURATION = 15000;
 const MAX_RECORDING_DURATION = 120 * 1000;
+// How long the reel takes to fade out (.video-reel in ReelsScreen.css).
+const REEL_FADE_MS = 400;
 
 const RATING_QUESTION = "What did you think?";
 // The rating buttons, best first. Codes and labels go to pig with each rating,
@@ -96,15 +98,18 @@ export default function ReelsScreen() {
         // Stops a reel for good. Pausing isn't enough: a video taken out of the
         // page keeps playing, and one in a picture-in-picture window stays up
         // with its controls. Dropping the source leaves any such window
-        // (Firefox's included, which the page can't see) nothing to play.
-        const teardown = (videoElement: HTMLVideoElement) => {
+        // (Firefox's included, which the page can't see) nothing to play. That
+        // waits `after` ms, so the last frame stays up while the reel fades.
+        const teardown = (videoElement: HTMLVideoElement, after = 0) => {
             videoElement.pause();
             if (document.pictureInPictureElement === videoElement) {
                 void document.exitPictureInPicture().catch(() => {});
             }
-            videoElement.removeAttribute("src");
-            videoElement.load();
-            videoElement.remove();
+            setTimeout(() => {
+                videoElement.removeAttribute("src");
+                videoElement.load();
+                videoElement.remove();
+            }, after);
         };
         signal.addEventListener("abort", () => {
             for (const videoElement of videoElements) {
@@ -158,8 +163,8 @@ export default function ReelsScreen() {
             // reel then too, so it isn't heard behind the rating.
             await recording.done;
             video.removeEventListener("ended", stopAtEnd);
-            teardown(video);
             setVideoWrapperShown(false);
+            teardown(video, REEL_FADE_MS);
 
             teddy.playAnimation(TeddyAnimations.IDLE);
             teddy.say(TeddyAnimations.LISTEN, RATING_QUESTION);
