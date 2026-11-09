@@ -65,6 +65,20 @@ export default function ReelsScreen() {
         const videoElements = reelIDs.map((reelID) => {
             const videoElement = document.createElement('video');
             videoElement.setAttribute("playsinline", "true");
+            // The reel plays in the page only: no floating picture-in-picture
+            // window (Chrome and Edge offer one on hover and in the right-click
+            // menu) and no casting, either of which hands the participant
+            // controls and keeps the reel up past its turn.
+            videoElement.disablePictureInPicture = true;
+            videoElement.disableRemotePlayback = true;
+            // Firefox ignores disablePictureInPicture and doesn't tell the
+            // page about its own window; blocking the menu at least takes away
+            // its "Watch in Picture-in-Picture" item.
+            videoElement.addEventListener("contextmenu", (e) => e.preventDefault());
+            videoElement.addEventListener("enterpictureinpicture", () => {
+                CurrentSessionData.logEvent("reel_picture_in_picture", {item: reelID}, "warning");
+                void document.exitPictureInPicture().catch(() => {});
+            });
             if (!isPreloading(reelID)) {
                 setSource(videoElement, reelID);
             }
@@ -79,11 +93,25 @@ export default function ReelsScreen() {
             })
             return videoElement;
         });
-        // A video taken out of the page keeps playing, so stop them all if the
-        // screen goes.
+        // Stops a reel for good. Pausing isn't enough: a video taken out of the
+        // page keeps playing, and one in a picture-in-picture window stays up
+        // with its controls. Dropping the source leaves any such window
+        // (Firefox's included, which the page can't see) nothing to play. That
+        // waits `after` ms, so the last frame stays up while the reel fades.
+        const teardown = (videoElement: HTMLVideoElement, after = 0) => {
+            videoElement.pause();
+            if (document.pictureInPictureElement === videoElement) {
+                void document.exitPictureInPicture().catch(() => {});
+            }
+            setTimeout(() => {
+                videoElement.removeAttribute("src");
+                videoElement.load();
+                videoElement.remove();
+            }, after);
+        };
         signal.addEventListener("abort", () => {
             for (const videoElement of videoElements) {
-                videoElement.pause();
+                teardown(videoElement);
             }
         });
 
@@ -133,8 +161,10 @@ export default function ReelsScreen() {
             // reel then too, so it isn't heard behind the rating.
             await recording.done;
             video.removeEventListener("ended", stopAtEnd);
-            video.pause();
             setVideoWrapperShown(false);
+            // The fade is set in ReelsScreen.css; read it rather than repeat it.
+            const fadeMs = parseFloat(getComputedStyle(videoElementWrapperRef.current).transitionDuration) * 1000;
+            teardown(video, fadeMs || 0);
 
             teddy.playAnimation(TeddyAnimations.IDLE);
             teddy.say(TeddyAnimations.LISTEN, RATING_QUESTION);
