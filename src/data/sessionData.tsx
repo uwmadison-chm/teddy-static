@@ -1,5 +1,6 @@
 import {allowedNextURL, Config} from "@/data/config.ts";
-import {sendEvent} from "@/data/pig.ts";
+import {runId, type RunOutcome, sendEvent, setOpeningEvent} from "@/data/pig.ts";
+import {saveSession} from "@/data/revisit.ts";
 import {type ModuleParam, parseModules} from "@/data/links.ts";
 import {build} from "virtual:teddy-study";
 import {errorFields, type Level, setEventSink} from "@/data/log.ts";
@@ -10,7 +11,7 @@ export type {Level} from "@/data/log.ts";
 // The version of the events Teddy sends, documented in docs/events.md. Bump
 // the minor version for anything added, and the major version for anything
 // renamed, removed, or changed in meaning.
-export const EVENT_SCHEMA = "1.4";
+export const EVENT_SCHEMA = "1.5";
 
 // The most uncaught_exception events one session sends.
 const MAX_SCRIPT_ERRORS = 20;
@@ -30,6 +31,9 @@ class SessionData {
     currentModule: number;
     // True on the calibration screen, which runs before the first module.
     calibrating = false;
+    // True from picking up a run on a revisit until the face check after it is
+    // done; then the session goes on to the start of currentModule + 1.
+    resuming = false;
     // The recording running now, by its number in the session, if any.
     currentRecording: number | null = null;
     private recordings = 0;
@@ -54,7 +58,9 @@ class SessionData {
             console.error("Problems with this link:", this.linkProblems);
         }
         console.log("Starting session with modules", this.modules);
-        this.logEvent("session_started", {
+        // The run's first event: session_started for a new run, or
+        // session_resumed for one picked up from an earlier visit.
+        const opening = {
             schema: EVENT_SCHEMA,
             teddy: build.teddy,
             study: {task_code: Config.taskCode, ...build.study},
@@ -64,7 +70,8 @@ class SessionData {
             next_url: this.nextURL,
             next_url_rejected: params.get("nextURL") && !this.nextURL ? params.get("nextURL") : null,
             expiration_time: Number.isNaN(this.expirationTime) ? null : this.expirationTime,
-        });
+        };
+        setOpeningEvent((outcome) => this.runStarted(outcome, opening));
 
         // The participant switching tabs or apps, or locking their phone.
         document.addEventListener("visibilitychange", () => {
@@ -85,6 +92,48 @@ class SessionData {
         window.addEventListener("unhandledrejection", (e) => logScriptError(e.reason));
     }
 
+    // Once the run has started, picks up where an earlier visit left off if
+    // it resumed one, and saves the session so a later visit can. Returns the
+    // run's first event.
+    private runStarted({resumed, resumeFailed}: RunOutcome, fields: Record<string, unknown>): Record<string, unknown> {
+        if (resumed == null) {
+            // A tab opened while another has the session leaves that session's
+            // progress alone until this one gets as far as a module.
+            if (resumeFailed != "busy") {
+                this.saveProgress();
+            }
+            return this.event("session_started", {...fields, resume_failed: resumeFailed});
+        }
+        // Made before the state changes, so its module is null, like
+        // session_started's: the participant is on the intro.
+        const data = this.event("session_resumed", {
+            ...fields,
+            module_index: resumed.module,
+            calibrating: resumed.calibrating,
+        });
+        this.recordings = resumed.recordings;
+        // Before the first module, the session just starts again with
+        // calibration. Otherwise the camera and face check come first, then
+        // the module (see CalibrationScreen).
+        if (resumed.module >= 0 && !resumed.calibrating && resumed.module < this.modules.length) {
+            this.currentModule = resumed.module - 1;
+            this.resuming = true;
+        }
+        this.saveProgress();
+        return data;
+    }
+
+    // Saves where the session is, for a revisit to pick up (see revisit.ts).
+    private saveProgress(): void {
+        saveSession({
+            runId: runId(),
+            // While resuming, the face check stands in for the module to go back to.
+            module: this.resuming ? this.currentModule + 1 : this.currentModule,
+            calibrating: this.resuming ? false : this.calibrating,
+            recordings: this.recordings,
+        });
+    }
+
     // Sends an event to pig. `type` says what happened, in snake_case; `fields`
     // are anything else worth keeping; `level` says whether this time it went
     // badly. Every event also says which module and which recording were
@@ -103,12 +152,19 @@ class SessionData {
     startRecording(): number {
         this.recordings += 1;
         this.currentRecording = this.recordings;
+        // So a revisit doesn't number another recording the same.
+        this.saveProgress();
         return this.recordings;
     }
 
-    // Logs that a module's screen has started, with its items.
+    // Logs that a module's screen has started, with its items, and saves it as
+    // where a revisit goes back to.
     startModule(): void {
-        this.logEvent("module_started", {items: this.calibrating ? [] : this.getCurrentModuleArgs()});
+        this.logEvent("module_started", {
+            items: this.calibrating ? [] : this.getCurrentModuleArgs(),
+            face_check_only: this.resuming,
+        });
+        this.saveProgress();
     }
 
     complete(): void {
@@ -127,6 +183,7 @@ class SessionData {
     navigateToNextModule(navigate): void {
         this.logEvent("module_finished");
         this.calibrating = false;
+        this.resuming = false;
         if (this.hasMoreModules()) {
             this.currentModule += 1;
             const moduleName = this.modules[this.currentModule].module;

@@ -36,6 +36,7 @@ declare module "virtual:teddy-study" {
         debug: boolean;
         nextUrlHosts: string[];
         nextUrlAfterFailure: boolean;
+        revisit: "restart" | "resume";
         recording: Partial<{
             mimeTypes: string[];
             videoBitsPerSecond: number;
