@@ -12,7 +12,7 @@ import {UserVideo, type UserVideoFunctions} from "@/components/UserVideo.tsx";
 import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {reels} from "virtual:teddy-study";
-import {sleep, useChoice, useScript} from "@/utils/script.ts";
+import {sleep, useChoice, useScript, whenPressable} from "@/utils/script.ts";
 import {isPreloading, reelSource} from "@/data/reelPreload.ts";
 
 const MAX_RATING_RECORDING_DURATION = 15000;
@@ -168,7 +168,7 @@ export default function ReelsScreen() {
 
             teddy.playAnimation(TeddyAnimations.IDLE);
             teddy.say(TeddyAnimations.LISTEN, RATING_QUESTION);
-            panels.showStartPanel("rateReel");
+            const pressable = whenPressable(panels.showStartPanel("rateReel"));
             const ratingRecording = userVideoRef.current.record({kind: "reel_rating", item: id},
                 {timeout: MAX_RATING_RECORDING_DURATION, timeoutIsNormal: true, signal});
 
@@ -179,6 +179,9 @@ export default function ReelsScreen() {
                 value: rating.code,
                 label: rating.label,
                 choices: RATINGS.map(({code, label}) => ({code, label})),
+                number: index + 1,
+                of: reelIDs.length,
+                rt_ms: pressable.msSince(),
             });
             ratingRecording.stop("answered")
             console.log("Rated reel", id, rating);

@@ -124,3 +124,15 @@ export function useChoice<T = void>(): Choice<T> {
     const [choice] = useState(() => new Choice<T>());
     return choice;
 }
+
+// When a panel's buttons became pressable, for a response's reaction time.
+// `shown` is the panel's showPanel() or showStartPanel(), which resolves as
+// its animation ends; the panel is inert until then, so nothing can be
+// pressed earlier. msSince() is null if the panel hadn't finished.
+export function whenPressable(shown: Promise<void>): {msSince: () => number | null} {
+    let at: number | null = null;
+    void shown.then(() => {
+        at = performance.now();
+    });
+    return {msSince: () => at == null ? null : Math.round(performance.now() - at)};
+}

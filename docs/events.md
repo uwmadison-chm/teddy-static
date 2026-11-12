@@ -1,6 +1,6 @@
 # Teddy's events
 
-Event schema **1.3**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event.
+Event schema **1.5**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event.
 
 ## Versioning
 
@@ -160,7 +160,7 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 | `questions` | `item`, `text`, `responses` (as the CSV has them), `choices` (a list of `{code, label}`), `number` and `of` (its position in the module) |
 | `reels` | `item`, `file`, `preloaded` (whether it played from the copy downloaded earlier in the session, rather than streaming) |
 
-**`response`**: the participant answered a question or rated a reel. One per answer, so filtering on `type == "response"` gives a table of every answer in the run.
+**`response`**: the participant answered a question or rated a reel. One per answer, so filtering on `type == "response"` gives a table of every answer in the run. Each has everything needed to analyze the answer on its own, without its `item_shown`.
 
 | field | |
 |---|---|
@@ -169,6 +169,8 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 | `value` | the code of the answer picked, as text |
 | `label` | the label on the button they pressed |
 | `choices` | every answer that was offered, as a list of `{code, label}` |
+| `number`, `of` | its position in the module: the question, or the reel rated, and how many the module has |
+| `rt_ms` | milliseconds from the answers becoming pressable to the press, rounded. The answers appear once Teddy has finished asking (for a question) or the reel has ended, and can't be pressed until they've finished animating in, about half a second later; `rt_ms` starts then. `null` if the press somehow came first. |
 
 Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It; the question is "What did you think?".
 
@@ -210,3 +212,4 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 - **1.2**: `face_check_result` has `detector_backend`.
 - **1.3**: `reel_preloaded` and `reel_preload_failed`. `item_shown` for a reel has `preloaded`.
 - **1.4**: `chime_preload_failed`.
+- **1.5**: `response` has `number`, `of`, and `rt_ms`.
