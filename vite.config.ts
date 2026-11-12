@@ -18,7 +18,7 @@ export default defineConfig({
   ],
   // Relative base so the build works from any subdirectory
   base: './',
-  assetsInclude: ['src/assets/**/*.shard'],
+  assetsInclude: ['src/assets/**/*.shard', 'src/assets/**/*.bin'],
   // Vite scans every HTML file for dependencies by default. quality-check.html
   // imports a module only vite.quality-check.config.ts provides.
   optimizeDeps: {

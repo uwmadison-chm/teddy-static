@@ -9,7 +9,7 @@ import {promisify} from "node:util";
 import {brotliCompress, constants, gzip} from "node:zlib";
 import type {Plugin, ResolvedConfig} from "vite";
 
-const EXTENSIONS = new Set([".js", ".css", ".html", ".wasm", ".riv", ".json", ".svg", ".csv", ".shard"]);
+const EXTENSIONS = new Set([".js", ".css", ".html", ".wasm", ".riv", ".json", ".svg", ".csv", ".shard", ".bin"]);
 
 // Below this, the savings don't matter.
 const MIN_SIZE = 1024;

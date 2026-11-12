@@ -26,8 +26,8 @@ Field names are snake_case, and a name means the same thing on every event it ap
 
 ## Naming
 
-- A type names what happened. Related types share a prefix: `camera_`, `face_check_`, `chime_`, `eyes_closed_`, `recording_`, `module_`, `session_`, `tab_`, `reel_`. Whether it went well is the event's `level`, not its name; no type ends in `_error`.
-- Something that can go more than one way gets one `…_result` event with a `result` field, rather than one type per outcome: `camera_result`, `camera_help_result`, `face_check_result`, `chime_check_result`.
+- A type names what happened. Related types share a prefix: `camera_`, `face_check_`, `chime_`, `mic_check_`, `eyes_closed_`, `recording_`, `module_`, `session_`, `tab_`, `reel_`. Whether it went well is the event's `level`, not its name; no type ends in `_error`.
+- Something that can go more than one way gets one `…_result` event with a `result` field, rather than one type per outcome: `camera_result`, `camera_help_result`, `face_check_result`, `chime_check_result`, `mic_check_result`.
 - Fields are snake_case too.
 
 ## Levels
@@ -43,6 +43,7 @@ Every event is `info` unless listed here.
 | `chime_check_result` | `result` is `not_heard` | |
 | `chime_play_failed` | always | |
 | `face_check_result` | `result` is `bypassed`, or `found` after a detector error | `result` is `unavailable` |
+| `mic_check_result` | `result` is `bypassed` | `result` is `unavailable` |
 | `recording_stopped` | `reason` is `left_screen`, or `timed_out` on a sentence, videolog, reel or questions recording | `reason` is `failed` |
 | `reel_stalled` | always | |
 | `tab_hidden` | a recording was running | |
@@ -52,7 +53,7 @@ Every event is `info` unless listed here.
 
 Each recording is a pig media item. Its event is `type: "recording"`, with:
 
-- `kind`: `face_check`, `eyes_closed`, `sentence`, `videolog`, `questions`, `reel`, or `reel_rating`
+- `kind`: `face_check`, `mic_check`, `eyes_closed`, `sentence`, `videolog`, `questions`, `reel`, or `reel_rating`
 - `item` (or `items`, for `questions`, which records the whole module): what was being recorded; absent for calibration
 - `limit_seconds`: the longest this recording could run
 - `content_type`: the recording's format, added by pig's client
@@ -114,7 +115,7 @@ Otherwise, the camera and a face check come next, as a `calibration` module with
 
 | `result` | fields |
 |---|---|
-| `started` | the browser gave Teddy the camera. `width`, `height`, `frame_rate`: what the camera is actually sending, which may differ from what `config.js` asked for. |
+| `started` | the browser gave Teddy the camera. `width`, `height`, `frame_rate`: what the camera is actually sending, which may differ from what `config.js` asked for. `echo_cancellation`, `noise_suppression`, `auto_gain_control`: whether the browser is processing the microphone's audio; Teddy asks for all three off, so `true` means the browser didn't do as asked. `sample_rate`: the microphone's rate. Each is `null` where the browser doesn't say. |
 | `failed` | the browser wouldn't give Teddy the camera. `name` (like `NotAllowedError`), `message`, and `constraint` (the setting the camera couldn't meet, for an `OverconstrainedError`; otherwise `null`). |
 | `missing` | before asking, Teddy found that the device has no camera or no microphone, and went straight to the camera help screen; there's no `camera_requested` before it. `video_inputs`, `audio_inputs`: how many of each the browser listed. |
 
@@ -132,7 +133,7 @@ Otherwise, the camera and a face check come next, as a `calibration` module with
 
 ### Modules
 
-**`module_started`**: a module's screen has started. `items`: its item IDs, in order (empty for calibration). `item_index`: the index into `items` this screen starts at, which is `0` unless the module was cut off partway, by a revisit or by the camera help screen. A `questions` module's recording then has only the questions from there on in its `items`. `face_check_only`: `true` for the face check after a `session_resumed`, which runs as `calibration` but skips the eyes-closed part; otherwise `false`.
+**`module_started`**: a module's screen has started. `items`: its item IDs, in order (empty for calibration). `item_index`: the index into `items` this screen starts at, which is `0` unless the module was cut off partway, by a revisit or by the camera help screen. A `questions` module's recording then has only the questions from there on in its `items`. `face_check_only`: `true` for the face check after a `session_resumed`, which runs as `calibration` but skips the mic check, the chime check and the eyes-closed part; otherwise `false`.
 
 **`module_finished`**: the participant pressed the button to move on from a module.
 
@@ -153,6 +154,24 @@ Otherwise, the camera and a face check come next, as a `calibration` module with
 | `tips_shown` | whether the tips had come up |
 | `detector_backend` | TensorFlow.js's backend for the face detector, which runs in a worker: `webgl`, or `cpu` where a worker can't use WebGL (Safari before 17), which makes each check slower; `null` if it never loaded |
 | `detector_errors` | each time the face detector failed during the check, up to 10, as `{stage, name, message, stack}`. `stage` is `load` (face-api or its model wouldn't load or start) or `detect` (one check of the camera failed). Empty when nothing went wrong. |
+
+**`mic_check_started`**: after the face check, Teddy asked the participant to say "Hi, Teddy!", and the words came up. Its recording's `kind` is `mic_check`.
+
+**`mic_check_tips_shown`**: the words hadn't been heard for 5 seconds, so Teddy asked the participant to speak up or come closer.
+
+**`mic_check_result`**: the mic check ended. Teddy listens from the start of the face check, so the levels before the check are the room's background (and anything the participant said then).
+
+| field | |
+|---|---|
+| `result` | `heard`: the voice detector counted about a quarter second of speech louder than -55 dB. `bypassed`: it didn't, and the participant pressed "Let's Continue Anyhow". `unavailable`: Teddy couldn't listen (the detector wouldn't load, the browser wouldn't give it the audio, or no audio came for 3 seconds); if it couldn't from the start, there was no `mic_check_started` and Teddy didn't ask |
+| `background_db` | the typical (median) level before the check, in dB below full scale, from 32 ms blocks; `null` if nothing was heard then |
+| `background_speech` | the share of those blocks, 0 to 1, that the voice detector took for speech |
+| `speech_db` | the typical level of the blocks counted as speech during the check; `null` if none were |
+| `peak_db` | the loudest block during the check |
+| `voiced_ms` | the most speech the check counted at once, in milliseconds; 256 is enough |
+| `tips_shown` | whether Teddy gave tips |
+| `sample_rate` | the rate the browser's audio ran at; `null` if listening never started |
+| `errors` | each time listening failed, as `{stage, name, message, stack}`. `stage` is `listen` (the detector wouldn't load, or the browser wouldn't give Teddy the audio) or `no_audio`. Empty when nothing went wrong. |
 
 **`chime_check_result`**: Teddy played the chime and asked whether the participant heard it, before the eyes-closed period.
 
@@ -234,4 +253,4 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 - **1.2**: `face_check_result` has `detector_backend`.
 - **1.3**: `reel_preloaded` and `reel_preload_failed`. `item_shown` for a reel has `preloaded`.
 - **1.4**: `chime_preload_failed`.
-- **1.5**: `response` has `number`, `of`, and `rt_ms`. `chime_check_result` and `chime_play_failed`. `session_resumed`. `session_started` has `resume_failed`, and `module_started` has `item_index` and `face_check_only`.
+- **1.5**: `response` has `number`, `of`, and `rt_ms`. `chime_check_result` and `chime_play_failed`. `session_resumed`. `session_started` has `resume_failed`, and `module_started` has `item_index` and `face_check_only`. `mic_check_started`, `mic_check_tips_shown`, `mic_check_result`, and the `mic_check` recording. `camera_result` has `echo_cancellation`, `noise_suppression`, `auto_gain_control` and `sample_rate`, and the microphone is recorded without the browser's processing.

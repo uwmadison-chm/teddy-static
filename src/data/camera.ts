@@ -71,7 +71,15 @@ export function getCameraStream(): Promise<MediaStream> {
                     height: {ideal: Config.recording.height},
                     frameRate: {ideal: Config.recording.frameRate},
                 },
-                audio: true,
+                // The microphone as it is. The browser's echo cancellation,
+                // noise suppression and automatic gain would otherwise
+                // reshape the participant's voice in every recording. The
+                // mic check doesn't need them either.
+                audio: {
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                },
             }) :
             Promise.reject(new DOMException("This browser can't use a camera here", "NotSupportedError"));
         opening = request
@@ -84,11 +92,18 @@ export function getCameraStream(): Promise<MediaStream> {
                 }
                 stream = s;
                 const video = s.getVideoTracks()[0]?.getSettings() ?? {};
+                const audio = s.getAudioTracks()[0]?.getSettings() ?? {};
                 CurrentSessionData.logEvent("camera_result", {
                     result: "started",
                     width: video.width ?? null,
                     height: video.height ?? null,
                     frame_rate: video.frameRate ?? null,
+                    // Whether the browser did as asked and left the audio
+                    // alone; null where it doesn't say.
+                    echo_cancellation: audio.echoCancellation ?? null,
+                    noise_suppression: audio.noiseSuppression ?? null,
+                    auto_gain_control: audio.autoGainControl ?? null,
+                    sample_rate: audio.sampleRate ?? null,
                 });
                 // A track ends on its own when the camera is unplugged or the
                 // permission is taken away; stopCameraStream() doesn't count.
