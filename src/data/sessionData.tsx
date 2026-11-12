@@ -35,8 +35,9 @@ class SessionData {
     // starts at this one, so a revisit, or a screen restarted after camera
     // help, goes back to the item it was on.
     currentItem = 0;
-    // True from picking up a run on a revisit until the face check after it is
-    // done; then the session goes on to currentModule + 1, at currentItem.
+    // True from picking up a run on a revisit until the module it goes back
+    // to starts. The camera is asked for again on the intro, then the session
+    // goes straight to currentModule, at currentItem.
     resuming = false;
     // The recording running now, by its number in the session, if any.
     currentRecording: number | null = null;
@@ -118,10 +119,10 @@ class SessionData {
         });
         this.recordings = resumed.recordings;
         // Before the first module, the session just starts again with
-        // calibration. Otherwise the camera and face check come first, then
-        // the module (see CalibrationScreen).
+        // calibration. Otherwise the intro asks for the camera again, then
+        // goes to the module (see firstScreen()).
         if (resumed.module >= 0 && !resumed.calibrating && resumed.module < this.modules.length) {
-            this.currentModule = resumed.module - 1;
+            this.currentModule = resumed.module;
             this.currentItem = resumed.item;
             this.resuming = true;
         }
@@ -133,9 +134,8 @@ class SessionData {
     private saveProgress(): void {
         saveSession({
             runId: runId(),
-            // While resuming, the face check stands in for the module to go back to.
-            module: this.resuming ? this.currentModule + 1 : this.currentModule,
-            calibrating: this.resuming ? false : this.calibrating,
+            module: this.currentModule,
+            calibrating: this.calibrating,
             item: this.currentItem,
             recordings: this.recordings,
         });
@@ -168,11 +168,11 @@ class SessionData {
     // where a revisit goes back to. Returns the index of the item to start at:
     // 0, unless the module was cut off partway.
     startModule(): number {
+        this.resuming = false;
         const first = this.calibrating ? 0 : this.currentItem;
         this.logEvent("module_started", {
             items: this.calibrating ? [] : this.getCurrentModuleArgs(),
             item_index: first,
-            face_check_only: this.resuming,
         });
         this.saveProgress();
         return first;
@@ -201,11 +201,7 @@ class SessionData {
     navigateToNextModule(navigate): void {
         this.logEvent("module_finished");
         this.calibrating = false;
-        // Resuming goes to the item the module was cut off at.
-        if (!this.resuming) {
-            this.currentItem = 0;
-        }
-        this.resuming = false;
+        this.currentItem = 0;
         if (this.hasMoreModules()) {
             this.currentModule += 1;
             const moduleName = this.modules[this.currentModule].module;
@@ -217,9 +213,19 @@ class SessionData {
         }
     }
 
+    // Where the session goes once the intro has the camera: calibration, or
+    // on a revisit, the module it goes back to.
+    firstScreen(): string {
+        return this.resuming ? "/" + this.modules[this.currentModule].module : "/calibration";
+    }
+
     // The running module's name, "calibration" during calibration, or null
-    // before that (the intro) and after the last module (the end screen).
+    // before that (the intro, also on a revisit) and after the last module
+    // (the end screen).
     currentModuleName(): string | null {
+        if (this.resuming) {
+            return null;
+        }
         if (this.calibrating) {
             return "calibration";
         }

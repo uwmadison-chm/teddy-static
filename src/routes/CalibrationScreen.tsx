@@ -49,11 +49,8 @@ export default function CalibrationScreen() {
         await abortable(video.ready(), signal);
         // Listening during the face check gives the mic check a measure of
         // the room's background sound.
-        // A resumed session skips the mic check, so it doesn't listen.
         const micCheck = micCheckRef.current;
-        if (!CurrentSessionData.resuming) {
-            micCheck.startListening(await abortable(getCameraStream(), signal), signal);
-        }
+        micCheck.startListening(await abortable(getCameraStream(), signal), signal);
         // Running out of time is how this recording usually ends.
         const faceRecording = video.record({kind: "face_check"}, {timeout: 15000, timeoutIsNormal: true, signal});
         CurrentSessionData.logEvent("face_check_started")
@@ -97,24 +94,6 @@ export default function CalibrationScreen() {
         // This seems weird, but if we go straight from listening to success, his eyebrow loops. So we go to idle quickly first.
         teddy.playAnimation(TeddyAnimations.IDLE)
         await sleep(100, signal);
-
-        // A session picked up on a revisit only needed the camera checked
-        // again. It goes back to the start of the module it was on.
-        if (CurrentSessionData.resuming) {
-            await teddy.say(TeddyAnimations.SUCCESS,
-                [
-                    sawFace ?
-                        "Your camera's working and I can see your face. You look great!" :
-                        "I didn't see your face, but that's okay.",
-                    "Let's pick up where you left off.",
-                ],
-                signal);
-            panels.showPanel("nextModule");
-            await next.next(signal);
-            faceRecording.stop("finished");
-            CurrentSessionData.navigateToNextModule(navigate);
-            return;
-        }
 
         // Only claim to see a face if the detector found one.
         const faceLine = sawFace ?

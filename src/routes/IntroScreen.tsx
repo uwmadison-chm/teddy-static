@@ -63,7 +63,7 @@ export default function IntroScreen() {
             return;
         }
         if (await abortable(noCamera, signal)) {
-            const state: CameraHelpState = {errorName: "NotFoundError", returnTo: "/calibration"};
+            const state: CameraHelpState = {errorName: "NotFoundError", returnTo: CurrentSessionData.firstScreen()};
             navigate("camerahelp", {state});
             return;
         }
@@ -82,11 +82,11 @@ export default function IntroScreen() {
             if (error instanceof Aborted) {
                 throw error;
             }
-            const state: CameraHelpState = {errorName: error.name, returnTo: "/calibration"};
+            const state: CameraHelpState = {errorName: error.name, returnTo: CurrentSessionData.firstScreen()};
             navigate("camerahelp", {state});
             return;
         }
-        navigate("calibration");
+        navigate(CurrentSessionData.firstScreen());
     });
 
     if (hasExpired || hasLinkProblems) {
