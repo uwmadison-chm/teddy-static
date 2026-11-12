@@ -1,17 +1,19 @@
 # Converts MediaPipe's BlazeFace short range model into what
-# demos/face-check/blazeface.js runs: a layer list (blazeface-layers.json) and
-# its weights as float16 (blazeface.bin), which the model stores them as.
+# src/utils/blazeface/ runs: a layer list (src/utils/blazeface/layers.json)
+# and its weights as float16 (src/assets/blazeface/blazeface.bin), which the
+# model stores them as.
 #
 #   pip install tflite numpy
 #   curl -O https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite
-#   python3 scripts/export-blazeface-weights.py blaze_face_short_range.tflite demos/face-check
+#   python3 scripts/export-blazeface-weights.py blaze_face_short_range.tflite
 #
 # The model is Apache 2.0, from https://ai.google.dev/edge/mediapipe/solutions/vision/face_detector
 import json, sys
 import numpy as np
 import tflite
 
-model_path, out_dir = sys.argv[1], sys.argv[2]
+model_path = sys.argv[1]
+root = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
 buf = open(model_path, 'rb').read()
 m = tflite.Model.GetRootAsModel(buf, 0)
 g = m.Subgraphs(0)
@@ -85,8 +87,8 @@ for k in range(g.OperatorsLength()):
             heads[head] = row[2]
     layers.append(row)
 
-# blazeface.js reads the heads from these tensor ids.
+# blazeface.ts reads the heads from these tensor ids.
 assert [heads[h] for h in ('classificator_8', 'classificator_16', 'regressor_8', 'regressor_16')] == [81, 82, 83, 84], heads
-np.concatenate(weights).astype(np.float16).tofile(f'{out_dir}/blazeface.bin')
-json.dump(layers, open(f'{out_dir}/blazeface-layers.json', 'w'), separators=(',', ':'))
+np.concatenate(weights).astype(np.float16).tofile(f'{root}/src/assets/blazeface/blazeface.bin')
+json.dump(layers, open(f'{root}/src/utils/blazeface/layers.json', 'w'), separators=(',', ':'))
 print(f'{len(layers)} layers, {offset} weights')

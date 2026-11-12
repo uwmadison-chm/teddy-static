@@ -91,7 +91,7 @@ td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 <div class="wrap">
   <header>
     <h1>Teddy face check bench</h1>
-    <p>Runs Teddy's face detector (face-api.js's Tiny Face Detector, in the app's own worker) and a port of MediaPipe's BlazeFace short range model (on plain JS, WebAssembly SIMD or WebGL2) side by side, on the same frames, with the face check's pass rule and tips. Use the camera, or upload a photo or video if the camera isn't allowed here.</p>
+    <p>Runs Teddy's face detector, MediaPipe's BlazeFace short range model (on plain JS, WebAssembly SIMD or WebGL2), side by side with the one it replaced, face-api.js's Tiny Face Detector,, on the same frames, with the face check's pass rule and tips. Use the camera, or upload a photo or video if the camera isn't allowed here.</p>
   </header>
 
   <div class="controls">
@@ -130,7 +130,7 @@ td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
       <label class="slider" for="minLight">Light at least <output id="minLightOut"></output><input id="minLight" type="range" min="0" max="150" step="5" value="60"></label>
       <label class="slider" for="maxLight">Light at most <output id="maxLightOut"></output><input id="maxLight" type="range" min="150" max="255" step="5" value="235"></label>
       <label class="slider" for="zone">Centered zone <output id="zoneOut"></output><input id="zone" type="range" min="20" max="90" step="5" value="50"></label>
-      <label class="slider" for="minWidth">Face at least <output id="minWidthOut"></output><input id="minWidth" type="range" min="5" max="50" step="1" value="15"></label>
+      <label class="slider" for="minWidth">Face at least <output id="minWidthOut"></output><input id="minWidth" type="range" min="5" max="50" step="1" value="10"></label>
       <button id="defaults" type="button">Back to Teddy's settings</button>
     </aside>
   </div>
@@ -156,7 +156,7 @@ td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
     <div class="table-wrap"><table id="readings"></table></div>
   </section>
 
-  <p class="note">Defaults match <code>src/components/FaceDetector.tsx</code>: a check every 100 ms after the last one finishes; a face counts above 0.5 and has to stay counted for 1 s; after 2 s without that, the tips come up. A face is centered when its box's middle is in the middle half of the circle and it's at least 15% of the circle wide. Light is the mean brightness of the face's box (or of the circle, with no face), and should fall between 60 and 235. The Tiny Face Detector runs in the app's <code>faceApiWorker.ts</code> on TensorFlow.js; BlazeFace (Apache 2.0, from MediaPipe) is about 100k weights, run by plain JS, by WebAssembly SIMD kernels, or by WebGL2 shaders; all three give the same scores to within 5e-4. Both report faces down to 0.05 so the guess slider can go lower than the app's 0.2. Sliders re-score everything already checked. Timing is the round trip from grabbing the frame to the worker's answer, so with both running they compete for the CPU (and the Tiny Face Detector also for the GPU); pick one to time it alone.</p>
+  <p class="note">Defaults match <code>src/components/FaceDetector.tsx</code>: a check every 100 ms after the last one finishes; a face counts above 0.5 and has to stay counted for 1 s; after 2 s without that, the tips come up. A face is centered when its box's middle is in the middle half of the circle and it's at least 10% of the circle wide (15% before BlazeFace, whose boxes are tighter). Light is the mean brightness of the face's box (or of the circle, with no face), and should fall between 60 and 235. The Tiny Face Detector runs in <code>demos/face-check/tiny-worker.ts</code>, the app's worker from before the switch, on TensorFlow.js; BlazeFace (Apache 2.0, from MediaPipe) is about 100k weights, run by plain JS, by WebAssembly SIMD kernels, or by WebGL2 shaders, which all give the same scores to within 5e-4; the app uses WASM SIMD, or plain JS where there's no SIMD. Both report faces down to 0.05 so the guess slider can go lower than the app's 0.2. Sliders re-score everything already checked. Timing is the round trip from grabbing the frame to the worker's answer, so with both running they compete for the CPU (and the Tiny Face Detector also for the GPU); pick one to time it alone.</p>
 </div>
 
 <video id="video" muted playsinline style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;"></video>
@@ -181,7 +181,7 @@ function scheduleRender() { if (!pending) { pending = true; requestAnimationFram
 
 function setStatus(text, bad) { const s = $("status"); s.textContent = text; s.classList.toggle("bad", !!bad); }
 
-// ---- Detectors, each in a worker that speaks faceApiWorker.ts's messages ----
+// ---- Detectors, each in a worker that speaks the app's faceModelWorker.ts messages ----
 const DETECTORS = {
   tiny: {name: "Tiny Face Detector", color: "--tiny", code: TINY_WORKER},
   blaze: {name: "BlazeFace", color: "--blaze", code: BLAZE_WORKER},
@@ -242,7 +242,7 @@ function refreshStatus() {
 }
 
 // ---- The face check's rules (FaceDetector.tsx), as functions of the settings ----
-const DEFAULTS = {face: 0.5, guess: 0.2, hold: 1000, trouble: 2000, minLight: 60, maxLight: 235, zone: 50, minWidth: 15, gap: 100};
+const DEFAULTS = {face: 0.5, guess: 0.2, hold: 1000, trouble: 2000, minLight: 60, maxLight: 235, zone: 50, minWidth: 10, gap: 100};
 const rule = {...DEFAULTS};
 
 function visibleSquare(w, h) { const side = Math.min(w, h); return {x: (w - side) / 2, y: (h - side) / 2, width: side, height: side}; }

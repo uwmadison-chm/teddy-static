@@ -1,30 +1,65 @@
 // BlazeFace on WebAssembly SIMD: the same layers as blazeface.js, run by the
-// kernels in blazeface-simd.c. Tensors live in the module's memory with each
-// pixel's channels padded to a multiple of 4.
+// kernels in blazeface-simd.c (src/assets/blazeface/blazeface-simd.wasm).
+// Tensors live in the module's memory with each pixel's channels padded to a
+// multiple of 4.
 
-import {INPUT_SIZE, HEADS, decodeFaces, decodeWeights, fillInput, padBefore, tensorShapes} from "./blazeface.js";
+import {INPUT_SIZE, HEADS, decodeFaces, decodeWeights, fillInput, padBefore, tensorShapes} from "./blazeface.ts";
+import type {BlazeFaceFace, BlazeFaceModel, Layer, RawOutput, Shapes} from "./blazeface.ts";
 
-const pad4 = (c) => Math.ceil(c / 4) * 4;
+const pad4 = (c: number) => Math.ceil(c / 4) * 4;
 
-export class BlazeFaceWasm {
+interface Kernels {
+    memory: WebAssembly.Memory;
+    __heap_base: WebAssembly.Global;
+    conv1x1(x: number, y: number, n: number, cin: number, si: number, so: number, w: number, b: number): void;
+    depthwise(x: number, y: number, ih: number, iw: number, s: number, oh: number, ow: number, stride: number, pt: number, pl: number, w: number, b: number): void;
+    conv(x: number, y: number, ih: number, iw: number, oh: number, ow: number, so: number, k: number, stride: number, pt: number, pl: number, w: number, b: number): void;
+    add_relu(a: number, b: number, y: number, n: number, relu: number): void;
+    maxpool(x: number, y: number, ih: number, iw: number, s: number): void;
+    pad_channels(x: number, y: number, n: number, si: number, so: number): void;
+}
+
+interface Pass {
+    op: string; src: number; dst: number; src2?: number;
+    k?: number; cin?: number; si?: number; so?: number; stride?: number; w?: number; b?: number;
+}
+
+// Whether this browser can run blazeface-simd.wasm.
+export function wasmSimdSupported(wasmBytes: BufferSource): boolean {
+    try {
+        return typeof WebAssembly === "object" && WebAssembly.validate(wasmBytes);
+    } catch {
+        return false;
+    }
+}
+
+export class BlazeFaceWasm implements BlazeFaceModel {
+    k: Kernels;
+    shapes: Shapes;
+    plan: Pass[];
+    mem: Float32Array;
+    tensors: Record<number, number>;
+    stride: (id: number) => number;
+    input: Float32Array;
+
     // wasmBytes: blazeface-simd.wasm. Throws where WebAssembly SIMD isn't supported.
-    constructor(layers, weightsF16, wasmBytes) {
+    constructor(layers: Layer[], weightsF16: ArrayBuffer, wasmBytes: BufferSource) {
         const instance = new WebAssembly.Instance(new WebAssembly.Module(wasmBytes), {});
-        const k = this.k = instance.exports;
+        const k = this.k = instance.exports as unknown as Kernels;
         const w = decodeWeights(weightsF16);
         const shapes = this.shapes = tensorShapes(layers);
-        const stride = (id) => id === 0 ? 4 : pad4(shapes[id][2]);
+        const stride = (id: number) => id === 0 ? 4 : pad4(shapes[id][2]);
 
         // Lay out memory: weights rearranged for the kernels, then tensors.
-        let top = Math.ceil(k.__heap_base.value / 16) * 16;
-        const plan = [];
-        const blocks = [];
-        const alloc = (floats) => { const at = top; top += Math.ceil(floats * 4 / 16) * 16; return at; };
-        const weights = (arr) => { const at = alloc(arr.length); blocks.push([at, arr]); return at; };
-        const tensors = {};
-        for (const id in shapes) { const [h, ww] = shapes[id]; tensors[id] = alloc(h * ww * stride(id)); }
-        for (const L of layers) {
-            const [op, src, dst] = L, si = stride(src), so = stride(dst);
+        let top = Math.ceil((k.__heap_base.value as number) / 16) * 16;
+        const plan: Pass[] = [];
+        const blocks: [number, Float32Array][] = [];
+        const alloc = (floats: number) => { const at = top; top += Math.ceil(floats * 4 / 16) * 16; return at; };
+        const weights = (arr: Float32Array) => { const at = alloc(arr.length); blocks.push([at, arr]); return at; };
+        const tensors: Record<number, number> = {};
+        for (const key in shapes) { const id = Number(key), [h, ww] = shapes[id]; tensors[id] = alloc(h * ww * stride(id)); }
+        for (const L of layers as number[][]) {
+            const [op, src, dst] = L as unknown as [string, number, number], si = stride(src), so = stride(dst);
             if (op === "conv" || op === "dw") {
                 const [, , , ks, cin, cout, st, wo, bo] = L;
                 const bias = new Float32Array(so); bias.set(w.subarray(bo, bo + cout));
@@ -47,7 +82,7 @@ export class BlazeFaceWasm {
             }
         }
         // Fold each ReLU into the add before it, where nothing else reads the sum.
-        const reads = {};
+        const reads: Record<number, number> = {};
         for (const p of plan) { reads[p.src] = (reads[p.src] ?? 0) + 1; if (p.src2 != null) reads[p.src2] = (reads[p.src2] ?? 0) + 1; }
         this.plan = [];
         for (let i = 0; i < plan.length; i++) {
@@ -69,9 +104,9 @@ export class BlazeFaceWasm {
 
     get backend() { return "WASM SIMD"; }
 
-    setPixels(rgba) { fillInput(this.input, rgba, 4); }
+    setPixels(rgba: ArrayLike<number>) { fillInput(this.input, rgba, 4); }
 
-    run() {
+    run(): RawOutput {
         const {k, plan, tensors: T, shapes} = this;
         for (const p of plan) {
             const [ih, iw] = shapes[p.src], [oh, ow] = shapes[p.dst];
@@ -84,7 +119,7 @@ export class BlazeFaceWasm {
             else if (p.op === "padc") k.pad_channels(T[p.src], T[p.dst], ih * iw, p.si, p.so);
         }
         // Copy the heads out, dropping the padding.
-        const out = (ids, per) => {
+        const out = (ids: number[], per: number) => {
             const result = new Float32Array(896 * per);
             let j = 0;
             for (const id of ids) {
@@ -96,5 +131,5 @@ export class BlazeFaceWasm {
         return {scores: out(HEADS.scores, 1), boxes: out(HEADS.boxes, 16)};
     }
 
-    detect(minScore = 0.5, iouThreshold = 0.3) { return decodeFaces(this.run(), minScore, iouThreshold); }
+    detect(minScore = 0.5, iouThreshold = 0.3): BlazeFaceFace[] { return decodeFaces(this.run(), minScore, iouThreshold); }
 }

@@ -19,7 +19,7 @@ import SentencesScreen from "@/routes/SentencesScreen.tsx";
 import ReelsScreen from "@/routes/ReelsScreen.tsx";
 import QuestionnaireScreen from "@/routes/QuestionnaireScreen.tsx";
 import {Config} from "@/data/config.ts";
-import {loadFaceApi} from "@/utils/faceApi.ts";
+import {loadFaceModel} from "@/utils/faceModel.ts";
 import LinkBuilderScreen from "@/routes/LinkBuilderScreen.tsx";
 import {CurrentSessionData, errorFields} from "@/data/sessionData.tsx";
 import {showPlainWayOut} from "@/utils/wayOut.ts";
@@ -96,7 +96,7 @@ createRoot(document.getElementById('root')!, {onUncaughtError}).render(showLinkB
 
 // Start loading the face detector now, in a worker, so it's ready
 // and warmed up by the calibration screen
-if (!showLinkBuilder) loadFaceApi().catch(error => console.error("Couldn't load face detector", error));
+if (!showLinkBuilder) loadFaceModel().catch(error => console.error("Couldn't load face detector", error));
 // Start downloading the session's reels once the page itself has loaded, so
 // they don't hold up Teddy or the face detector
 if (!showLinkBuilder) window.addEventListener("load", preloadReels, {once: true});

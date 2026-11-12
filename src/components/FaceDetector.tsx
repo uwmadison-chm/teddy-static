@@ -4,7 +4,7 @@ import {buildStyles, CircularProgressbarWithChildren} from "react-circular-progr
 import {FaCheck, FaUser} from "react-icons/fa";
 import {mixColors} from "@/utils/colors.tsx";
 import * as events from "@/utils/events.tsx";
-import {type Box, type Face, loadFaceApi} from "@/utils/faceApi.ts";
+import {type Box, type Face, loadFaceModel} from "@/utils/faceModel.ts";
 import {abortable, Aborted, sleep} from "@/utils/script.ts";
 import {errorFields} from "@/data/sessionData.tsx";
 
@@ -44,11 +44,11 @@ export type FaceCheckSummary = {
     // without one) neither too dark nor washed out.
     light_ok: boolean;
     tips_shown: boolean;
-    // TensorFlow.js's backend for the detector, "webgl" or "cpu"; null if it
-    // never loaded.
+    // How the detector ran: "wasm-simd", or "js" without WebAssembly SIMD;
+    // null if it never loaded.
     detector_backend: string | null;
     // Each time the detector failed, up to MAX_ERRORS_KEPT: `stage` is "load"
-    // (face-api or its model wouldn't load or start) or "detect" (one check failed).
+    // (the detector or its model wouldn't load or start) or "detect" (one check failed).
     detector_errors: ({stage: string} & ReturnType<typeof errorFields>)[];
 };
 
@@ -80,11 +80,14 @@ function visibleSquare(video: HTMLVideoElement): Box {
 }
 
 // Whether a face's box sits in the middle half of the circle, and is big
-// enough that the participant isn't far from the camera.
+// enough that the participant isn't far from the camera. BlazeFace's boxes
+// are tight, about eyebrows to chin, so a tenth of the circle wide is already
+// a face some way back.
+const MIN_FACE_WIDTH = 0.1;
 function isCentered(face: Box, square: Box): boolean {
     const cx = (face.x + face.width / 2 - square.x) / square.width;
     const cy = (face.y + face.height / 2 - square.y) / square.height;
-    return cx > 0.25 && cx < 0.75 && cy > 0.25 && cy < 0.75 && face.width > square.width * 0.15;
+    return cx > 0.25 && cx < 0.75 && cy > 0.25 && cy < 0.75 && face.width > square.width * MIN_FACE_WIDTH;
 }
 
 // Mean brightness of part of the video, 0-255, from a small copy of it.
@@ -135,7 +138,7 @@ export const FaceDetector = React.forwardRef<FaceDetectorFunctions, FaceDetector
 
         let detector;
         try {
-            detector = await abortable(loadFaceApi(), signal);
+            detector = await abortable(loadFaceModel(), signal);
             summaryRef.current.detector_backend = detector.backend;
         } catch (error) {
             if (error instanceof Aborted) {

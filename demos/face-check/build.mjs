@@ -1,11 +1,13 @@
 // Builds demos/face-check-bench.html, one file with everything inside: the
-// app's face detector worker (src/utils/faceApiWorker.ts, so face-api.js and
-// TensorFlow.js) and its model, and the BlazeFace port and its weights.
+// old face detector (tiny-worker.ts, so face-api.js and TensorFlow.js) and its
+// model, and BlazeFace (src/utils/blazeface/, plus blazeface-gl.js) and its
+// weights.
 // Rebuild it when any of those or bench.html change:
 //
 //   node demos/face-check/build.mjs
 //
-// blazeface-simd.wasm is built from blazeface-simd.c; see that file.
+// src/assets/blazeface/blazeface-simd.wasm is built from
+// src/utils/blazeface/blazeface-simd.c; see that file.
 
 import {build} from "rolldown";
 import fs from "node:fs";
@@ -26,22 +28,22 @@ async function bundle(input, plugins = []) {
 // Safe inside a <script>: no "</script" can end it early.
 const literal = (value) => JSON.stringify(value).replaceAll("</", "<\\/");
 
-const tinyWorker = await bundle(path.join(root, "src/utils/faceApiWorker.ts"));
+const tinyWorker = await bundle(path.join(here, "tiny-worker.ts"));
 const blazeWorker = await bundle(path.join(here, "blazeface-worker.js"));
-const tinyWeights = path.join(root, "src/assets/facemodels/tiny_face_detector_model-shard1.shard");
-const blazeWeights = path.join(here, "blazeface.bin");
-const blazeLayers = fs.readFileSync(path.join(here, "blazeface-layers.json"), "utf8").trim();
-const blazeWasm = path.join(here, "blazeface-simd.wasm");
+const tinyWeights = path.join(here, "tinyface/tiny_face_detector_model-shard1.shard");
+const blazeWeights = path.join(root, "src/assets/blazeface/blazeface.bin");
+const blazeLayers = fs.readFileSync(path.join(root, "src/utils/blazeface/layers.json"), "utf8").trim();
+const blazeWasm = path.join(root, "src/assets/blazeface/blazeface-simd.wasm");
 
 // The worker carries all three BlazeFace backends; for the sizes, bundle a
 // worker with only one.
 async function blazeAlone(backend) {
-    const modules = {js: ["BlazeFace", "blazeface.js"], wasm: ["BlazeFaceWasm", "blazeface-wasm.js"], webgl: ["BlazeFaceGL", "blazeface-gl.js"]};
+    const modules = {js: ["BlazeFace", "../../src/utils/blazeface/blazeface.ts"], wasm: ["BlazeFaceWasm", "../../src/utils/blazeface/blazefaceWasm.ts"], webgl: ["BlazeFaceGL", "./blazeface-gl.js"]};
     const [name, file] = modules[backend];
     const source = fs.readFileSync(path.join(here, "blazeface-worker.js"), "utf8")
         .replace(/^import \{BlazeFace(Wasm|GL)\}.*$/gm, "")
         .replace(/request\.backend === "wasm" \? [\s\S]*?: new BlazeFace\(request\.layers, request\.weights\);/, `new ${name}(request.layers, request.weights, request.wasm);`)
-        .replace(`import {BlazeFace, INPUT_SIZE} from "./blazeface.js";`, `import {INPUT_SIZE} from "./blazeface.js";\nimport {${name}} from "./${file}";`);
+        .replace(`import {BlazeFace, INPUT_SIZE} from "../../src/utils/blazeface/blazeface.ts";`, `import {INPUT_SIZE} from "../../src/utils/blazeface/blazeface.ts";\nimport {${name}} from "${file}";`);
     const id = path.join(here, "blazeface-worker-alone.js");
     return bundle(id, [{name: "alone", resolveId: (s) => s === id ? id : null, load: (s) => s === id ? source : null}]);
 }
