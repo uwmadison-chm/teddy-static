@@ -13,7 +13,7 @@ import {UserVideo, type UserVideoFunctions} from "@/components/UserVideo.tsx";
 import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {questions, type Choice, type QuestionItem} from "virtual:teddy-study";
-import {useChoice, useScript} from "@/utils/script.ts";
+import {useChoice, useScript, whenPressable} from "@/utils/script.ts";
 
 // Self-report questions, asked one at a time in Teddy's speech bubble, each
 // answered with one of its choices. The whole module is one recording, which
@@ -77,7 +77,7 @@ export default function QuestionnaireScreen() {
                 teddy.say(TeddyAnimations.LISTEN, question.text, signal),
             ]);
             setShown({question, number: index + 1, of: questionIDs.length});
-            panels.showPanel("answers");
+            const pressable = whenPressable(panels.showPanel("answers"));
             const choice = await answers.next(signal);
             CurrentSessionData.logEvent("response", {
                 item: question.id,
@@ -85,6 +85,9 @@ export default function QuestionnaireScreen() {
                 value: choice.code,
                 label: choice.label,
                 choices: question.choices,
+                number: index + 1,
+                of: questionIDs.length,
+                rt_ms: pressable.msSince(),
             });
         }
 
