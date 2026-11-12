@@ -39,6 +39,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 .which input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .which label:has(input:checked) { background: var(--accent-soft); color: var(--fg); }
 .which label:has(input:focus-visible) { outline: 3px solid var(--tiny); outline-offset: -3px; }
+.runs-on { display: inline-flex; gap: 8px; align-items: center; font-size: 0.9rem; font-weight: 600; }
 .top { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
 .grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
 @media (max-width: 820px) { .top, .grid { grid-template-columns: minmax(0, 1fr); } }
@@ -83,7 +84,7 @@ td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 <div class="wrap">
   <header>
     <h1>Teddy face check bench</h1>
-    <p>Runs Teddy's face detector (face-api.js's Tiny Face Detector, in the app's own worker) and a plain-JS port of MediaPipe's BlazeFace short range model side by side, on the same frames, with the face check's pass rule and tips. Use the camera, or upload a photo or video if the camera isn't allowed here.</p>
+    <p>Runs Teddy's face detector (face-api.js's Tiny Face Detector, in the app's own worker) and a port of MediaPipe's BlazeFace short range model (on plain JS, WebAssembly SIMD or WebGL2) side by side, on the same frames, with the face check's pass rule and tips. Use the camera, or upload a photo or video if the camera isn't allowed here.</p>
   </header>
 
   <div class="controls">
@@ -100,6 +101,8 @@ td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
       <label><input type="radio" name="which" value="tiny"> Tiny Face Detector</label>
       <label><input type="radio" name="which" value="blaze"> BlazeFace</label>
     </div>
+    <label class="runs-on" for="blazeBackend">BlazeFace runs on
+      <select id="blazeBackend"><option value="js">plain JS</option><option value="wasm" selected>WebAssembly SIMD</option><option value="webgl">WebGL2</option></select></label>
   </div>
 
   <div class="top">
@@ -139,8 +142,6 @@ td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
       <h2>Detectors</h2>
       <label class="opt" for="tinySize">Tiny Face Detector input size
         <select id="tinySize"><option>128</option><option>160</option><option selected>224</option><option>320</option><option>416</option><option>512</option></select></label>
-      <label class="opt" for="blazeBackend">BlazeFace runs on
-        <select id="blazeBackend"><option value="js" selected>plain JS</option><option value="wasm">WebAssembly SIMD</option><option value="webgl">WebGL2</option></select></label>
       <label class="opt" for="blazeCrop">BlazeFace looks at
         <select id="blazeCrop"><option value="frame" selected>the whole frame, letterboxed</option><option value="square">only what's in the circle</option></select></label>
       <label class="slider" for="gap">Pause between checks <output id="gapOut"></output><input id="gap" type="range" min="0" max="500" step="25" value="100"></label>
@@ -193,6 +194,8 @@ const DETECTORS = {
 const tinyWeightsUrl = "data:application/octet-stream;base64," + TINY_WEIGHTS;
 const blazeWeights = bytes(BLAZE_WEIGHTS);
 const blazeWasm = bytes(BLAZE_WASM);
+// ?blaze=js|wasm|webgl picks BlazeFace's backend.
+{ const pick = new URLSearchParams(location.search).get("blaze"); if (["js", "wasm", "webgl"].includes(pick)) $("blazeBackend").value = pick; }
 
 function loadMessage(key) {
   if (key === "tiny") return {type: "load", weightsUrl: tinyWeightsUrl, inputSize: Number($("tinySize").value), scoreThreshold: 0.05};
