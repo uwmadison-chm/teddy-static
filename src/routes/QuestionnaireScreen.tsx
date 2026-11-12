@@ -13,7 +13,7 @@ import {UserVideo, type UserVideoFunctions} from "@/components/UserVideo.tsx";
 import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {questions, type Choice, type QuestionItem} from "virtual:teddy-study";
-import {useChoice, useScript} from "@/utils/script.ts";
+import {useChoice, useScript, whenPressable} from "@/utils/script.ts";
 
 // Self-report questions, asked one at a time in Teddy's speech bubble, each
 // answered with one of its choices. The whole module is one recording, which
@@ -45,7 +45,8 @@ export default function QuestionnaireScreen() {
         const questionIDs = CurrentSessionData.getCurrentModuleArgs();
 
         console.log("Starting questionnaire module with questions:", questionIDs)
-        CurrentSessionData.startModule()
+        // After a reload, the question that was cut off, not the first.
+        const first = CurrentSessionData.startModule()
 
         const questionDescription = questionIDs.length == 1 ?
             "a quick question" : "a few quick questions";
@@ -57,12 +58,15 @@ export default function QuestionnaireScreen() {
         panels.showStartPanel();
         await start.next(signal);
 
-        const recording = userVideoRef.current.record({kind: "questions", items: questionIDs}, {signal});
+        // One recording for the questions this screen asks.
+        const recording = first < questionIDs.length ?
+            userVideoRef.current.record({kind: "questions", items: questionIDs.slice(first)}, {signal}) :
+            null;
 
         // Teddy asks each question, and its answers appear once the question
         // has finished typing out (or been tapped through) and the last
         // answers have gone.
-        for (let index = 0; index < questionIDs.length; index++) {
+        for (let index = first; index < questionIDs.length; index++) {
             const question = questions[questionIDs[index]];
             CurrentSessionData.logEvent("item_shown", {
                 item: question.id,
@@ -77,7 +81,7 @@ export default function QuestionnaireScreen() {
                 teddy.say(TeddyAnimations.LISTEN, question.text, signal),
             ]);
             setShown({question, number: index + 1, of: questionIDs.length});
-            panels.showPanel("answers");
+            const pressable = whenPressable(panels.showPanel("answers"));
             const choice = await answers.next(signal);
             CurrentSessionData.logEvent("response", {
                 item: question.id,
@@ -85,10 +89,14 @@ export default function QuestionnaireScreen() {
                 value: choice.code,
                 label: choice.label,
                 choices: question.choices,
+                number: index + 1,
+                of: questionIDs.length,
+                rt_ms: pressable.msSince(),
             });
+            CurrentSessionData.finishItem();
         }
 
-        recording.stop("finished");
+        recording?.stop("finished");
         panels.showPanel(null);
         teddy.playAnimation(TeddyAnimations.IDLE);
         const hasMoreModules = CurrentSessionData.hasMoreModules();

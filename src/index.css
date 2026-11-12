@@ -14,5 +14,6 @@
 @import "./styles/PromptText.css";
 @import "./styles/CircleProgress.css";
 @import "./styles/FaceDetector.css";
+@import "./styles/MicCheck.css";
 @import "./styles/ReelsScreen.css";
 @import "./styles/CompleteSessionScreen.css";

@@ -1,6 +1,6 @@
 # Teddy's events
 
-Event schema **1.3**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event.
+Event schema **1.5**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event (and on any `session_resumed`, which can come from a newer build).
 
 ## Versioning
 
@@ -20,14 +20,14 @@ Each session is one pig run. Every event Teddy sends has:
 - `module`: the module running: `null` on the intro and camera screens before calibration, `calibration`, then the module name (`sentences`, `videologs`, `questions`, `reels`), and `null` again on the end screen.
 - `recording`: the number of the recording running when the event happened, or `null` if none was. Recordings are numbered from 1 within the session.
 
-pig's client adds `_client`, with `wall_time` (the participant's clock, with its UTC offset) and `performance_now` (milliseconds on the page's monotonic clock). The session stays on one page, so `performance_now` is comparable across the whole run. pig's own first event in each run (`_client.event: "run_start"`) has the browser, screen and window size, and the pig client's version.
+pig's client adds `_client`, with `wall_time` (the participant's clock, with its UTC offset) and `performance_now` (milliseconds on the page's monotonic clock). A session stays on one page, so `performance_now` is comparable across the whole run, unless it has a `session_resumed`: each one starts a new page, and with it a new `performance_now` clock. pig's own first event in each run (`_client.event: "run_start"`) has the browser, screen and window size, and the pig client's version.
 
 Field names are snake_case, and a name means the same thing on every event it appears on: `item` is an item ID from the study's CSVs, `items` a list of them, `text` the words the participant saw, `name` and `message` an error's.
 
 ## Naming
 
-- A type names what happened. Related types share a prefix: `camera_`, `face_check_`, `eyes_closed_`, `recording_`, `module_`, `session_`, `tab_`, `reel_`. Whether it went well is the event's `level`, not its name; no type ends in `_error`.
-- Something that can go more than one way gets one `…_result` event with a `result` field, rather than one type per outcome: `camera_result`, `camera_help_result`, `face_check_result`.
+- A type names what happened. Related types share a prefix: `camera_`, `face_check_`, `chime_`, `mic_check_`, `eyes_closed_`, `recording_`, `module_`, `session_`, `tab_`, `reel_`. Whether it went well is the event's `level`, not its name; no type ends in `_error`.
+- Something that can go more than one way gets one `…_result` event with a `result` field, rather than one type per outcome: `camera_result`, `camera_help_result`, `face_check_result`, `chime_check_result`, `mic_check_result`.
 - Fields are snake_case too.
 
 ## Levels
@@ -40,7 +40,10 @@ Every event is `info` unless listed here.
 | `camera_ended` | | always |
 | `camera_help_shown` | always | |
 | `camera_help_result` | | `result` is `given_up` or `unusable` |
+| `chime_check_result` | `result` is `not_heard` | |
+| `chime_play_failed` | always | |
 | `face_check_result` | `result` is `bypassed`, or `found` after a detector error | `result` is `unavailable` |
+| `mic_check_result` | `result` is `bypassed` | `result` is `unavailable` |
 | `recording_stopped` | `reason` is `left_screen`, or `timed_out` on a sentence, videolog, reel or questions recording | `reason` is `failed` |
 | `reel_stalled` | always | |
 | `tab_hidden` | a recording was running | |
@@ -50,7 +53,7 @@ Every event is `info` unless listed here.
 
 Each recording is a pig media item. Its event is `type: "recording"`, with:
 
-- `kind`: `face_check`, `eyes_closed`, `sentence`, `videolog`, `questions`, `reel`, or `reel_rating`
+- `kind`: `face_check`, `mic_check`, `eyes_closed`, `sentence`, `videolog`, `questions`, `reel`, or `reel_rating`
 - `item` (or `items`, for `questions`, which records the whole module): what was being recorded; absent for calibration
 - `limit_seconds`: the longest this recording could run
 - `content_type`: the recording's format, added by pig's client
@@ -86,6 +89,17 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 | `next_url_rejected` | the link's `nextURL`, when it wasn't allowed; otherwise `null` |
 | `expiration_time` | the link's `expirationTime`, or `null` |
 | | `commit` and `dirty` are `null` for a build made outside git. |
+| `resume_failed` | when `config.js` has `revisit: "resume"` and this link's earlier visit couldn't be picked back up, the pig client's reason: `finished` (the run was finalized), `not-found` (the run is gone from this device), or `busy` (the session is open in another tab). Otherwise `null`. |
+
+**`session_resumed`**: with `revisit: "resume"` in `config.js`, the participant reloaded the page or opened their link again, and Teddy picked their run back up instead of starting a new one. It's the first event from the new page, and has every field `session_started` has except `resume_failed`, from the new page's build and link, plus:
+
+| field | |
+|---|---|
+| `module_index` | the module the session goes back to, as an index into `modules`. `-1` means before the first module. |
+| `calibrating` | `true` when that was calibration. Then, as with `module_index` of `-1`, the session goes through calibration again and on from there. |
+| `item_index` | how many of that module's items were done, which is the index into its items of the one to go back to |
+
+Otherwise, the camera and a face check come next, as a `calibration` module with `face_check_only` set, and then the module at `module_index` starts again at `item_index`: the sentence, videolog prompt, reel, or question that was cut off, from its beginning. An item counts as done when its recording has stopped (sentences, videologs), it has been rated (reels), or it has been answered (questions). Anything from the item that was cut off stays in the run: its events, and its recording, as a media item that was never finished. Recording numbers carry on from the earlier page.
 
 **`session_finished`**: the end screen has started. After it, Teddy finalizes the run; anything that happens later is only logged to the browser console.
 
@@ -101,7 +115,7 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 | `result` | fields |
 |---|---|
-| `started` | the browser gave Teddy the camera. `width`, `height`, `frame_rate`: what the camera is actually sending, which may differ from what `config.js` asked for. |
+| `started` | the browser gave Teddy the camera. `width`, `height`, `frame_rate`: what the camera is actually sending, which may differ from what `config.js` asked for. `echo_cancellation`, `noise_suppression`, `auto_gain_control`: whether the browser is processing the microphone's audio; Teddy asks for all three off, so `true` means the browser didn't do as asked. `sample_rate`: the microphone's rate. Each is `null` where the browser doesn't say. |
 | `failed` | the browser wouldn't give Teddy the camera. `name` (like `NotAllowedError`), `message`, and `constraint` (the setting the camera couldn't meet, for an `OverconstrainedError`; otherwise `null`). |
 | `missing` | before asking, Teddy found that the device has no camera or no microphone, and went straight to the camera help screen; there's no `camera_requested` before it. `video_inputs`, `audio_inputs`: how many of each the browser listed. |
 
@@ -119,7 +133,7 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 ### Modules
 
-**`module_started`**: a module's screen has started. `items`: its item IDs, in order (empty for calibration).
+**`module_started`**: a module's screen has started. `items`: its item IDs, in order (empty for calibration). `item_index`: the index into `items` this screen starts at, which is `0` unless the module was cut off partway, by a revisit or by the camera help screen. A `questions` module's recording then has only the questions from there on in its `items`. `face_check_only`: `true` for the face check after a `session_resumed`, which runs as `calibration` but skips the mic check, the chime check and the eyes-closed part; otherwise `false`.
 
 **`module_finished`**: the participant pressed the button to move on from a module.
 
@@ -138,8 +152,35 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 | `centered` | whether the last check saw a face in the middle of the camera preview |
 | `light_ok` | whether the last check found the face (or the middle of the picture, without one) neither too dark nor washed out |
 | `tips_shown` | whether the tips had come up |
-| `detector_backend` | TensorFlow.js's backend for the face detector, which runs in a worker: `webgl`, or `cpu` where a worker can't use WebGL (Safari before 17), which makes each check slower; `null` if it never loaded |
-| `detector_errors` | each time the face detector failed during the check, up to 10, as `{stage, name, message, stack}`. `stage` is `load` (face-api or its model wouldn't load or start) or `detect` (one check of the camera failed). Empty when nothing went wrong. |
+| `detector_backend` | how the face detector (BlazeFace short range, in a worker) ran: `wasm-simd`, or `js` where the browser has no WebAssembly SIMD (Safari before 16.4), which gives the same answers more slowly; `null` if it never loaded. Before 1.5 the detector was face-api.js's Tiny Face Detector, and this was TensorFlow.js's backend, `webgl` or `cpu` |
+| `detector_errors` | each time the face detector failed during the check, up to 10, as `{stage, name, message, stack}`. `stage` is `load` (the face detector or its model wouldn't load or start) or `detect` (one check of the camera failed). Empty when nothing went wrong. |
+
+**`mic_check_started`**: after the face check, Teddy asked the participant to say "Hi, Teddy!", and the words came up. Its recording's `kind` is `mic_check`.
+
+**`mic_check_tips_shown`**: the words hadn't been heard for 5 seconds, so Teddy asked the participant to speak up or come closer.
+
+**`mic_check_result`**: the mic check ended. Teddy listens from the start of the face check, so the levels before the check are the room's background (and anything the participant said then).
+
+| field | |
+|---|---|
+| `result` | `heard`: the voice detector counted about a quarter second of speech louder than -55 dB. `bypassed`: it didn't, and the participant pressed "Let's Continue Anyhow". `unavailable`: Teddy couldn't listen (the detector wouldn't load, the browser wouldn't give it the audio, or no audio came for 3 seconds); if it couldn't from the start, there was no `mic_check_started` and Teddy didn't ask |
+| `background_db` | the typical (median) level before the check, in dB below full scale, from 32 ms blocks; `null` if nothing was heard then |
+| `background_speech` | the share of those blocks, 0 to 1, that the voice detector took for speech |
+| `speech_db` | the typical level of the blocks counted as speech during the check; `null` if none were |
+| `peak_db` | the loudest block during the check |
+| `voiced_ms` | the most speech the check counted at once, in milliseconds; 256 is enough |
+| `tips_shown` | whether Teddy gave tips |
+| `sample_rate` | the rate the browser's audio ran at; `null` if listening never started |
+| `errors` | each time listening failed, as `{stage, name, message, stack}`. `stage` is `listen` (the detector wouldn't load, or the browser wouldn't give Teddy the audio) or `no_audio`. Empty when nothing went wrong. |
+
+**`chime_check_result`**: Teddy played the chime and asked whether the participant heard it, before the eyes-closed period.
+
+| field | |
+|---|---|
+| `result` | `heard`: the participant pressed "Yes, I Heard It!". `not_heard`: they pressed "Continue Without Sound", which shows after the first replay, and Teddy told them to count to ten instead |
+| `replays` | how many times they pressed "Play It Again" |
+
+**`chime_play_failed`**: the browser wouldn't play the chime. `reason` is when: `sample` (the first play, before the question), `replay`, or `finished` (the end of the eyes-closed period). `name` and `message` say why.
 
 **`eyes_closed_countdown_started`**: the countdown before the eyes-closed period started; the participant should be closing their eyes.
 
@@ -156,11 +197,11 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 | module | fields |
 |---|---|
 | `sentences` | `item`, `text` |
-| `videologs` | `item`, `text`. The prompt shows before recording starts, so the participant can think about it. |
+| `videologs` | `item`, `text` |
 | `questions` | `item`, `text`, `responses` (as the CSV has them), `choices` (a list of `{code, label}`), `number` and `of` (its position in the module) |
 | `reels` | `item`, `file`, `preloaded` (whether it played from the copy downloaded earlier in the session, rather than streaming) |
 
-**`response`**: the participant answered a question or rated a reel. One per answer, so filtering on `type == "response"` gives a table of every answer in the run.
+**`response`**: the participant answered a question or rated a reel. One per answer, so filtering on `type == "response"` gives a table of every answer in the run. Each has everything needed to analyze the answer on its own, without its `item_shown`.
 
 | field | |
 |---|---|
@@ -169,6 +210,8 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 | `value` | the code of the answer picked, as text |
 | `label` | the label on the button they pressed |
 | `choices` | every answer that was offered, as a list of `{code, label}` |
+| `number`, `of` | its position in the module: the question, or the reel rated, and how many the module has |
+| `rt_ms` | milliseconds from the answers becoming pressable to the press, rounded. The answers appear once Teddy has finished asking (for a question) or the reel has ended, and can't be pressed until they've finished animating in, about half a second later; `rt_ms` starts then. `null` if the press somehow came first. |
 
 Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It; the question is "What did you think?".
 
@@ -210,3 +253,4 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 - **1.2**: `face_check_result` has `detector_backend`.
 - **1.3**: `reel_preloaded` and `reel_preload_failed`. `item_shown` for a reel has `preloaded`.
 - **1.4**: `chime_preload_failed`.
+- **1.5**: The face detector is now BlazeFace short range instead of face-api.js's Tiny Face Detector, so `face_check_result`'s `best_score` comes from a different model, and its `detector_backend` is `wasm-simd` or `js` instead of `webgl` or `cpu`. `response` has `number`, `of`, and `rt_ms`. `chime_check_result` and `chime_play_failed`. `session_resumed`. `session_started` has `resume_failed`, and `module_started` has `item_index` and `face_check_only`. `mic_check_started`, `mic_check_tips_shown`, `mic_check_result`, and the `mic_check` recording. `camera_result` has `echo_cancellation`, `noise_suppression`, `auto_gain_control` and `sample_rate`, and the microphone is recorded without the browser's processing.

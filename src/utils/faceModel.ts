@@ -1,7 +1,6 @@
-import faceModelWeightsUrl from "@/assets/facemodels/tiny_face_detector_model-shard1.shard?url";
+import weightsUrl from "@/assets/blazeface/blazeface.bin?url";
+import wasmUrl from "@/assets/blazeface/blazeface-simd.wasm?url";
 
-// The detector looks at the camera's picture at this size, in pixels.
-const INPUT_SIZE = 224;
 // Faces fainter than this aren't reported at all. Fainter guesses than the
 // FaceDetector's FACE_SCORE still say where a face probably is, for the tips.
 const GUESS_SCORE = 0.2;
@@ -14,18 +13,18 @@ export interface Face {
 }
 
 export interface FaceDetection {
-    // TensorFlow.js's backend in the worker: "webgl", or "cpu" where a worker
-    // can't use WebGL (Safari before 17), which is slower but still keeps
-    // detection off the page.
+    // How the worker runs BlazeFace: "wasm-simd", or "js" where the browser
+    // has no WebAssembly SIMD (Safari before 16.4), which gives the same
+    // answers more slowly.
     backend: string;
     detect: (video: HTMLVideoElement) => Promise<Face | undefined>;
 }
 
-// Messages between the page and faceApiWorker.ts.
-export type FaceApiRequest =
-    | {type: "load", weightsUrl: string, inputSize: number, scoreThreshold: number}
+// Messages between the page and faceModelWorker.ts.
+export type FaceModelRequest =
+    | {type: "load", weightsUrl: string, wasmUrl: string, scoreThreshold: number}
     | {type: "detect", id: number, frame: ImageBitmap};
-export type FaceApiReply =
+export type FaceModelReply =
     | {type: "loaded", backend: string}
     | {type: "detected", id: number, face: Face | undefined}
     | {type: "failed", id?: number, error: {name: string, message: string, stack?: string}};
@@ -37,13 +36,12 @@ function toError(fields: {name: string, message: string, stack?: string}): Error
     return error;
 }
 
-// Loads face-api.js and the model in a worker, which also gets the slow first
-// detection out of the way. face-api.js pulls in all of TensorFlow.js, about
-// half the app's JS, and the first detection compiles its WebGL shaders, which
-// would freeze the page for a second or more; the worker keeps both off it.
+// Loads the face detector in a worker, which also gets the first (slower)
+// detection out of the way. Each check takes some milliseconds of CPU, which
+// the worker keeps off the page.
 function loadInWorker(): Promise<FaceDetection> {
     return new Promise((resolve, reject) => {
-        const worker = new Worker(new URL("./faceApiWorker.ts", import.meta.url), {type: "module"});
+        const worker = new Worker(new URL("./faceModelWorker.ts", import.meta.url), {type: "module"});
         const waiting = new Map<number, {resolve: (face: Face | undefined) => void, reject: (error: Error) => void}>();
         let nextId = 0;
         let loaded = false;
@@ -61,7 +59,7 @@ function loadInWorker(): Promise<FaceDetection> {
             event.preventDefault();
             fail(new Error(`The face detector's worker failed: ${event.message || "no reason given"}`));
         };
-        worker.onmessage = (event: MessageEvent<FaceApiReply>) => {
+        worker.onmessage = (event: MessageEvent<FaceModelReply>) => {
             const message = event.data;
             if (message.type == "loaded") {
                 loaded = true;
@@ -79,7 +77,7 @@ function loadInWorker(): Promise<FaceDetection> {
                         const id = nextId++;
                         return new Promise((resolve, reject) => {
                             waiting.set(id, {resolve, reject});
-                            worker.postMessage({type: "detect", id, frame} satisfies FaceApiRequest, [frame]);
+                            worker.postMessage({type: "detect", id, frame} satisfies FaceModelRequest, [frame]);
                         });
                     },
                 });
@@ -97,10 +95,10 @@ function loadInWorker(): Promise<FaceDetection> {
         };
         worker.postMessage({
             type: "load",
-            weightsUrl: new URL(faceModelWeightsUrl, document.baseURI).href,
-            inputSize: INPUT_SIZE,
+            weightsUrl: new URL(weightsUrl, document.baseURI).href,
+            wasmUrl: new URL(wasmUrl, document.baseURI).href,
             scoreThreshold: GUESS_SCORE,
-        } satisfies FaceApiRequest);
+        } satisfies FaceModelRequest);
     });
 }
 
@@ -108,11 +106,11 @@ let loading: Promise<FaceDetection> | null = null;
 
 // Resolves with the face detector once its model is loaded and warmed up.
 // Safe to call repeatedly; a failed load is retried on the next call.
-export function loadFaceApi(): Promise<FaceDetection> {
+export function loadFaceModel(): Promise<FaceDetection> {
     loading ??= (async () => {
-        performance.mark("face-api-load-start");
+        performance.mark("face-model-load-start");
         const detection = await loadInWorker();
-        performance.measure("face-api-load", "face-api-load-start");
+        performance.measure("face-model-load", "face-model-load-start");
         console.log(`Loaded Face Detector Model (${detection.backend})`);
         return detection;
     })().catch(error => {

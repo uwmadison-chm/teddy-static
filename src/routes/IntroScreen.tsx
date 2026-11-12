@@ -15,6 +15,7 @@ import * as pig from "@/data/pig.ts";
 import type {LinkProblemState} from "@/routes/LinkProblemScreen.tsx";
 import type {CameraHelpState} from "@/routes/CameraHelpScreen.tsx";
 import {abortable, Aborted, useChoice, useScript} from "@/utils/script.ts";
+import {savedSession} from "@/data/revisit.ts";
 
 
 export default function IntroScreen() {
@@ -47,8 +48,13 @@ export default function IntroScreen() {
         // A device with no camera can't do the session, so it shouldn't get
         // as far as the permission prompt.
         const noCamera = lacksCamera();
+        // An earlier visit with this link that may be picked back up. Whether
+        // it can be is up to pig, so Teddy doesn't promise.
+        const isRevisit = savedSession() != null;
         await teddy.say(TeddyAnimations.WAVE,
-            ["Hello there! It's great to see you!", "We'd like you to do a quick interaction using the camera.", "It should take a couple minutes and should be done in one sitting.", "When we start, your browser may ask to use your camera and microphone. Please allow both!"],
+            isRevisit ?
+                ["Welcome back! It's great to see you again!", "Let's get your camera going again, and then we'll keep going.", "Your browser may ask to use your camera and microphone again. Please allow both!"] :
+                ["Hello there! It's great to see you!", "We'd like you to do a quick interaction using the camera.", "It should take a couple minutes and should be done in one sitting.", "When we start, your browser may ask to use your camera and microphone. Please allow both!"],
             signal);
         const failure = await abortable(started, signal);
         if (failure) {

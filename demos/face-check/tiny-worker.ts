@@ -1,12 +1,22 @@
 // Runs face-api.js off the main thread. The first detection compiles
 // TensorFlow.js's WebGL shaders, which can freeze the page for a second or
 // more, so this loads the model and runs one detection on a blank picture as
-// soon as it starts. See faceApi.ts for the page's side.
+// soon as it starts.
 
 import * as faceapi from 'face-api.js';
 import type * as FaceApi from 'face-api.js';
-import faceModelManifest from "@/assets/facemodels/tiny_face_detector_model-weights_manifest.json";
-import type {FaceApiReply, FaceApiRequest} from "@/utils/faceApi.ts";
+import faceModelManifest from "./tinyface/tiny_face_detector_model-weights_manifest.json";
+
+// Teddy's face detector before 1.5, kept for demos/face-check-bench.html to
+// compare against. Speaks the same messages as the app's faceModelWorker.ts,
+// with the Tiny Face Detector's input size.
+type FaceApiRequest =
+    | {type: "load", weightsUrl: string, inputSize: number, scoreThreshold: number}
+    | {type: "detect", id: number, frame: ImageBitmap};
+type FaceApiReply =
+    | {type: "loaded", backend: string}
+    | {type: "detected", id: number, face: {score: number, box: {x: number, y: number, width: number, height: number}} | undefined}
+    | {type: "failed", id?: number, error: {name: string, message: string, stack?: string}};
 
 const reply = (message: FaceApiReply) => self.postMessage(message);
 

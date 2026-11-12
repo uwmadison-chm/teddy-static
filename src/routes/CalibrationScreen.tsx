@@ -11,9 +11,12 @@ import {useCallback, useRef} from "react";
 import {UserVideo, type UserVideoFunctions} from "@/components/UserVideo.tsx";
 import {FaceDetector, type FaceDetectorFunctions} from "@/components/FaceDetector.tsx";
 import {MicrophoneLevelIndicator} from "@/components/MicrophoneLevelIndicator.tsx";
+import {MicCheck, type MicCheckFunctions} from "@/components/MicCheck.tsx";
+import {getCameraStream} from "@/data/camera.ts";
 import {CountdownTimer, type CountdownTimerFunctions} from "@/components/CountdownTimer.tsx";
 import {CurrentSessionData} from "@/data/sessionData.tsx";
 import {chimeSource} from "@/data/chimePreload.ts";
+import {errorFields} from "@/data/log.ts";
 import {abortable, firstOf, sleep, useChoice, useScript} from "@/utils/script.ts";
 
 export default function CalibrationScreen() {
@@ -23,10 +26,12 @@ export default function CalibrationScreen() {
     const userVideoRef = useRef<UserVideoFunctions>(null);
     const faceDetectorRef = useRef<FaceDetectorFunctions>(null);
     const microphoneIndicatorRef = useRef(null);
+    const micCheckRef = useRef<MicCheckFunctions>(null);
     const calibrationPrepTimer = useRef<CountdownTimerFunctions>(null);
     const calibrationTimer = useRef<CountdownTimerFunctions>(null);
     const bypass = useChoice();
     const calibrate = useChoice();
+    const chimeCheck = useChoice<"heard" | "replay" | "notHeard">();
     const next = useChoice();
 
     useScript(async (signal) => {
@@ -42,10 +47,24 @@ export default function CalibrationScreen() {
         // what this is on the way in, and the face circle shows it, so he
         // stays quiet unless the participant needs tips.
         await abortable(video.ready(), signal);
+        // Listening during the face check gives the mic check a measure of
+        // the room's background sound.
+        // A resumed session skips the mic check, so it doesn't listen.
+        const micCheck = micCheckRef.current;
+        if (!CurrentSessionData.resuming) {
+            micCheck.startListening(await abortable(getCameraStream(), signal), signal);
+        }
         // Running out of time is how this recording usually ends.
         const faceRecording = video.record({kind: "face_check"}, {timeout: 15000, timeoutIsNormal: true, signal});
         CurrentSessionData.logEvent("face_check_started")
         const timerCompleteAudio = new Audio(chimeSource());
+        // From the start each time, in case the last play hasn't finished.
+        const playChime = (reason: string) => {
+            timerCompleteAudio.currentTime = 0;
+            timerCompleteAudio.play().catch((error) => {
+                CurrentSessionData.logEvent("chime_play_failed", {reason, ...errorFields(error)}, "warning");
+            });
+        };
         const sawFace = await firstOf(signal,
             async (signal) => {
                 const result = await faceDetectorRef.current.detect(signal, {
@@ -78,16 +97,111 @@ export default function CalibrationScreen() {
         // This seems weird, but if we go straight from listening to success, his eyebrow loops. So we go to idle quickly first.
         teddy.playAnimation(TeddyAnimations.IDLE)
         await sleep(100, signal);
+
+        // A session picked up on a revisit only needed the camera checked
+        // again. It goes back to the start of the module it was on.
+        if (CurrentSessionData.resuming) {
+            await teddy.say(TeddyAnimations.SUCCESS,
+                [
+                    sawFace ?
+                        "Your camera's working and I can see your face. You look great!" :
+                        "I didn't see your face, but that's okay.",
+                    "Let's pick up where you left off.",
+                ],
+                signal);
+            panels.showPanel("nextModule");
+            await next.next(signal);
+            faceRecording.stop("finished");
+            CurrentSessionData.navigateToNextModule(navigate);
+            return;
+        }
+
+        // Only claim to see a face if the detector found one.
+        const faceLine = sawFace ?
+            "Your camera's working and I can see your face. You look great!" :
+            "I didn't see your face, but that's okay. Let's keep going!";
+        // If we can't listen at all, there's no mic check to do.
+        const canCheckMic = await micCheck.ready(signal);
+        let firstLines: string[];
+        if (canCheckMic) {
+            await teddy.say(TeddyAnimations.SUCCESS, [faceLine, "Next, let's make sure I can hear you."], signal);
+            faceRecording.stop("finished");
+            const micRecording = video.record({kind: "mic_check"}, {timeout: 20000, timeoutIsNormal: true, signal});
+            CurrentSessionData.logEvent("mic_check_started");
+            teddy.say(TeddyAnimations.LISTEN, "Say “Hi, Teddy!” out loud.");
+            const heard = await firstOf(signal,
+                async (signal) => {
+                    const result = await micCheck.check(signal, {
+                        onTrouble: () => {
+                            CurrentSessionData.logEvent("mic_check_tips_shown");
+                            teddy.say(TeddyAnimations.PEERING, "I can't hear you yet. Try saying “Hi, Teddy!” a little louder, or come closer.");
+                        },
+                    });
+                    CurrentSessionData.logEvent("mic_check_result",
+                        {result: result.heard ? "heard" : "unavailable", ...micCheck.summary()},
+                        result.heard ? "info" : "error");
+                    return result.heard;
+                },
+                async (signal) => {
+                    await sleep(8000, signal);
+                    panels.showStartPanel();
+                    await bypass.next(signal);
+                    CurrentSessionData.logEvent("mic_check_result", {result: "bypassed", ...micCheck.summary()}, "warning");
+                    return false;
+                });
+            panels.showPanel(null);
+            micCheck.hide();
+            sleep(1000, signal).then(() => micRecording.stop("finished"), () => {});
+            firstLines = [heard ? "I can hear you. Thanks!" : "I didn't hear you, but that's okay."];
+            teddy.playAnimation(TeddyAnimations.IDLE);
+            await sleep(100, signal);
+        } else {
+            micCheck.hide();
+            CurrentSessionData.logEvent("mic_check_result", {result: "unavailable", ...micCheck.summary()}, "error");
+            firstLines = [faceLine];
+        }
         await teddy.say(TeddyAnimations.SUCCESS,
             [
-                // Only claim to see a face if the detector found one.
-                sawFace ?
-                    "Your camera's working and I can see your face. You look great!" :
-                    "I didn't see your face, but that's okay. Let's keep going!",
+                ...firstLines,
                 "Next, you'll see a countdown, during which you should close your eyes and relax your face.",
                 // Play the chime once this line is all showing.
                 ["Keep them closed and your face relaxed for about ten seconds, until you hear a chime, like this:",
-                    () => timerCompleteAudio.play()],
+                    () => playChime("sample")],
+                "Did you hear the chime?",
+            ],
+            signal);
+
+        // The chime is how they'll know to open their eyes, so make sure
+        // their sound works. They can go on without it.
+        let replays = 0;
+        let heard: boolean;
+        for (;;) {
+            panels.showStartPanel(replays == 0 ? "chimeCheck" : "chimeCheckAgain");
+            const answer = await chimeCheck.next(signal);
+            if (answer != "replay") {
+                heard = answer == "heard";
+                break;
+            }
+            replays++;
+            panels.showPanel(null);
+            await teddy.say(TeddyAnimations.IDLE,
+                [
+                    "Make sure your sound is on and turned up.",
+                    ["Here it is again:", () => playChime("replay")],
+                    "Did you hear it that time?",
+                ],
+                signal);
+        }
+        CurrentSessionData.logEvent("chime_check_result",
+            {result: heard ? "heard" : "not_heard", replays},
+            heard ? "info" : "warning");
+
+        panels.showPanel(null);
+        await teddy.say(heard ? TeddyAnimations.SLIGHTLY_HAPPY : TeddyAnimations.IDLE,
+            [
+                heard ?
+                    "Great!" :
+                    "That's okay. Without the chime, count slowly to ten, then open your eyes.",
                 "Ready?",
             ],
             signal);
@@ -107,7 +221,7 @@ export default function CalibrationScreen() {
         await abortable(calibrationTimer.current.start(), signal);
 
         CurrentSessionData.logEvent("eyes_closed_finished")
-        timerCompleteAudio.play();
+        playChime("finished");
         calibrationRecording.stop("finished")
         calibrationTimer.current.fadeOut()
         teddy.playAnimation(TeddyAnimations.IDLE);
@@ -145,6 +259,8 @@ export default function CalibrationScreen() {
                 ref={faceDetectorRef}
                 detectionDuration={1000} />
 
+            <MicCheck ref={micCheckRef} />
+
             <CountdownTimer
                 ref={calibrationPrepTimer}
                 duration={3000}
@@ -160,6 +276,25 @@ export default function CalibrationScreen() {
                 <FadingPanel label={FADING_PANEL_DEFAULT_LABEL}>
                     <button onClick={() => bypass.pick()}>
                         Let's Continue Anyhow
+                    </button>
+                </FadingPanel>
+                <FadingPanel label={"chimeCheck"}>
+                    <button onClick={() => chimeCheck.pick("heard")}>
+                        Yes, I Heard It!
+                    </button>
+                    <button onClick={() => chimeCheck.pick("replay")}>
+                        Play It Again
+                    </button>
+                </FadingPanel>
+                <FadingPanel label={"chimeCheckAgain"}>
+                    <button onClick={() => chimeCheck.pick("heard")}>
+                        Yes, I Heard It!
+                    </button>
+                    <button onClick={() => chimeCheck.pick("replay")}>
+                        Play It Again
+                    </button>
+                    <button onClick={() => chimeCheck.pick("notHeard")}>
+                        Continue Without Sound
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"startFaceCalibration"}>

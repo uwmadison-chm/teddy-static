@@ -15,6 +15,10 @@ export default {
     // telling the participant what happened. When false, they're told to close
     // the tab instead.
     nextUrlAfterFailure: true,
+    // When a participant reloads the page or opens their link again partway
+    // through: "restart" starts over with a new run; "resume" picks the run back
+    // up at the start of the module they were on, after checking the camera.
+    revisit: "restart",
     // Each module this study uses, and the CSV of its items, relative to this
     // folder. Links can only name these modules. Reel files are found relative
     // to the reels CSV.
