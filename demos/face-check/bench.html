@@ -139,6 +139,8 @@ td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
       <h2>Detectors</h2>
       <label class="opt" for="tinySize">Tiny Face Detector input size
         <select id="tinySize"><option>128</option><option>160</option><option selected>224</option><option>320</option><option>416</option><option>512</option></select></label>
+      <label class="opt" for="blazeBackend">BlazeFace runs on
+        <select id="blazeBackend"><option value="js" selected>plain JS</option><option value="wasm">WebAssembly SIMD</option><option value="webgl">WebGL2</option></select></label>
       <label class="opt" for="blazeCrop">BlazeFace looks at
         <select id="blazeCrop"><option value="frame" selected>the whole frame, letterboxed</option><option value="square">only what's in the circle</option></select></label>
       <label class="slider" for="gap">Pause between checks <output id="gapOut"></output><input id="gap" type="range" min="0" max="500" step="25" value="100"></label>
@@ -151,7 +153,7 @@ td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
     <div class="table-wrap"><table id="readings"></table></div>
   </section>
 
-  <p class="note">Defaults match <code>src/components/FaceDetector.tsx</code>: a check every 100 ms after the last one finishes; a face counts above 0.5 and has to stay counted for 1 s; after 2 s without that, the tips come up. A face is centered when its box's middle is in the middle half of the circle and it's at least 15% of the circle wide. Light is the mean brightness of the face's box (or of the circle, with no face), and should fall between 60 and 235. The Tiny Face Detector runs in the app's <code>faceApiWorker.ts</code> on TensorFlow.js; BlazeFace (Apache 2.0, from MediaPipe) is about 100k weights run by 200 lines of plain JS. Both report faces down to 0.05 so the guess slider can go lower than the app's 0.2. Sliders re-score everything already checked. Timing is the round trip from grabbing the frame to the worker's answer, so with both running they compete for the CPU (and the Tiny Face Detector also for the GPU); pick one to time it alone.</p>
+  <p class="note">Defaults match <code>src/components/FaceDetector.tsx</code>: a check every 100 ms after the last one finishes; a face counts above 0.5 and has to stay counted for 1 s; after 2 s without that, the tips come up. A face is centered when its box's middle is in the middle half of the circle and it's at least 15% of the circle wide. Light is the mean brightness of the face's box (or of the circle, with no face), and should fall between 60 and 235. The Tiny Face Detector runs in the app's <code>faceApiWorker.ts</code> on TensorFlow.js; BlazeFace (Apache 2.0, from MediaPipe) is about 100k weights, run by plain JS, by WebAssembly SIMD kernels, or by WebGL2 shaders; all three give the same scores to within 5e-4. Both report faces down to 0.05 so the guess slider can go lower than the app's 0.2. Sliders re-score everything already checked. Timing is the round trip from grabbing the frame to the worker's answer, so with both running they compete for the CPU (and the Tiny Face Detector also for the GPU); pick one to time it alone.</p>
 </div>
 
 <video id="video" muted playsinline style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;"></video>
@@ -184,10 +186,11 @@ const DETECTORS = {
 // A data: URL, since a worker started from a blob can't fetch blob: URLs on a file:// page.
 const tinyWeightsUrl = "data:application/octet-stream;base64," + TINY_WEIGHTS;
 const blazeWeights = bytes(BLAZE_WEIGHTS);
+const blazeWasm = bytes(BLAZE_WASM);
 
 function loadMessage(key) {
   if (key === "tiny") return {type: "load", weightsUrl: tinyWeightsUrl, inputSize: Number($("tinySize").value), scoreThreshold: 0.05};
-  return {type: "load", layers: BLAZE_LAYERS, weights: blazeWeights.slice().buffer, scoreThreshold: 0.05};
+  return {type: "load", backend: $("blazeBackend").value, layers: BLAZE_LAYERS, weights: blazeWeights.slice().buffer, wasm: blazeWasm, scoreThreshold: 0.05};
 }
 
 function startWorker(key) {
@@ -420,6 +423,7 @@ $("defaults").addEventListener("click", () => {
   if ($("tinySize").value !== "224") { $("tinySize").value = "224"; startWorker("tiny"); }
 });
 $("tinySize").addEventListener("change", () => { startWorker("tiny"); refreshStatus(); });
+$("blazeBackend").addEventListener("change", () => { startWorker("blaze"); refreshStatus(); });
 document.querySelectorAll("input[name=which]").forEach(r => r.addEventListener("change", () => render()));
 
 // ---- Drawing ----
@@ -449,7 +453,7 @@ function render() {
   for (const k of ["tiny", "blaze"]) {
     const d = DETECTORS[k], e = evals[k];
     $("card-" + k).hidden = !active.includes(k);
-    $(k + "-backend").textContent = d.error ? "error" : d.ready ? d.backend + (k === "tiny" ? " · " + $("tinySize").value + " px" : " · 128 px") : "loading…";
+    $(k + "-backend").textContent = d.error ? "error" : d.ready ? d.backend.split(" · ")[0] + (k === "tiny" ? " · " + $("tinySize").value + " px" : " · 128 px") : "loading…";
     let v;
     if (!samples.some(s => s[k])) v = d.ready ? "Waiting for a picture." : "Loading…";
     else if (e.passedAt != null) v = "Face found at " + fmtS(e.passedAt) + ". This would pass.";
@@ -589,10 +593,11 @@ function drawTimes(active) {
 
 function drawReadings(evals, active) {
   const kb = (n) => (n / 1024).toFixed(0) + " KB";
+  const sizes = (k) => k === "tiny" ? BUNDLE_COST.tiny : BUNDLE_COST.blaze[$("blazeBackend").value];
   const rows = [
-    ["Download, code (gzip)", k => `${kb(BUNDLE_COST[k].code)} (${kb(BUNDLE_COST[k].codeGz)})`],
-    ["Download, weights (gzip)", k => `${kb(BUNDLE_COST[k].weights)} (${kb(BUNDLE_COST[k].weightsGz)})`],
-    ["Download, total gzip", k => kb(BUNDLE_COST[k].codeGz + BUNDLE_COST[k].weightsGz)],
+    ["Download, code (gzip)", k => `${kb(sizes(k).code)} (${kb(sizes(k).codeGz)})`],
+    ["Download, weights (gzip)", k => `${kb(sizes(k).weights)} (${kb(sizes(k).weightsGz)})`],
+    ["Download, total gzip", k => kb(sizes(k).codeGz + sizes(k).weightsGz)],
     ["Backend", k => DETECTORS[k].backend ?? "–"],
     ["Load and warm-up", k => fmtMs(DETECTORS[k].loadMs)],
     ["Checks", k => samples.filter(s => s[k]).length + (errors[k] ? ` (${errors[k]} failed)` : "")],

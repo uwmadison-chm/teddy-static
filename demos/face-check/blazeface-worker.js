@@ -1,12 +1,16 @@
 // Runs the BlazeFace port off the page. Speaks the same messages as the app's
 // faceApiWorker.ts, so the bench treats both detectors alike:
-//   {type: "load", layers, weights: ArrayBuffer, scoreThreshold}  -> {type: "loaded", backend}
+//   {type: "load", backend, layers, weights, wasm, scoreThreshold} -> {type: "loaded", backend}
 //   {type: "detect", id, frame: ImageBitmap, crop}                -> {type: "detected", id, face, scores, ms}
 // `crop` is "frame" (the whole picture, letterboxed, as MediaPipe does it) or
 // "square" (only the middle square, which is what the participant sees).
-// A face's box and keypoints are in the frame's pixels.
+// A face's box and keypoints are in the frame's pixels. `backend` is "js"
+// (blazeface.js), "wasm" (blazeface-wasm.js, with `wasm` the module's bytes)
+// or "webgl" (blazeface-gl.js).
 
 import {BlazeFace, INPUT_SIZE} from "./blazeface.js";
+import {BlazeFaceWasm} from "./blazeface-wasm.js";
+import {BlazeFaceGL} from "./blazeface-gl.js";
 
 let model = null;
 let threshold = 0.5;
@@ -28,12 +32,7 @@ function detect(frame, crop) {
     context.fillRect(0, 0, INPUT_SIZE, INPUT_SIZE);
     context.drawImage(frame, sx, sy, sw, sh, dx, dy, dw, dh);
     frame.close();
-    const pixels = context.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data, input = model.input;
-    for (let i = 0, j = 0; i < pixels.length; i += 4) {
-        input[j++] = pixels[i] / 127.5 - 1;
-        input[j++] = pixels[i + 1] / 127.5 - 1;
-        input[j++] = pixels[i + 2] / 127.5 - 1;
-    }
+    model.setPixels(context.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data);
     const t1 = performance.now();
     const faces = model.detect(threshold);
     const t2 = performance.now();
@@ -49,11 +48,13 @@ self.onmessage = (event) => {
     const request = event.data;
     try {
         if (request.type === "load") {
-            model = new BlazeFace(request.layers, request.weights);
+            model = request.backend === "wasm" ? new BlazeFaceWasm(request.layers, request.weights, request.wasm)
+                : request.backend === "webgl" ? new BlazeFaceGL(request.layers, request.weights)
+                : new BlazeFace(request.layers, request.weights);
             threshold = request.scoreThreshold;
             // Warm up, so the first real check isn't slow.
             model.run();
-            self.postMessage({type: "loaded", backend: "plain JS"});
+            self.postMessage({type: "loaded", backend: model.backend});
         } else {
             self.postMessage({type: "detected", id: request.id, ...detect(request.frame, request.crop)});
         }
