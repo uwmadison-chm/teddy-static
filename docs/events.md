@@ -26,8 +26,8 @@ Field names are snake_case, and a name means the same thing on every event it ap
 
 ## Naming
 
-- A type names what happened. Related types share a prefix: `camera_`, `face_check_`, `eyes_closed_`, `recording_`, `module_`, `session_`, `tab_`, `reel_`. Whether it went well is the event's `level`, not its name; no type ends in `_error`.
-- Something that can go more than one way gets one `…_result` event with a `result` field, rather than one type per outcome: `camera_result`, `camera_help_result`, `face_check_result`.
+- A type names what happened. Related types share a prefix: `camera_`, `face_check_`, `chime_`, `eyes_closed_`, `recording_`, `module_`, `session_`, `tab_`, `reel_`. Whether it went well is the event's `level`, not its name; no type ends in `_error`.
+- Something that can go more than one way gets one `…_result` event with a `result` field, rather than one type per outcome: `camera_result`, `camera_help_result`, `face_check_result`, `chime_check_result`.
 - Fields are snake_case too.
 
 ## Levels
@@ -40,6 +40,8 @@ Every event is `info` unless listed here.
 | `camera_ended` | | always |
 | `camera_help_shown` | always | |
 | `camera_help_result` | | `result` is `given_up` or `unusable` |
+| `chime_check_result` | `result` is `not_heard` | |
+| `chime_play_failed` | always | |
 | `face_check_result` | `result` is `bypassed`, or `found` after a detector error | `result` is `unavailable` |
 | `recording_stopped` | `reason` is `left_screen`, or `timed_out` on a sentence, videolog, reel or questions recording | `reason` is `failed` |
 | `reel_stalled` | always | |
@@ -141,6 +143,15 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 | `detector_backend` | TensorFlow.js's backend for the face detector, which runs in a worker: `webgl`, or `cpu` where a worker can't use WebGL (Safari before 17), which makes each check slower; `null` if it never loaded |
 | `detector_errors` | each time the face detector failed during the check, up to 10, as `{stage, name, message, stack}`. `stage` is `load` (face-api or its model wouldn't load or start) or `detect` (one check of the camera failed). Empty when nothing went wrong. |
 
+**`chime_check_result`**: Teddy played the chime and asked whether the participant heard it, before the eyes-closed period.
+
+| field | |
+|---|---|
+| `result` | `heard`: the participant pressed "Yes, I Heard It!". `not_heard`: they pressed "Continue Without Sound", which shows after the first replay, and Teddy told them to count to ten instead |
+| `replays` | how many times they pressed "Play It Again" |
+
+**`chime_play_failed`**: the browser wouldn't play the chime. `reason` is when: `sample` (the first play, before the question), `replay`, or `finished` (the end of the eyes-closed period). `name` and `message` say why.
+
 **`eyes_closed_countdown_started`**: the countdown before the eyes-closed period started; the participant should be closing their eyes.
 
 **`eyes_closed_started`**: the eyes-closed period started.
@@ -212,4 +223,4 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 - **1.2**: `face_check_result` has `detector_backend`.
 - **1.3**: `reel_preloaded` and `reel_preload_failed`. `item_shown` for a reel has `preloaded`.
 - **1.4**: `chime_preload_failed`.
-- **1.5**: `response` has `number`, `of`, and `rt_ms`.
+- **1.5**: `response` has `number`, `of`, and `rt_ms`. `chime_check_result` and `chime_play_failed`.
