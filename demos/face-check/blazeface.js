@@ -20,30 +20,60 @@ function halfToFloat(h) {
     return s * (1 + f / 1024) * 2 ** (e - 15);
 }
 
+// The weights file as float32.
+export function decodeWeights(weightsF16) {
+    const half = new Uint16Array(weightsF16), w = new Float32Array(half.length);
+    for (let i = 0; i < half.length; i++) w[i] = halfToFloat(half[i]);
+    return w;
+}
+
+// Every tensor's [height, width, channels], by id.
+export function tensorShapes(layers) {
+    const shapes = {0: [INPUT_SIZE, INPUT_SIZE, 3]};
+    for (const [op, src, dst, a, , cout, stride] of layers) {
+        const [h, w, c] = shapes[src];
+        if (op === "conv" || op === "dw") shapes[dst] = [Math.ceil(h / stride), Math.ceil(w / stride), cout];
+        else if (op === "pool") shapes[dst] = [Math.ceil(h / 2), Math.ceil(w / 2), c];
+        else if (op === "padc") shapes[dst] = [h, w, c + a];
+        else shapes[dst] = [h, w, c];
+    }
+    return shapes;
+}
+
+// The head tensors: scores and box regressors on the 16x16 grid (2 anchors
+// a cell), then on the 8x8 grid (6 anchors a cell).
+export const HEADS = {scores: [81, 82], boxes: [83, 84]};
+
+// TensorFlow's SAME padding: as much as needed, the extra pixel on the bottom/right.
+export const padBefore = (size, k, stride) => Math.floor(Math.max((Math.ceil(size / stride) - 1) * stride + k - size, 0) / 2);
+
+// RGBA bytes (128 x 128) as the network's input, RGB scaled to -1..1, with
+// `stride` floats a pixel.
+export function fillInput(input, rgba, stride = 3) {
+    for (let i = 0, j = 0; i < rgba.length; i += 4, j += stride) {
+        input[j] = rgba[i] / 127.5 - 1;
+        input[j + 1] = rgba[i + 1] / 127.5 - 1;
+        input[j + 2] = rgba[i + 2] / 127.5 - 1;
+    }
+}
+
 export class BlazeFace {
     constructor(layers, weightsF16) {
-        const half = new Uint16Array(weightsF16);
-        this.w = new Float32Array(half.length);
-        for (let i = 0; i < half.length; i++) this.w[i] = halfToFloat(half[i]);
+        this.w = decodeWeights(weightsF16);
         this.layers = layers;
         this.patch = new Float32Array(5 * 5 * 3);
         // Work out every tensor's shape once, and keep its buffer between runs.
-        const shapes = {0: [INPUT_SIZE, INPUT_SIZE, 3]};
-        for (const [op, src, dst, a, , cout, stride] of layers) {
-            const [h, w, c] = shapes[src];
-            if (op === "conv" || op === "dw") shapes[dst] = [Math.ceil(h / stride), Math.ceil(w / stride), cout];
-            else if (op === "pool") shapes[dst] = [Math.ceil(h / 2), Math.ceil(w / 2), c];
-            else if (op === "padc") shapes[dst] = [h, w, c + a];
-            else shapes[dst] = [h, w, c];
-        }
-        this.shapes = shapes;
+        this.shapes = tensorShapes(layers);
         this.t = {};
-        for (const id in shapes) this.t[id] = new Float32Array(shapes[id][0] * shapes[id][1] * shapes[id][2]);
-        this.anchors = makeAnchors();
+        for (const id in this.shapes) this.t[id] = new Float32Array(this.shapes[id][0] * this.shapes[id][1] * this.shapes[id][2]);
     }
+
+    get backend() { return "plain JS"; }
 
     // The input tensor: fill it with RGB scaled to -1..1.
     get input() { return this.t[0]; }
+
+    setPixels(rgba) { fillInput(this.t[0], rgba); }
 
     // Runs the network on this.input. Returns the raw scores (896) and
     // regressors (896 x 16), in the model's anchor order.
@@ -78,30 +108,33 @@ export class BlazeFace {
                 for (let p = 0; p < ih * iw; p++) for (let c = 0; c < ic; c++) y[p * oc + c] = x[p * ic + c];
             }
         }
-        // Heads: 16x16 with 2 anchors a cell, then 8x8 with 6.
         const scores = new Float32Array(896), boxes = new Float32Array(896 * 16);
-        scores.set(t[81], 0); scores.set(t[82], 512);
-        boxes.set(t[83], 0); boxes.set(t[84], 512 * 16);
+        scores.set(t[HEADS.scores[0]], 0); scores.set(t[HEADS.scores[1]], 512);
+        boxes.set(t[HEADS.boxes[0]], 0); boxes.set(t[HEADS.boxes[1]], 512 * 16);
         return {scores, boxes};
     }
 
-    // Faces in the input, as MediaPipe's face detector post-processes them:
-    // sigmoid scores, boxes and keypoints decoded against the anchors, then
-    // weighted non-max suppression. Coordinates are 0..1 of the input square.
-    detect(minScore = 0.5, iouThreshold = 0.3) {
-        const {scores, boxes} = this.run();
-        const found = [];
-        for (let i = 0; i < 896; i++) {
-            const score = 1 / (1 + Math.exp(-Math.max(-100, Math.min(100, scores[i]))));
-            if (score < minScore) continue;
-            const [ax, ay] = this.anchors[i], r = boxes.subarray(i * 16, i * 16 + 16), s = INPUT_SIZE;
-            const cx = r[0] / s + ax, cy = r[1] / s + ay, bw = r[2] / s, bh = r[3] / s;
-            const keypoints = [];
-            for (let k = 0; k < 6; k++) keypoints.push({x: r[4 + 2 * k] / s + ax, y: r[5 + 2 * k] / s + ay});
-            found.push({score, box: {x: cx - bw / 2, y: cy - bh / 2, width: bw, height: bh}, keypoints});
-        }
-        return weightedNms(found, iouThreshold);
+    detect(minScore = 0.5, iouThreshold = 0.3) { return decodeFaces(this.run(), minScore, iouThreshold); }
+}
+
+const ANCHORS = makeAnchors();
+
+// Faces from the network's raw output, as MediaPipe's face detector
+// post-processes them: sigmoid scores, boxes and keypoints decoded against
+// the anchors, then weighted non-max suppression. Coordinates are 0..1 of the
+// input square.
+export function decodeFaces({scores, boxes}, minScore = 0.5, iouThreshold = 0.3) {
+    const found = [];
+    for (let i = 0; i < 896; i++) {
+        const score = 1 / (1 + Math.exp(-Math.max(-100, Math.min(100, scores[i]))));
+        if (score < minScore) continue;
+        const [ax, ay] = ANCHORS[i], r = boxes.subarray(i * 16, i * 16 + 16), s = INPUT_SIZE;
+        const cx = r[0] / s + ax, cy = r[1] / s + ay, bw = r[2] / s, bh = r[3] / s;
+        const keypoints = [];
+        for (let k = 0; k < 6; k++) keypoints.push({x: r[4 + 2 * k] / s + ax, y: r[5 + 2 * k] / s + ay});
+        found.push({score, box: {x: cx - bw / 2, y: cy - bh / 2, width: bw, height: bh}, keypoints});
     }
+    return weightedNms(found, iouThreshold);
 }
 
 // 1x1 convolution, four pixels and two outputs at a time so most of the work
@@ -128,9 +161,6 @@ function conv1x1(x, y, n, cin, cout, w, wo, bo) {
         }
     }
 }
-
-// TensorFlow's SAME padding: as much as needed, the extra pixel on the bottom/right.
-const padBefore = (size, k, stride) => Math.floor(Math.max((Math.ceil(size / stride) - 1) * stride + k - size, 0) / 2);
 
 // Full convolution (only the first layer, 5x5 over RGB): gathers each
 // patch, zero-padded, then dots it with four filters at a time. Weights are
