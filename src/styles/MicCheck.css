@@ -1,0 +1,40 @@
+/* The words the participant says for the mic check. Each lights up as it's
+   heard. */
+.mic-check {
+  flex-shrink: 0;
+  margin: 1.5rem auto 0;
+  transition: opacity 0.3s ease;
+  cursor: default;
+
+  .words {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.3em;
+    margin: 0;
+    font-size: 2.5rem;
+    font-weight: 700;
+  }
+
+  .word {
+    color: var(--pending-text-color);
+    transition: color 0.3s ease;
+
+    &.lit {
+      color: var(--primary-color-2);
+    }
+  }
+
+  .check {
+    display: inline-flex;
+    color: var(--primary-color-2);
+    font-size: 0.8em;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+
+    &.shown {
+      opacity: 1;
+    }
+  }
+}
