@@ -52,6 +52,10 @@ export default function ReelsScreen() {
         const panels = fadingPanelRef.current;
         const reelIDs = CurrentSessionData.getCurrentModuleArgs();
 
+        console.log("Starting reels module with reels:", reelIDs)
+        // After a reload, the reel that was cut off, not the first.
+        const first = CurrentSessionData.startModule()
+
         // Each reel's source, once it's set. A reel still downloading gets its
         // source when it plays; the rest start loading now, so each is ready
         // when its turn comes.
@@ -62,7 +66,7 @@ export default function ReelsScreen() {
             videoElement.setAttribute("src", source.src);
             videoElement.load();
         };
-        const videoElements = reelIDs.map((reelID) => {
+        const videoElements = reelIDs.map((reelID, index) => {
             const videoElement = document.createElement('video');
             videoElement.setAttribute("playsinline", "true");
             // The reel plays in the page only: no floating picture-in-picture
@@ -79,7 +83,8 @@ export default function ReelsScreen() {
                 CurrentSessionData.logEvent("reel_picture_in_picture", {item: reelID}, "warning");
                 void document.exitPictureInPicture().catch(() => {});
             });
-            if (!isPreloading(reelID)) {
+            // Reels already watched before a reload don't need loading again.
+            if (index >= first && !isPreloading(reelID)) {
                 setSource(videoElement, reelID);
             }
             videoElement.addEventListener("playing", ()=> {
@@ -115,9 +120,6 @@ export default function ReelsScreen() {
             }
         });
 
-        console.log("Starting reels module with reels:", reelIDs)
-        CurrentSessionData.startModule()
-
         const reelDescription = reelIDs.length == 1 ?
             "a funny video" : "a couple funny videos";
         const rateWhen = reelIDs.length == 1 ?
@@ -130,9 +132,9 @@ export default function ReelsScreen() {
         panels.showStartPanel();
         await start.next(signal);
 
-        for (let index = 0; index < reelIDs.length; index++) {
+        for (let index = first; index < reelIDs.length; index++) {
             const id = reelIDs[index];
-            if (index > 0) {
+            if (index > first) {
                 // Let the buttons fade out a bit, and let the recording finish
                 await sleep(400, signal);
             }
@@ -186,6 +188,8 @@ export default function ReelsScreen() {
             ratingRecording.stop("answered")
             console.log("Rated reel", id, rating);
             panels.showPanel(null);
+            // A reel is done once it's rated.
+            CurrentSessionData.finishItem();
         }
 
         teddy.playAnimation(TeddyAnimations.IDLE);

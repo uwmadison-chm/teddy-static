@@ -23,6 +23,10 @@ interface TeddyConfig {
     // expired link, something broken) offers to continue to nextURL. Otherwise
     // it tells the participant to close the tab.
     nextUrlAfterFailure: boolean;
+    // What happens when the participant reloads the page or opens their link
+    // again partway through: "restart" starts a new run from the intro;
+    // "resume" picks the run back up at the start of the module they were on.
+    revisit: "restart" | "resume";
     recording: RecordingConfig;
 }
 
@@ -45,6 +49,7 @@ export const Config: TeddyConfig = {
     debug: !!studyConfig.debug,
     nextUrlHosts: studyConfig.nextUrlHosts || [],
     nextUrlAfterFailure: studyConfig.nextUrlAfterFailure ?? true,
+    revisit: studyConfig.revisit ?? "restart",
     recording: {...defaultRecording, ...studyConfig.recording},
 };
 

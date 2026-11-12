@@ -24,6 +24,7 @@ const CONFIG_KEYS: Record<string, string> = {
     debug: "boolean",
     nextUrlHosts: "string[]",
     nextUrlAfterFailure: "boolean",
+    revisit: "string",
     recording: "object",
     modules: "object",
 };
@@ -85,6 +86,9 @@ export async function loadConfig(path: string): Promise<Record<string, unknown>>
         if (typeof maxSeconds == "number" && !(maxSeconds > 0)) {
             problems.push("config.js recording: maxSeconds should be more than 0");
         }
+    }
+    if (typeof config.revisit == "string" && !["restart", "resume"].includes(config.revisit)) {
+        problems.push(`config.js: revisit should be "restart" or "resume", not ${JSON.stringify(config.revisit)}`);
     }
     if (typeOf(config.modules) == "object") {
         const moduleKeys = Object.fromEntries(Object.keys(MODULE_COLUMNS).map(m => [m, "string"]));

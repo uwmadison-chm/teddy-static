@@ -87,6 +87,25 @@ export default function CalibrationScreen() {
         // This seems weird, but if we go straight from listening to success, his eyebrow loops. So we go to idle quickly first.
         teddy.playAnimation(TeddyAnimations.IDLE)
         await sleep(100, signal);
+
+        // A session picked up on a revisit only needed the camera checked
+        // again. It goes back to the start of the module it was on.
+        if (CurrentSessionData.resuming) {
+            await teddy.say(TeddyAnimations.SUCCESS,
+                [
+                    sawFace ?
+                        "Your camera's working and I can see your face. You look great!" :
+                        "I didn't see your face, but that's okay.",
+                    "Let's pick up where you left off.",
+                ],
+                signal);
+            panels.showPanel("nextModule");
+            await next.next(signal);
+            faceRecording.stop("finished");
+            CurrentSessionData.navigateToNextModule(navigate);
+            return;
+        }
+
         await teddy.say(TeddyAnimations.SUCCESS,
             [
                 // Only claim to see a face if the detector found one.

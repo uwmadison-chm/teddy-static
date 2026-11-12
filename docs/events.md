@@ -1,6 +1,6 @@
 # Teddy's events
 
-Event schema **1.5**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event.
+Event schema **1.5**. Everything Teddy sends to pig is described here. Processing scripts should check `schema` on each run's `session_started` event (and on any `session_resumed`, which can come from a newer build).
 
 ## Versioning
 
@@ -20,7 +20,7 @@ Each session is one pig run. Every event Teddy sends has:
 - `module`: the module running: `null` on the intro and camera screens before calibration, `calibration`, then the module name (`sentences`, `videologs`, `questions`, `reels`), and `null` again on the end screen.
 - `recording`: the number of the recording running when the event happened, or `null` if none was. Recordings are numbered from 1 within the session.
 
-pig's client adds `_client`, with `wall_time` (the participant's clock, with its UTC offset) and `performance_now` (milliseconds on the page's monotonic clock). The session stays on one page, so `performance_now` is comparable across the whole run. pig's own first event in each run (`_client.event: "run_start"`) has the browser, screen and window size, and the pig client's version.
+pig's client adds `_client`, with `wall_time` (the participant's clock, with its UTC offset) and `performance_now` (milliseconds on the page's monotonic clock). A session stays on one page, so `performance_now` is comparable across the whole run, unless it has a `session_resumed`: each one starts a new page, and with it a new `performance_now` clock. pig's own first event in each run (`_client.event: "run_start"`) has the browser, screen and window size, and the pig client's version.
 
 Field names are snake_case, and a name means the same thing on every event it appears on: `item` is an item ID from the study's CSVs, `items` a list of them, `text` the words the participant saw, `name` and `message` an error's.
 
@@ -88,6 +88,17 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 | `next_url_rejected` | the link's `nextURL`, when it wasn't allowed; otherwise `null` |
 | `expiration_time` | the link's `expirationTime`, or `null` |
 | | `commit` and `dirty` are `null` for a build made outside git. |
+| `resume_failed` | when `config.js` has `revisit: "resume"` and this link's earlier visit couldn't be picked back up, the pig client's reason: `finished` (the run was finalized), `not-found` (the run is gone from this device), or `busy` (the session is open in another tab). Otherwise `null`. |
+
+**`session_resumed`**: with `revisit: "resume"` in `config.js`, the participant reloaded the page or opened their link again, and Teddy picked their run back up instead of starting a new one. It's the first event from the new page, and has every field `session_started` has except `resume_failed`, from the new page's build and link, plus:
+
+| field | |
+|---|---|
+| `module_index` | the module the session goes back to, as an index into `modules`. `-1` means before the first module. |
+| `calibrating` | `true` when that was calibration. Then, as with `module_index` of `-1`, the session goes through calibration again and on from there. |
+| `item_index` | how many of that module's items were done, which is the index into its items of the one to go back to |
+
+Otherwise, the camera and a face check come next, as a `calibration` module with `face_check_only` set, and then the module at `module_index` starts again at `item_index`: the sentence, videolog prompt, reel, or question that was cut off, from its beginning. An item counts as done when its recording has stopped (sentences, videologs), it has been rated (reels), or it has been answered (questions). Anything from the item that was cut off stays in the run: its events, and its recording, as a media item that was never finished. Recording numbers carry on from the earlier page.
 
 **`session_finished`**: the end screen has started. After it, Teddy finalizes the run; anything that happens later is only logged to the browser console.
 
@@ -121,7 +132,7 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 ### Modules
 
-**`module_started`**: a module's screen has started. `items`: its item IDs, in order (empty for calibration).
+**`module_started`**: a module's screen has started. `items`: its item IDs, in order (empty for calibration). `item_index`: the index into `items` this screen starts at, which is `0` unless the module was cut off partway, by a revisit or by the camera help screen. A `questions` module's recording then has only the questions from there on in its `items`. `face_check_only`: `true` for the face check after a `session_resumed`, which runs as `calibration` but skips the eyes-closed part; otherwise `false`.
 
 **`module_finished`**: the participant pressed the button to move on from a module.
 
@@ -223,4 +234,4 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 - **1.2**: `face_check_result` has `detector_backend`.
 - **1.3**: `reel_preloaded` and `reel_preload_failed`. `item_shown` for a reel has `preloaded`.
 - **1.4**: `chime_preload_failed`.
-- **1.5**: `response` has `number`, `of`, and `rt_ms`. `chime_check_result` and `chime_play_failed`.
+- **1.5**: `response` has `number`, `of`, and `rt_ms`. `chime_check_result` and `chime_play_failed`. `session_resumed`. `session_started` has `resume_failed`, and `module_started` has `item_index` and `face_check_only`.
