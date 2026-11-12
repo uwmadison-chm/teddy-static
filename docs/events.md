@@ -156,7 +156,7 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 | module | fields |
 |---|---|
 | `sentences` | `item`, `text` |
-| `videologs` | `item`, `text`. The prompt shows before recording starts, so the participant can think about it. |
+| `videologs` | `item`, `text` |
 | `questions` | `item`, `text`, `responses` (as the CSV has them), `choices` (a list of `{code, label}`), `number` and `of` (its position in the module) |
 | `reels` | `item`, `file`, `preloaded` (whether it played from the copy downloaded earlier in the session, rather than streaming) |
 

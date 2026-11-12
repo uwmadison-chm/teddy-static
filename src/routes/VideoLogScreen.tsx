@@ -33,7 +33,6 @@ export default function VideoLogScreen() {
     const microphoneIndicatorRef = useRef(null);
     const promptTextRef = useRef<PromptTextFunctions>(null);
     const ready = useChoice();
-    const startRecording = useChoice();
     const done = useChoice();
     const next = useChoice();
 
@@ -71,18 +70,16 @@ export default function VideoLogScreen() {
             panels.showStartPanel();
             await ready.next(signal);
 
-            // The prompt, and as long as they like to think about it before recording.
-            const prompt = videoLogPrompts[id];
-            CurrentSessionData.logEvent("item_shown", {item: prompt.id, text: prompt.text})
-            teddy.say(TeddyAnimations.IDLE, "Please think about the following prompt and press the button when you're ready.")
-            promptTextRef.current.showText(prompt.text, MAX_RECORDING_DURATION)
-            panels.showPanel("startRecordingButton");
-            await startRecording.next(signal);
-
-            promptTextRef.current.startTimer();
+            // Recording starts with the prompt, so it captures the thinking
+            // time and anyone who starts talking right away.
             const recording = userVideoRef.current.record({kind: "videolog", item: id},
                 {timeout: MAX_RECORDING_DURATION, signal});
-            teddy.say(TeddyAnimations.LISTEN, "Please answer the prompt out loud.", undefined, {skipAnimation: true})
+            teddy.say(TeddyAnimations.LISTEN, "Please answer this prompt out loud, then press the button when you're done.",
+                undefined, {skipAnimation: true});
+            const prompt = videoLogPrompts[id];
+            CurrentSessionData.logEvent("item_shown", {item: prompt.id, text: prompt.text})
+            promptTextRef.current.showText(prompt.text, MAX_RECORDING_DURATION)
+            promptTextRef.current.startTimer();
             panels.showPanel("completeRecordingButton");
 
             // The participant says when they're done, or the recording runs out
@@ -138,11 +135,6 @@ export default function VideoLogScreen() {
                 <FadingPanel label={FADING_PANEL_DEFAULT_LABEL}>
                     <button onClick={() => ready.pick()}>
                         I'm Ready!
-                    </button>
-                </FadingPanel>
-                <FadingPanel label={"startRecordingButton"}>
-                    <button onClick={() => startRecording.pick()}>
-                        Let's Start Recording
                     </button>
                 </FadingPanel>
                 <FadingPanel label={"completeRecordingButton"}>
