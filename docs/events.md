@@ -152,8 +152,8 @@ Otherwise, the camera and a face check come next, as a `calibration` module with
 | `centered` | whether the last check saw a face in the middle of the camera preview |
 | `light_ok` | whether the last check found the face (or the middle of the picture, without one) neither too dark nor washed out |
 | `tips_shown` | whether the tips had come up |
-| `detector_backend` | TensorFlow.js's backend for the face detector, which runs in a worker: `webgl`, or `cpu` where a worker can't use WebGL (Safari before 17), which makes each check slower; `null` if it never loaded |
-| `detector_errors` | each time the face detector failed during the check, up to 10, as `{stage, name, message, stack}`. `stage` is `load` (face-api or its model wouldn't load or start) or `detect` (one check of the camera failed). Empty when nothing went wrong. |
+| `detector_backend` | how the face detector (BlazeFace short range, in a worker) ran: `wasm-simd`, or `js` where the browser has no WebAssembly SIMD (Safari before 16.4), which gives the same answers more slowly; `null` if it never loaded. Before 1.5 the detector was face-api.js's Tiny Face Detector, and this was TensorFlow.js's backend, `webgl` or `cpu` |
+| `detector_errors` | each time the face detector failed during the check, up to 10, as `{stage, name, message, stack}`. `stage` is `load` (the face detector or its model wouldn't load or start) or `detect` (one check of the camera failed). Empty when nothing went wrong. |
 
 **`mic_check_started`**: after the face check, Teddy asked the participant to say "Hi, Teddy!", and the words came up. Its recording's `kind` is `mic_check`.
 

@@ -1,11 +1,11 @@
-// BlazeFace's layers as WebAssembly SIMD kernels, for blazeface-wasm.js.
+// BlazeFace's layers as WebAssembly SIMD kernels, for blazefaceWasm.ts.
 // Build (clang 16 or later):
 //
 //   clang --target=wasm32 -O3 -msimd128 -nostdlib -fno-builtin \
-//     -Wl,--no-entry -Wl,--export-dynamic -Wl,--export=__heap_base -Wl,--growable-table \
-//     -o demos/face-check/blazeface-simd.wasm demos/face-check/blazeface-simd.c
+//     -Wl,--no-entry -Wl,--export-dynamic -Wl,--export=__heap_base \
+//     -o src/assets/blazeface/blazeface-simd.wasm src/utils/blazeface/blazeface-simd.c
 //
-// Tensors are height x width x channels, like blazeface.js, except that each
+// Tensors are height x width x channels, like blazeface.ts, except that each
 // pixel's channels are padded with zeros to a multiple of 4 (its "stride"),
 // so every kernel works four channels at a time.
 

@@ -1,6 +1,7 @@
 // BlazeFace short range (MediaPipe's blaze_face_short_range.tflite), as a
 // plain-JS forward pass with no TensorFlow.js. LAYERS and the float16 weights
-// come from scripts/export-blazeface-weights.py; this file only knows how to run them.
+// come from scripts/export-blazeface-weights.py; this file only knows how to
+// run them. blazefaceWasm.ts runs the same layers faster, on WebAssembly SIMD.
 //
 // Each layer is [op, src, dst, ...]: tensors are numbered, 0 is the 128x128x3
 // input, and every tensor is height x width x channels, row-major.
@@ -10,10 +11,27 @@
 //   add: src2. relu. pool: 2x2 max, stride 2. padc: extra zero channels.
 
 export const INPUT_SIZE = 128;
-const KEYPOINTS = ["right eye", "left eye", "nose tip", "mouth", "right ear", "left ear"];
-export {KEYPOINTS};
+// The order of a face's keypoints.
+export const KEYPOINTS = ["right eye", "left eye", "nose tip", "mouth", "right ear", "left ear"];
 
-function halfToFloat(h) {
+// [op, src, dst, ...], as the layer list stores it.
+export type Layer = (string | number)[];
+export type Shapes = Record<number, [number, number, number]>;
+export interface Point {x: number, y: number}
+export interface BlazeFaceBox {x: number, y: number, width: number, height: number}
+export interface BlazeFaceFace {score: number, box: BlazeFaceBox, keypoints: Point[]}
+export interface RawOutput {scores: Float32Array, boxes: Float32Array}
+
+// What blazeface.ts and blazefaceWasm.ts both offer.
+export interface BlazeFaceModel {
+    readonly backend: string;
+    // 128 x 128 RGBA bytes.
+    setPixels(rgba: Uint8ClampedArray | Uint8Array): void;
+    run(): RawOutput;
+    detect(minScore?: number, iouThreshold?: number): BlazeFaceFace[];
+}
+
+function halfToFloat(h: number): number {
     const s = h & 0x8000 ? -1 : 1, e = (h >> 10) & 0x1f, f = h & 0x3ff;
     if (e === 0) return s * f * 2 ** -24;
     if (e === 31) return f ? NaN : s * Infinity;
@@ -21,16 +39,16 @@ function halfToFloat(h) {
 }
 
 // The weights file as float32.
-export function decodeWeights(weightsF16) {
+export function decodeWeights(weightsF16: ArrayBuffer): Float32Array {
     const half = new Uint16Array(weightsF16), w = new Float32Array(half.length);
     for (let i = 0; i < half.length; i++) w[i] = halfToFloat(half[i]);
     return w;
 }
 
 // Every tensor's [height, width, channels], by id.
-export function tensorShapes(layers) {
-    const shapes = {0: [INPUT_SIZE, INPUT_SIZE, 3]};
-    for (const [op, src, dst, a, , cout, stride] of layers) {
+export function tensorShapes(layers: Layer[]): Shapes {
+    const shapes: Shapes = {0: [INPUT_SIZE, INPUT_SIZE, 3]};
+    for (const [op, src, dst, a, , cout, stride] of layers as [string, number, number, number, number, number, number][]) {
         const [h, w, c] = shapes[src];
         if (op === "conv" || op === "dw") shapes[dst] = [Math.ceil(h / stride), Math.ceil(w / stride), cout];
         else if (op === "pool") shapes[dst] = [Math.ceil(h / 2), Math.ceil(w / 2), c];
@@ -45,11 +63,11 @@ export function tensorShapes(layers) {
 export const HEADS = {scores: [81, 82], boxes: [83, 84]};
 
 // TensorFlow's SAME padding: as much as needed, the extra pixel on the bottom/right.
-export const padBefore = (size, k, stride) => Math.floor(Math.max((Math.ceil(size / stride) - 1) * stride + k - size, 0) / 2);
+export const padBefore = (size: number, k: number, stride: number): number => Math.floor(Math.max((Math.ceil(size / stride) - 1) * stride + k - size, 0) / 2);
 
 // RGBA bytes (128 x 128) as the network's input, RGB scaled to -1..1, with
 // `stride` floats a pixel.
-export function fillInput(input, rgba, stride = 3) {
+export function fillInput(input: Float32Array, rgba: ArrayLike<number>, stride = 3) {
     for (let i = 0, j = 0; i < rgba.length; i += 4, j += stride) {
         input[j] = rgba[i] / 127.5 - 1;
         input[j + 1] = rgba[i + 1] / 127.5 - 1;
@@ -57,8 +75,14 @@ export function fillInput(input, rgba, stride = 3) {
     }
 }
 
-export class BlazeFace {
-    constructor(layers, weightsF16) {
+export class BlazeFace implements BlazeFaceModel {
+    w: Float32Array;
+    layers: Layer[];
+    patch: Float32Array;
+    shapes: Shapes;
+    t: Record<number, Float32Array>;
+
+    constructor(layers: Layer[], weightsF16: ArrayBuffer) {
         this.w = decodeWeights(weightsF16);
         this.layers = layers;
         this.patch = new Float32Array(5 * 5 * 3);
@@ -73,14 +97,14 @@ export class BlazeFace {
     // The input tensor: fill it with RGB scaled to -1..1.
     get input() { return this.t[0]; }
 
-    setPixels(rgba) { fillInput(this.t[0], rgba); }
+    setPixels(rgba: ArrayLike<number>) { fillInput(this.t[0], rgba); }
 
     // Runs the network on this.input. Returns the raw scores (896) and
     // regressors (896 x 16), in the model's anchor order.
-    run() {
+    run(): RawOutput {
         const {t, shapes, w} = this;
-        for (const L of this.layers) {
-            const [op, src, dst] = L;
+        for (const L of this.layers as number[][]) {
+            const [op, src, dst] = L as unknown as [string, number, number];
             const x = t[src], y = t[dst], [ih, iw, ic] = shapes[src], [oh, ow, oc] = shapes[dst];
             if (op === "conv") {
                 const [, , , k, cin, cout, stride, wo, bo] = L;
@@ -114,7 +138,7 @@ export class BlazeFace {
         return {scores, boxes};
     }
 
-    detect(minScore = 0.5, iouThreshold = 0.3) { return decodeFaces(this.run(), minScore, iouThreshold); }
+    detect(minScore = 0.5, iouThreshold = 0.3): BlazeFaceFace[] { return decodeFaces(this.run(), minScore, iouThreshold); }
 }
 
 const ANCHORS = makeAnchors();
@@ -123,14 +147,14 @@ const ANCHORS = makeAnchors();
 // post-processes them: sigmoid scores, boxes and keypoints decoded against
 // the anchors, then weighted non-max suppression. Coordinates are 0..1 of the
 // input square.
-export function decodeFaces({scores, boxes}, minScore = 0.5, iouThreshold = 0.3) {
-    const found = [];
+export function decodeFaces({scores, boxes}: RawOutput, minScore = 0.5, iouThreshold = 0.3): BlazeFaceFace[] {
+    const found: BlazeFaceFace[] = [];
     for (let i = 0; i < 896; i++) {
         const score = 1 / (1 + Math.exp(-Math.max(-100, Math.min(100, scores[i]))));
         if (score < minScore) continue;
         const [ax, ay] = ANCHORS[i], r = boxes.subarray(i * 16, i * 16 + 16), s = INPUT_SIZE;
         const cx = r[0] / s + ax, cy = r[1] / s + ay, bw = r[2] / s, bh = r[3] / s;
-        const keypoints = [];
+        const keypoints: Point[] = [];
         for (let k = 0; k < 6; k++) keypoints.push({x: r[4 + 2 * k] / s + ax, y: r[5 + 2 * k] / s + ay});
         found.push({score, box: {x: cx - bw / 2, y: cy - bh / 2, width: bw, height: bh}, keypoints});
     }
@@ -140,7 +164,7 @@ export function decodeFaces({scores, boxes}, minScore = 0.5, iouThreshold = 0.3)
 // 1x1 convolution, four pixels and two outputs at a time so most of the work
 // stays in locals. Weights are [cout][cin]; pixel counts here are all
 // multiples of 4 and output counts all even.
-function conv1x1(x, y, n, cin, cout, w, wo, bo) {
+function conv1x1(x: Float32Array, y: Float32Array, n: number, cin: number, cout: number, w: Float32Array, wo: number, bo: number) {
     for (let p = 0; p < n; p += 4) {
         const x0 = p * cin, x1 = x0 + cin, x2 = x1 + cin, x3 = x2 + cin;
         for (let o = 0; o < cout; o += 2) {
@@ -165,7 +189,7 @@ function conv1x1(x, y, n, cin, cout, w, wo, bo) {
 // Full convolution (only the first layer, 5x5 over RGB): gathers each
 // patch, zero-padded, then dots it with four filters at a time. Weights are
 // [cout][k][k][cin]; cout is a multiple of 4.
-function conv(x, y, ih, iw, cin, oh, ow, cout, k, stride, w, wo, bo, patch) {
+function conv(x: Float32Array, y: Float32Array, ih: number, iw: number, cin: number, oh: number, ow: number, cout: number, k: number, stride: number, w: Float32Array, wo: number, bo: number, patch: Float32Array) {
     const pt = padBefore(ih, k, stride), pl = padBefore(iw, k, stride), n = k * k * cin;
     for (let oy = 0; oy < oh; oy++) for (let ox = 0; ox < ow; ox++) {
         let j = 0;
@@ -191,7 +215,7 @@ function conv(x, y, ih, iw, cin, oh, ow, cout, k, stride, w, wo, bo, patch) {
 }
 
 // 3x3 depthwise convolution. Weights are [3][3][c].
-function depthwise(x, y, ih, iw, ch, oh, ow, k, stride, w, wo, bo) {
+function depthwise(x: Float32Array, y: Float32Array, ih: number, iw: number, ch: number, oh: number, ow: number, k: number, stride: number, w: Float32Array, wo: number, bo: number) {
     const pt = padBefore(ih, k, stride), pl = padBefore(iw, k, stride);
     const row = iw * ch;
     for (let oy = 0; oy < oh; oy++) for (let ox = 0; ox < ow; ox++) {
@@ -225,8 +249,8 @@ function depthwise(x, y, ih, iw, ch, oh, ow, k, stride, w, wo, bo) {
 // MediaPipe's SSD anchors for this model: strides 8, 16, 16, 16 on a 128
 // input, two anchors a layer, centred on each cell. Layers with the same
 // stride share a grid, so that's 16x16x2 then 8x8x6.
-function makeAnchors() {
-    const anchors = [];
+function makeAnchors(): [number, number][] {
+    const anchors: [number, number][] = [];
     for (const [grid, perCell] of [[16, 2], [8, 6]]) {
         for (let y = 0; y < grid; y++) for (let x = 0; x < grid; x++) for (let a = 0; a < perCell; a++) {
             anchors.push([(x + 0.5) / grid, (y + 0.5) / grid]);
@@ -235,7 +259,7 @@ function makeAnchors() {
     return anchors;
 }
 
-function iou(a, b) {
+function iou(a: BlazeFaceBox, b: BlazeFaceBox): number {
     const x0 = Math.max(a.x, b.x), y0 = Math.max(a.y, b.y);
     const x1 = Math.min(a.x + a.width, b.x + b.width), y1 = Math.min(a.y + a.height, b.y + b.height);
     const inter = Math.max(0, x1 - x0) * Math.max(0, y1 - y0);
@@ -245,10 +269,10 @@ function iou(a, b) {
 
 // MediaPipe's WEIGHTED non-max suppression: overlapping detections are
 // averaged, weighted by score, and keep the best one's score.
-function weightedNms(dets, threshold) {
-    const left = [...dets].sort((a, b) => b.score - a.score), out = [];
+function weightedNms(dets: BlazeFaceFace[], threshold: number): BlazeFaceFace[] {
+    const left = [...dets].sort((a, b) => b.score - a.score), out: BlazeFaceFace[] = [];
     while (left.length) {
-        const best = left[0], group = [], rest = [];
+        const best = left[0], group: BlazeFaceFace[] = [], rest: BlazeFaceFace[] = [];
         for (const d of left) (iou(best.box, d.box) > threshold ? group : rest).push(d);
         left.length = 0; left.push(...rest);
         let total = 0, x0 = 0, y0 = 0, x1 = 0, y1 = 0;

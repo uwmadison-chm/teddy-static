@@ -1,15 +1,17 @@
-// Runs the BlazeFace port off the page. Speaks the same messages as the app's
-// faceApiWorker.ts, so the bench treats both detectors alike:
+// Runs BlazeFace off the page for the bench, on any of its three backends.
+// The app's own worker is src/utils/faceModelWorker.ts, which picks WASM SIMD
+// or plain JS by itself. Speaks the same messages as tiny-worker.ts, so the
+// bench treats both detectors alike:
 //   {type: "load", backend, layers, weights, wasm, scoreThreshold} -> {type: "loaded", backend}
 //   {type: "detect", id, frame: ImageBitmap, crop}                -> {type: "detected", id, face, scores, ms}
 // `crop` is "frame" (the whole picture, letterboxed, as MediaPipe does it) or
 // "square" (only the middle square, which is what the participant sees).
 // A face's box and keypoints are in the frame's pixels. `backend` is "js"
-// (blazeface.js), "wasm" (blazeface-wasm.js, with `wasm` the module's bytes)
-// or "webgl" (blazeface-gl.js).
+// (src/utils/blazeface/blazeface.ts), "wasm" (blazefaceWasm.ts, with `wasm`
+// the module's bytes) or "webgl" (blazeface-gl.js, only here).
 
-import {BlazeFace, INPUT_SIZE} from "./blazeface.js";
-import {BlazeFaceWasm} from "./blazeface-wasm.js";
+import {BlazeFace, INPUT_SIZE} from "../../src/utils/blazeface/blazeface.ts";
+import {BlazeFaceWasm} from "../../src/utils/blazeface/blazefaceWasm.ts";
 import {BlazeFaceGL} from "./blazeface-gl.js";
 
 let model = null;

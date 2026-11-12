@@ -1,10 +1,11 @@
-// BlazeFace on WebGL2: the same layers as blazeface.js, each one a fragment
+// BlazeFace on WebGL2, for the bench only: the same layers as
+// src/utils/blazeface/blazeface.ts, each one a fragment
 // shader pass. A tensor is a float texture W*G texels wide and H tall, where
 // G = ceil(channels / 4): texel (x*G + g, y) holds channels 4g..4g+3, padded
 // with zeros. Needs WebGL2 with EXT_color_buffer_float; works on an
 // OffscreenCanvas in a worker.
 
-import {INPUT_SIZE, HEADS, decodeFaces, decodeWeights, padBefore, tensorShapes} from "./blazeface.js";
+import {INPUT_SIZE, HEADS, decodeFaces, decodeWeights, padBefore, tensorShapes} from "../../src/utils/blazeface/blazeface.ts";
 
 const groups = (c) => Math.ceil(c / 4);
 
