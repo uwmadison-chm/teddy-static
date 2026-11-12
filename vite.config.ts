@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { resolve } from "path";
 import teddyStudy from './vite-plugin-study.ts'
 import teddyCompress from './vite-plugin-compress.ts'
+import teddyPreloadRive from './vite-plugin-preload-rive.ts'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -14,6 +15,7 @@ export default defineConfig({
   plugins: [
     react(),
     teddyStudy(),
+    teddyPreloadRive(),
     teddyCompress(),
   ],
   // Relative base so the build works from any subdirectory
