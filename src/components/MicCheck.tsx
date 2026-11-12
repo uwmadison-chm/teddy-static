@@ -10,7 +10,7 @@ import {errorFields} from "@/data/sessionData.tsx";
 const WORDS = ["Hi,", "Teddy!"];
 // How much speech it takes to light each word, in milliseconds. "Hi" alone is
 // a few hundred; the detector also needs a moment to be sure.
-const WORD_MS = [128, 384];
+const WORD_MS = [96, 256];
 // A 32 ms block counts as speech when the detector is at least this sure and
 // it's at least this loud, in dB below full scale. Below that, the
 // microphone is too far away or too quiet to record a voice well.

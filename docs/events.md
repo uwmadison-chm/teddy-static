@@ -150,12 +150,12 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 | field | |
 |---|---|
-| `result` | `heard`: the voice detector counted about 0.4 seconds of speech louder than -55 dB. `bypassed`: it didn't, and the participant pressed "Let's Continue Anyhow". `unavailable`: Teddy couldn't listen (the detector wouldn't load, the browser wouldn't give it the audio, or no audio came for 3 seconds); if it couldn't from the start, there was no `mic_check_started` and Teddy didn't ask |
+| `result` | `heard`: the voice detector counted about a quarter second of speech louder than -55 dB. `bypassed`: it didn't, and the participant pressed "Let's Continue Anyhow". `unavailable`: Teddy couldn't listen (the detector wouldn't load, the browser wouldn't give it the audio, or no audio came for 3 seconds); if it couldn't from the start, there was no `mic_check_started` and Teddy didn't ask |
 | `background_db` | the typical (median) level before the check, in dB below full scale, from 32 ms blocks; `null` if nothing was heard then |
 | `background_speech` | the share of those blocks, 0 to 1, that the voice detector took for speech |
 | `speech_db` | the typical level of the blocks counted as speech during the check; `null` if none were |
 | `peak_db` | the loudest block during the check |
-| `voiced_ms` | the most speech the check counted at once, in milliseconds; 384 is enough |
+| `voiced_ms` | the most speech the check counted at once, in milliseconds; 256 is enough |
 | `tips_shown` | whether Teddy gave tips |
 | `sample_rate` | the rate the browser's audio ran at; `null` if listening never started |
 | `errors` | each time listening failed, as `{stage, name, message, stack}`. `stage` is `listen` (the detector wouldn't load, or the browser wouldn't give Teddy the audio) or `no_audio`. Empty when nothing went wrong. |
