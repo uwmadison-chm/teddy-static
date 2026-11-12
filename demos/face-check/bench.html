@@ -1,0 +1,631 @@
+<!doctype html>
+<!-- Template for demos/face-check-bench.html: node demos/face-check/build.mjs fills in the detectors and their weights. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Teddy Face Check Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #f6f8f7; --surface: #ffffff; --fg: #1c2a25; --quiet: #5f6f69; --line: #dbe3df;
+  --accent: #35906f; --accent-soft: #d6efe5; --tiny: #4a6fc9; --blaze: #b8437f; --warn: #b5651d; --bad: #b3261e;
+  --display: "Nunito", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Inter", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121816; --surface: #1a2320; --fg: #e3ece8; --quiet: #9aaba4; --line: #2c3833;
+  --accent: #52d5a5; --accent-soft: #1f3b31; --tiny: #8fa9ee; --blaze: #ee8cbf; --warn: #e3a35b; --bad: #f28b82; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121816; --surface: #1a2320; --fg: #e3ece8; --quiet: #9aaba4; --line: #2c3833;
+  --accent: #52d5a5; --accent-soft: #1f3b31; --tiny: #8fa9ee; --blaze: #ee8cbf; --warn: #e3a35b; --bad: #f28b82; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 20px; }
+header h1 { font-family: var(--display); font-weight: 800; font-size: 1.6rem; margin: 0; text-wrap: balance; }
+header p { margin: 4px 0 0; color: var(--quiet); max-width: 72ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+button, .file, select { font: 600 0.95rem/1.2 var(--body); border-radius: 10px; padding: 10px 16px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+select { padding: 6px 10px; font-weight: 500; font-size: 0.9rem; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+button:focus-visible, .file:focus-within, input:focus-visible, select:focus-visible { outline: 3px solid var(--tiny); outline-offset: 2px; }
+button:disabled { opacity: 0.5; cursor: default; }
+.file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.file { position: relative; display: inline-block; }
+.status { color: var(--quiet); font-size: 0.9rem; min-width: 0; }
+.status.bad { color: var(--bad); }
+.which { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.which label { display: block; margin: 0; padding: 8px 14px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border-left: 1px solid var(--line); }
+.which label:first-child { border-left: 0; }
+.which input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.which label:has(input:checked) { background: var(--accent-soft); color: var(--fg); }
+.which label:has(input:focus-visible) { outline: 3px solid var(--tiny); outline-offset: -3px; }
+.top { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+@media (max-width: 820px) { .top, .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+.panel h2 { font: 600 0.75rem var(--body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--quiet); margin: 0 0 10px; }
+.stage { background: #0b0f0e; border-radius: 16px; overflow: hidden; position: relative; aspect-ratio: 4 / 3; display: grid; place-items: center; }
+.stage canvas { width: 100%; height: 100%; display: block; }
+.stage .empty { position: absolute; color: #9aaba4; text-align: center; padding: 16px; max-width: 40ch; }
+.cards { display: grid; gap: 12px; }
+.card { border-left: 4px solid var(--c); }
+.card h3 { margin: 0; font: 800 1.05rem var(--display); display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.card h3 small { font: 500 0.8rem var(--mono); color: var(--quiet); }
+.card[hidden] { display: none; }
+.verdict { font-weight: 600; margin: 6px 0 8px; min-height: 1.5em; }
+.bar { height: 8px; border-radius: 4px; background: var(--accent-soft); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--c); transition: width 0.15s linear; }
+.tips { list-style: none; padding: 0; margin: 10px 0 0; font-size: 0.88rem; display: grid; gap: 4px; }
+.tips li { display: flex; gap: 8px; align-items: center; color: var(--quiet); }
+.tips li .box { width: 14px; height: 14px; border-radius: 3px; border: 2px solid var(--line); flex: none; display: grid; place-items: center; font-size: 10px; line-height: 1; }
+.tips li.ok { color: var(--fg); }
+.tips li.ok .box { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.tips li.unchecked .box { border-style: dashed; }
+.tips-head { font-size: 0.8rem; color: var(--quiet); margin-top: 10px; }
+canvas.chart { width: 100%; display: block; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.85rem; color: var(--quiet); margin-top: 8px; }
+.legend span::before { content: ""; display: inline-block; width: 12px; height: 3px; margin-right: 6px; vertical-align: middle; background: var(--c); }
+.legend span.dash::before { background: repeating-linear-gradient(90deg, var(--c) 0 4px, transparent 4px 7px); }
+label.slider { display: grid; gap: 2px; font-size: 0.9rem; margin-bottom: 12px; }
+label.slider output { font-family: var(--mono); color: var(--quiet); font-size: 0.85rem; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.opt { display: grid; gap: 4px; font-size: 0.9rem; margin-bottom: 12px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+th, td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; color: var(--quiet); font-weight: 400; white-space: normal; font-family: var(--body); }
+thead th { font-weight: 600; }
+td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.note { font-size: 0.85rem; color: var(--quiet); max-width: 80ch; margin: 0; }
+.note code { font-family: var(--mono); font-size: 0.85em; }
+</style>
+</head><body>
+<div class="wrap">
+  <header>
+    <h1>Teddy face check bench</h1>
+    <p>Runs Teddy's face detector (face-api.js's Tiny Face Detector, in the app's own worker) and a plain-JS port of MediaPipe's BlazeFace short range model side by side, on the same frames, with the face check's pass rule and tips. Use the camera, or upload a photo or video if the camera isn't allowed here.</p>
+  </header>
+
+  <div class="controls">
+    <button id="live" class="primary" type="button">Use the camera</button>
+    <label class="file" for="upload">Upload a photo or video<input id="upload" type="file" accept="image/*,video/*"></label>
+    <button id="pause" type="button" hidden>Pause</button>
+    <button id="reset" type="button">Reset</button>
+    <span id="status" class="status" role="status">Loading the detectors…</span>
+  </div>
+
+  <div class="controls">
+    <div class="which" role="radiogroup" aria-label="Detectors to run">
+      <label><input type="radio" name="which" value="both" checked> Both</label>
+      <label><input type="radio" name="which" value="tiny"> Tiny Face Detector</label>
+      <label><input type="radio" name="which" value="blaze"> BlazeFace</label>
+    </div>
+  </div>
+
+  <div class="top">
+    <div class="stage" id="stageWrap">
+      <canvas id="stage" aria-label="The picture, with each detector's face box"></canvas>
+      <p class="empty" id="empty">Start the camera or upload a photo or video. The circle is what a participant sees; the dashed square is where the face check counts a face as centered.</p>
+    </div>
+    <div class="cards" id="cards"></div>
+  </div>
+
+  <div class="grid">
+    <div style="display: grid; gap: 20px; min-width: 0;">
+      <section class="panel">
+        <h2>Face score and tips, each check</h2>
+        <canvas class="chart" id="scoreChart" height="300" aria-label="Each detector's face score over time, with when each tip would be met"></canvas>
+        <div class="legend">
+          <span style="--c: var(--tiny)">Tiny Face Detector</span><span style="--c: var(--blaze)">BlazeFace</span>
+          <span class="dash" style="--c: var(--warn)">Face and guess thresholds</span>
+          <span style="--c: var(--accent)">Passed (solid) / tips up (dotted)</span>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>Time per check, frame grab to answer</h2>
+        <canvas class="chart" id="timeChart" height="160" aria-label="Milliseconds each check took, per detector"></canvas>
+      </section>
+    </div>
+    <aside class="panel">
+      <h2>Pass rule</h2>
+      <label class="slider" for="face">Face score above <output id="faceOut"></output><input id="face" type="range" min="0.1" max="0.95" step="0.05" value="0.5"></label>
+      <label class="slider" for="guess">Guesses (for tips) from <output id="guessOut"></output><input id="guess" type="range" min="0.05" max="0.5" step="0.05" value="0.2"></label>
+      <label class="slider" for="hold">Held for <output id="holdOut"></output><input id="hold" type="range" min="200" max="3000" step="100" value="1000"></label>
+      <label class="slider" for="trouble">Tips after <output id="troubleOut"></output><input id="trouble" type="range" min="500" max="5000" step="250" value="2000"></label>
+      <label class="slider" for="minLight">Light at least <output id="minLightOut"></output><input id="minLight" type="range" min="0" max="150" step="5" value="60"></label>
+      <label class="slider" for="maxLight">Light at most <output id="maxLightOut"></output><input id="maxLight" type="range" min="150" max="255" step="5" value="235"></label>
+      <label class="slider" for="zone">Centered zone <output id="zoneOut"></output><input id="zone" type="range" min="20" max="90" step="5" value="50"></label>
+      <label class="slider" for="minWidth">Face at least <output id="minWidthOut"></output><input id="minWidth" type="range" min="5" max="50" step="1" value="15"></label>
+      <h2>Detectors</h2>
+      <label class="opt" for="tinySize">Tiny Face Detector input size
+        <select id="tinySize"><option>128</option><option>160</option><option selected>224</option><option>320</option><option>416</option><option>512</option></select></label>
+      <label class="opt" for="blazeCrop">BlazeFace looks at
+        <select id="blazeCrop"><option value="frame" selected>the whole frame, letterboxed</option><option value="square">only what's in the circle</option></select></label>
+      <label class="slider" for="gap">Pause between checks <output id="gapOut"></output><input id="gap" type="range" min="0" max="500" step="25" value="100"></label>
+      <button id="defaults" type="button">Back to Teddy's settings</button>
+    </aside>
+  </div>
+
+  <section class="panel">
+    <h2>Readings</h2>
+    <div class="table-wrap"><table id="readings"></table></div>
+  </section>
+
+  <p class="note">Defaults match <code>src/components/FaceDetector.tsx</code>: a check every 100 ms after the last one finishes; a face counts above 0.5 and has to stay counted for 1 s; after 2 s without that, the tips come up. A face is centered when its box's middle is in the middle half of the circle and it's at least 15% of the circle wide. Light is the mean brightness of the face's box (or of the circle, with no face), and should fall between 60 and 235. The Tiny Face Detector runs in the app's <code>faceApiWorker.ts</code> on TensorFlow.js; BlazeFace (Apache 2.0, from MediaPipe) is about 100k weights run by 200 lines of plain JS. Both report faces down to 0.05 so the guess slider can go lower than the app's 0.2. Sliders re-score everything already checked. Timing is the round trip from grabbing the frame to the worker's answer, so with both running they compete for the CPU (and the Tiny Face Detector also for the GPU); pick one to time it alone.</p>
+</div>
+
+<video id="video" muted playsinline style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;"></video>
+
+<script>
+/* INLINE */
+</script>
+<script>
+(() => {
+const $ = (id) => document.getElementById(id);
+const css = () => getComputedStyle(document.documentElement);
+const col = (n) => css().getPropertyValue(n).trim();
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const bytes = (b64) => { const s = atob(b64), a = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; };
+const median = (a) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+const pct = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(s.length * p))]; };
+const fmtS = (ms) => ms == null ? "–" : (ms / 1000).toFixed(2) + " s";
+const fmtMs = (ms) => ms == null ? "–" : ms.toFixed(ms < 10 ? 1 : 0) + " ms";
+
+let pending = false;
+function scheduleRender() { if (!pending) { pending = true; requestAnimationFrame(() => { pending = false; render(); }); } }
+
+function setStatus(text, bad) { const s = $("status"); s.textContent = text; s.classList.toggle("bad", !!bad); }
+
+// ---- Detectors, each in a worker that speaks faceApiWorker.ts's messages ----
+const DETECTORS = {
+  tiny: {name: "Tiny Face Detector", color: "--tiny", code: TINY_WORKER},
+  blaze: {name: "BlazeFace", color: "--blaze", code: BLAZE_WORKER},
+};
+// A data: URL, since a worker started from a blob can't fetch blob: URLs on a file:// page.
+const tinyWeightsUrl = "data:application/octet-stream;base64," + TINY_WEIGHTS;
+const blazeWeights = bytes(BLAZE_WEIGHTS);
+
+function loadMessage(key) {
+  if (key === "tiny") return {type: "load", weightsUrl: tinyWeightsUrl, inputSize: Number($("tinySize").value), scoreThreshold: 0.05};
+  return {type: "load", layers: BLAZE_LAYERS, weights: blazeWeights.slice().buffer, scoreThreshold: 0.05};
+}
+
+function startWorker(key) {
+  const d = DETECTORS[key];
+  d.ready = false; d.backend = null; d.loadMs = null; d.waiting = new Map(); d.nextId = 0; d.error = null;
+  d.worker?.terminate();
+  d.worker = new Worker(URL.createObjectURL(new Blob([d.code], {type: "text/javascript"})));
+  const t0 = performance.now();
+  d.worker.onerror = (e) => { e.preventDefault(); d.error = e.message || "the worker failed"; refreshStatus(); };
+  d.worker.onmessage = (e) => {
+    const m = e.data;
+    if (m.type === "loaded") { d.ready = true; d.backend = m.backend; d.loadMs = performance.now() - t0; refreshStatus(); return; }
+    if (m.type === "failed" && m.id == null) { d.error = m.error.message; refreshStatus(); return; }
+    const w = d.waiting.get(m.id); d.waiting.delete(m.id);
+    if (!w) return;
+    if (m.type === "detected") w.resolve(m); else w.reject(new Error(m.error.message));
+  };
+  d.worker.postMessage(loadMessage(key));
+}
+
+async function detectWith(key, source) {
+  const d = DETECTORS[key];
+  const t0 = performance.now();
+  const frame = await createImageBitmap(source);
+  const id = d.nextId++;
+  const reply = await new Promise((resolve, reject) => {
+    d.waiting.set(id, {resolve, reject});
+    d.worker.postMessage({type: "detect", id, frame, crop: $("blazeCrop").value}, [frame]);
+  });
+  return {face: reply.face ?? null, scores: reply.scores, model: reply.ms?.model ?? null, ms: performance.now() - t0};
+}
+
+function refreshStatus() {
+  const parts = [];
+  for (const key of ["tiny", "blaze"]) {
+    const d = DETECTORS[key];
+    if (d.error) parts.push(d.name + " failed: " + d.error);
+    else if (!d.ready) parts.push(d.name + " loading…");
+  }
+  if (parts.length) setStatus(parts.join(" · "), parts.some(p => p.includes("failed")));
+  else if (!source) setStatus("Ready.");
+  else setStatus(sourceLabel);
+  render();
+}
+
+// ---- The face check's rules (FaceDetector.tsx), as functions of the settings ----
+const DEFAULTS = {face: 0.5, guess: 0.2, hold: 1000, trouble: 2000, minLight: 60, maxLight: 235, zone: 50, minWidth: 15, gap: 100};
+const rule = {...DEFAULTS};
+
+function visibleSquare(w, h) { const side = Math.min(w, h); return {x: (w - side) / 2, y: (h - side) / 2, width: side, height: side}; }
+
+function isCentered(box, sq) {
+  const lo = (1 - rule.zone / 100) / 2, hi = 1 - lo;
+  const cx = (box.x + box.width / 2 - sq.x) / sq.width, cy = (box.y + box.height / 2 - sq.y) / sq.height;
+  return cx > lo && cx < hi && cy > lo && cy < hi && box.width > sq.width * rule.minWidth / 100;
+}
+
+const lightCanvas = document.createElement("canvas");
+function brightness(src, area) {
+  const size = 32; lightCanvas.width = size; lightCanvas.height = size;
+  const g = lightCanvas.getContext("2d", {willReadFrequently: true});
+  if (area.width <= 0 || area.height <= 0) return null;
+  g.drawImage(src, area.x, area.y, area.width, area.height, 0, 0, size, size);
+  const p = g.getImageData(0, 0, size, size).data; let total = 0;
+  for (let i = 0; i < p.length; i += 4) total += 0.2126 * p[i] + 0.7152 * p[i + 1] + 0.0722 * p[i + 2];
+  return total / (p.length / 4);
+}
+
+// Replays the checks so far under the current settings.
+function evaluate(key) {
+  const out = {flags: [], passedAt: null, tipsAt: null, best: null, held: 0, last: null};
+  let firstSeen = null, lookingSince = 0;
+  for (const s of samples) {
+    const r = s[key];
+    if (!r) { out.flags.push(null); continue; }
+    const face = r.face && r.face.score >= rule.guess ? r.face : null;
+    const light = face ? r.lightFace : s.lightSquare;
+    const f = {
+      face, light, t: s.t,
+      centered: face != null && isCentered(face.box, s.sq),
+      lightOk: light != null && light >= rule.minLight && light <= rule.maxLight,
+      counted: face != null && face.score > rule.face,
+    };
+    if (face) out.best = Math.max(out.best ?? 0, face.score);
+    if (f.counted) {
+      firstSeen ??= s.t;
+      out.held = s.t - firstSeen;
+      if (out.passedAt == null && out.held > rule.hold) out.passedAt = s.t;
+    } else {
+      if (firstSeen != null) lookingSince = s.t;
+      firstSeen = null; out.held = 0;
+      if (out.tipsAt == null && out.passedAt == null && s.t - lookingSince > rule.trouble) out.tipsAt = s.t;
+    }
+    out.flags.push(f); out.last = f;
+  }
+  return out;
+}
+
+// ---- Sources and the check loop ----
+let source = null;        // {kind: "camera" | "image" | "video", el, mirrored, stop?}
+let sourceLabel = "";
+let samples = [];         // {t, sq, lightSquare, tiny?: {face, ms, model, lightFace}, blaze?: {...}}
+let runToken = 0;
+let errors = {tiny: 0, blaze: 0};
+
+const which = () => document.querySelector("input[name=which]:checked").value;
+const activeKeys = () => which() === "both" ? ["tiny", "blaze"] : [which()];
+const sourceSize = () => source.kind === "image" ? [source.el.naturalWidth, source.el.naturalHeight] : [source.el.videoWidth, source.el.videoHeight];
+function sourceReady() {
+  if (!source) return false;
+  if (source.kind === "image") return source.el.complete && source.el.naturalWidth > 0;
+  const v = source.el; return v.readyState >= 2 && v.videoWidth > 0 && !v.paused && !v.ended;
+}
+
+async function loop(token) {
+  const started = performance.now();
+  while (token === runToken) {
+    await sleep(rule.gap);
+    if (token !== runToken) return;
+    if (!sourceReady()) {
+      if (source?.kind === "video" && source.el.ended) { finish("Video finished."); return; }
+      await sleep(50); continue;
+    }
+    const keys = activeKeys().filter(k => DETECTORS[k].ready);
+    if (!keys.length) { await sleep(100); continue; }
+    const el = source.el;
+    // Uploaded videos go by their own clock, so pausing doesn't count as looking.
+    const t = source.kind === "video" ? el.currentTime * 1000 : performance.now() - started;
+    const [w, h] = sourceSize(), sq = visibleSquare(w, h);
+    const results = await Promise.all(keys.map(k => detectWith(k, el).catch(e => ({error: e}))));
+    if (token !== runToken) return;
+    const s = {t, sq, w, h, lightSquare: brightness(el, sq)};
+    keys.forEach((k, i) => {
+      const r = results[i];
+      if (r.error) { errors[k]++; DETECTORS[k].error = r.error.message; return; }
+      r.lightFace = r.face ? brightness(el, r.face.box) : null;
+      s[k] = r;
+    });
+    samples.push(s);
+    scheduleRender();
+    if (source.kind === "image" && t > Math.max(rule.hold, rule.trouble) + 2000) { finish("Checked the photo for " + (t / 1000).toFixed(1) + " s."); return; }
+  }
+}
+
+function finish(text) { runToken++; sourceLabel = text; refreshStatus(); }
+
+function stopSource() {
+  runToken++;
+  if (source?.stop) source.stop();
+  source = null;
+  $("pause").hidden = true;
+  $("live").textContent = "Use the camera";
+}
+
+function reset() { stopSource(); samples = []; errors = {tiny: 0, blaze: 0}; $("empty").hidden = false; refreshStatus(); }
+
+function begin(src, label) {
+  stopSource();
+  samples = []; errors = {tiny: 0, blaze: 0};
+  source = src; sourceLabel = label;
+  $("empty").hidden = true;
+  refreshStatus();
+  loop(++runToken);
+}
+
+$("live").addEventListener("click", async () => {
+  if (source?.kind === "camera") { reset(); return; }
+  stopSource();
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: "user", width: {ideal: 640}, height: {ideal: 480}, frameRate: {ideal: 30}}});
+  } catch (err) {
+    setStatus("The camera isn't available here (" + (err && err.name || "refused") + "). Upload a photo or video instead.", true);
+    return;
+  }
+  const v = $("video");
+  v.srcObject = stream; v.loop = false;
+  await v.play().catch(() => {});
+  const st = stream.getVideoTracks()[0].getSettings();
+  begin({kind: "camera", el: v, mirrored: true, stop: () => { stream.getTracks().forEach(t => t.stop()); v.srcObject = null; }},
+        `Camera: ${st.width}×${st.height}` + (st.frameRate ? ` at ${Math.round(st.frameRate)} fps` : "") + ".");
+  $("live").textContent = "Stop the camera";
+});
+
+$("upload").addEventListener("change", async (e) => {
+  const file = e.target.files[0]; e.target.value = "";
+  if (!file) return;
+  // Stop the last source first: dropping a camera's stream reloads the video element.
+  stopSource();
+  const url = URL.createObjectURL(file);
+  if (file.type.startsWith("image/")) {
+    const img = new Image();
+    img.src = url;
+    try { await img.decode(); } catch { setStatus("Couldn't read " + file.name + " as a picture.", true); return; }
+    begin({kind: "image", el: img, mirrored: false, stop: () => URL.revokeObjectURL(url)}, `${file.name}: ${img.naturalWidth}×${img.naturalHeight}.`);
+  } else {
+    const v = $("video");
+    v.srcObject = null; v.src = url; v.loop = false;
+    try { await v.play(); } catch { setStatus("Couldn't play " + file.name + " as a video.", true); return; }
+    begin({kind: "video", el: v, mirrored: false, stop: () => { v.pause(); v.removeAttribute("src"); v.load(); URL.revokeObjectURL(url); }},
+          `${file.name}: ${v.videoWidth}×${v.videoHeight}, ${v.duration.toFixed(1)} s.`);
+    $("pause").hidden = false; $("pause").textContent = "Pause";
+  }
+});
+
+$("pause").addEventListener("click", () => {
+  const v = $("video");
+  if (source?.kind !== "video") return;
+  if (v.ended) { samples = []; v.currentTime = 0; v.play(); loop(++runToken); refreshStatus(); }
+  else if (v.paused) v.play(); else v.pause();
+  $("pause").textContent = v.paused ? "Play" : "Pause";
+});
+$("video").addEventListener("ended", () => { if (source?.kind === "video") $("pause").textContent = "Play again"; });
+
+$("reset").addEventListener("click", reset);
+
+// ---- Settings ----
+const fmt = {
+  face: v => v.toFixed(2), guess: v => v.toFixed(2), hold: v => v + " ms", trouble: v => v + " ms",
+  minLight: v => v + " / 255", maxLight: v => v + " / 255", zone: v => "middle " + v + "%", minWidth: v => v + "% of the circle wide", gap: v => v + " ms",
+};
+for (const key of Object.keys(fmt)) {
+  const el = $(key);
+  const sync = () => { rule[key] = Number(el.value); $(key + "Out").textContent = fmt[key](rule[key]); scheduleRender(); };
+  el.addEventListener("input", sync); sync();
+}
+$("defaults").addEventListener("click", () => {
+  for (const key of Object.keys(fmt)) { $(key).value = DEFAULTS[key]; $(key).dispatchEvent(new Event("input")); }
+  $("blazeCrop").value = "frame";
+  if ($("tinySize").value !== "224") { $("tinySize").value = "224"; startWorker("tiny"); }
+});
+$("tinySize").addEventListener("change", () => { startWorker("tiny"); refreshStatus(); });
+document.querySelectorAll("input[name=which]").forEach(r => r.addEventListener("change", () => render()));
+
+// ---- Drawing ----
+
+const TIPS = [
+  {text: "Center your face in the circle", key: "centered"},
+  {text: "Make sure your face is well lit", key: "lightOk"},
+  {text: "Move somewhere you stand out from the background"},
+  {text: "Wipe off your camera"},
+];
+
+function buildCards() {
+  $("cards").innerHTML = ["tiny", "blaze"].map(k => `
+    <section class="panel card" id="card-${k}" style="--c: var(${DETECTORS[k].color})">
+      <h3>${DETECTORS[k].name} <small id="${k}-backend"></small></h3>
+      <div class="verdict" id="${k}-verdict" aria-live="polite"></div>
+      <div class="bar" aria-hidden="true"><i id="${k}-bar"></i></div>
+      <div class="tips-head" id="${k}-tipshead"></div>
+      <ul class="tips" id="${k}-tips">${TIPS.map((t, i) => `<li id="${k}-tip${i}" class="unchecked"><span class="box" aria-hidden="true"></span>${t.text}</li>`).join("")}</ul>
+    </section>`).join("");
+}
+buildCards();
+
+function render() {
+  const evals = {tiny: evaluate("tiny"), blaze: evaluate("blaze")};
+  const active = activeKeys();
+  for (const k of ["tiny", "blaze"]) {
+    const d = DETECTORS[k], e = evals[k];
+    $("card-" + k).hidden = !active.includes(k);
+    $(k + "-backend").textContent = d.error ? "error" : d.ready ? d.backend + (k === "tiny" ? " · " + $("tinySize").value + " px" : " · 128 px") : "loading…";
+    let v;
+    if (!samples.some(s => s[k])) v = d.ready ? "Waiting for a picture." : "Loading…";
+    else if (e.passedAt != null) v = "Face found at " + fmtS(e.passedAt) + ". This would pass.";
+    else if (e.held > 0) v = `Holding: ${fmtS(e.held)} of ${fmtS(rule.hold)}.`;
+    else if (e.tipsAt != null) v = "No face held. Tips up since " + fmtS(e.tipsAt) + ".";
+    else v = "Looking for a face.";
+    $(k + "-verdict").textContent = v;
+    $(k + "-bar").style.width = (e.passedAt != null ? 100 : Math.min(100, e.held / rule.hold * 100)) + "%";
+    $(k + "-tipshead").textContent = e.tipsAt != null ? "Tips (showing):" : "Tips (hidden until " + fmtS(rule.trouble) + " without a face):";
+    TIPS.forEach((t, i) => {
+      const li = $(`${k}-tip${i}`);
+      const ok = t.key && e.last ? e.last[t.key] : undefined;
+      li.className = t.key == null ? "unchecked" : ok ? "ok" : "not-ok";
+      li.querySelector(".box").textContent = ok ? "✓" : "";
+    });
+  }
+  drawStage(evals, active);
+  drawScores(evals, active);
+  drawTimes(active);
+  drawReadings(evals, active);
+}
+
+function fitCanvas(c, h) {
+  const dpr = window.devicePixelRatio || 1, w = c.clientWidth;
+  h = h ?? c.clientHeight;
+  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); c.style.height = h + "px"; }
+  const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  return [g, w, h];
+}
+
+function drawStage(evals, active) {
+  const c = $("stage");
+  if (!source) { const [g] = fitCanvas(c); return; }
+  const [sw, sh] = sourceSize();
+  if (!sw) return;
+  $("stageWrap").style.aspectRatio = sw + " / " + sh;
+  const [g, w, h] = fitCanvas(c);
+  const s = Math.min(w / sw, h / sh), ox = (w - sw * s) / 2, oy = (h - sh * s) / 2, m = source.mirrored;
+  const P = (x, y) => [m ? w - (ox + x * s) : ox + x * s, oy + y * s];
+  g.save();
+  if (m) { g.translate(w, 0); g.scale(-1, 1); }
+  g.drawImage(source.el, ox, oy, sw * s, sh * s);
+  g.restore();
+  // The circle the participant sees, the rest dimmed.
+  const sq = visibleSquare(sw, sh), [cx, cy] = P(sq.x + sq.width / 2, sq.y + sq.height / 2), r = sq.width * s / 2;
+  g.save(); g.fillStyle = "rgba(0,0,0,0.45)"; g.beginPath(); g.rect(0, 0, w, h); g.arc(cx, cy, r, 0, Math.PI * 2, true); g.fill("evenodd"); g.restore();
+  g.strokeStyle = "rgba(255,255,255,0.7)"; g.lineWidth = 1.5; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
+  const zone = rule.zone / 100 * sq.width * s;
+  g.setLineDash([5, 5]); g.strokeStyle = "rgba(255,255,255,0.5)"; g.strokeRect(cx - zone / 2, cy - zone / 2, zone, zone); g.setLineDash([]);
+  // Each detector's latest face.
+  g.font = "600 12px " + col("--mono");
+  for (const k of active) {
+    const f = evals[k].last;
+    if (!f || !f.face) continue;
+    const color = col(DETECTORS[k].color), b = f.face.box;
+    const [x0, y0] = P(b.x, b.y), [x1, y1] = P(b.x + b.width, b.y + b.height);
+    const L = Math.min(x0, x1), T = Math.min(y0, y1), W = Math.abs(x1 - x0), H = Math.abs(y1 - y0);
+    g.strokeStyle = color; g.lineWidth = f.counted ? 3 : 1.5; g.setLineDash(f.counted ? [] : [6, 4]);
+    g.strokeRect(L, T, W, H); g.setLineDash([]);
+    const label = (k === "tiny" ? "Tiny " : "Blaze ") + f.face.score.toFixed(2);
+    const tw = g.measureText(label).width + 8, ly = k === "tiny" ? T - 18 : T + H;
+    g.fillStyle = color; g.fillRect(L, ly, tw, 18); g.fillStyle = "#fff"; g.fillText(label, L + 4, ly + 13);
+    const kp = f.face.keypoints;
+    if (kp) {
+      // BlazeFace's six points: eyes, nose tip, mouth, ears; joined into a rough face frame.
+      const pts = kp.map(p => P(p.x, p.y));
+      g.strokeStyle = color; g.lineWidth = 1.5; g.globalAlpha = 0.85;
+      for (const [a, z] of [[4, 0], [0, 1], [1, 5], [0, 2], [1, 2], [2, 3], [0, 3], [1, 3]]) { g.beginPath(); g.moveTo(...pts[a]); g.lineTo(...pts[z]); g.stroke(); }
+      g.globalAlpha = 1;
+      for (const [px, py] of pts) { g.beginPath(); g.arc(px, py, 3.5, 0, Math.PI * 2); g.fillStyle = "#fff"; g.fill(); g.strokeStyle = color; g.stroke(); }
+    }
+  }
+}
+
+function timeAxis(active) {
+  const live = runToken && source && source.kind !== "image";
+  const all = samples.filter(s => active.some(k => s[k]));
+  const end = all.length ? all[all.length - 1].t : 0;
+  const span = live ? Math.max(15000, 0) : Math.max(end, 1000);
+  const start = live ? Math.max(0, end - span) : 0;
+  return {start, span, all};
+}
+
+function drawScores(evals, active) {
+  const c = $("scoreChart"), [g, w, h] = fitCanvas(c, 300);
+  const stripH = 14, strips = active.length * 2, pad = {l: 34, r: 12, t: 8, b: 22 + strips * stripH + 6};
+  const iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+  const {start, span} = timeAxis(active);
+  const X = (t) => pad.l + (t - start) / span * iw, Y = (p) => pad.t + (1 - p) * ih;
+  g.strokeStyle = col("--line"); g.fillStyle = col("--quiet"); g.lineWidth = 1; g.font = "11px " + col("--mono");
+  for (const p of [0, 0.5, 1]) { g.beginPath(); g.moveTo(pad.l, Y(p)); g.lineTo(w - pad.r, Y(p)); g.stroke(); g.fillText(p.toFixed(1), 4, Y(p) + 4); }
+  const step = span > 20000 ? 5000 : span > 6000 ? 2000 : span > 2500 ? 1000 : 500;
+  for (let t = Math.ceil(start / step) * step; t <= start + span; t += step) g.fillText((t / 1000).toFixed(step < 1000 ? 1 : 0) + "s", X(t) - 8, pad.t + ih + 14);
+  g.setLineDash([4, 4]); g.strokeStyle = col("--warn");
+  for (const p of [rule.face, rule.guess]) { g.beginPath(); g.moveTo(pad.l, Y(p)); g.lineTo(w - pad.r, Y(p)); g.stroke(); }
+  g.setLineDash([]);
+  g.save(); g.beginPath(); g.rect(pad.l, 0, iw, h); g.clip();
+  active.forEach((k, ki) => {
+    const color = col(DETECTORS[k].color), e = evals[k];
+    g.strokeStyle = color; g.lineWidth = 1.5; g.beginPath(); let first = true;
+    samples.forEach((s, i) => { const f = e.flags[i]; if (!f) return; const y = Y(f.face ? f.face.score : 0); first ? g.moveTo(X(s.t), y) : g.lineTo(X(s.t), y); first = false; });
+    g.stroke();
+    for (const [t, dash] of [[e.passedAt, []], [e.tipsAt, [2, 3]]]) {
+      if (t == null) continue;
+      g.setLineDash(dash); g.lineWidth = 2; g.beginPath(); g.moveTo(X(t), pad.t); g.lineTo(X(t), pad.t + ih); g.stroke(); g.setLineDash([]);
+    }
+    // Tip strips: filled where that check met the tip.
+    ["centered", "lightOk"].forEach((tip, ti) => {
+      const y = pad.t + ih + 22 + (ki * 2 + ti) * stripH;
+      g.fillStyle = col("--line"); g.fillRect(pad.l, y + 3, iw, stripH - 6);
+      g.fillStyle = color;
+      samples.forEach((s, i) => { const f = e.flags[i]; if (!f || !f[tip]) return; const next = samples[i + 1]; const x0 = X(s.t), x1 = next ? X(next.t) : x0 + 3; g.fillRect(x0, y + 2, Math.max(2, x1 - x0), stripH - 4); });
+    });
+  });
+  g.restore();
+  g.fillStyle = col("--quiet"); g.font = "10px " + col("--mono");
+  active.forEach((k, ki) => ["ctr", "lit"].forEach((n, ti) => g.fillText(n, 4, pad.t + ih + 22 + (ki * 2 + ti) * stripH + 10)));
+}
+
+function drawTimes(active) {
+  const c = $("timeChart"), [g, w, h] = fitCanvas(c, 160);
+  const pad = {l: 44, r: 12, t: 8, b: 20}, iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+  const {start, span} = timeAxis(active);
+  const all = []; for (const s of samples) for (const k of active) if (s[k]) all.push(s[k].ms);
+  const top = Math.max(20, Math.ceil((pct(all, 0.98) ?? 20) * 1.2 / 10) * 10);
+  const X = (t) => pad.l + (t - start) / span * iw, Y = (v) => pad.t + (1 - Math.min(v, top) / top) * ih;
+  g.strokeStyle = col("--line"); g.fillStyle = col("--quiet"); g.lineWidth = 1; g.font = "11px " + col("--mono");
+  for (const v of [0, top / 2, top]) { g.beginPath(); g.moveTo(pad.l, Y(v)); g.lineTo(w - pad.r, Y(v)); g.stroke(); g.fillText(Math.round(v) + "ms", 2, Y(v) + 4); }
+  g.save(); g.beginPath(); g.rect(pad.l, 0, iw, h); g.clip();
+  for (const k of active) {
+    g.strokeStyle = col(DETECTORS[k].color); g.lineWidth = 1.5; g.beginPath(); let first = true;
+    for (const s of samples) { if (!s[k]) continue; first ? g.moveTo(X(s.t), Y(s[k].ms)) : g.lineTo(X(s.t), Y(s[k].ms)); first = false; }
+    g.stroke();
+  }
+  g.restore();
+}
+
+function drawReadings(evals, active) {
+  const kb = (n) => (n / 1024).toFixed(0) + " KB";
+  const rows = [
+    ["Download, code (gzip)", k => `${kb(BUNDLE_COST[k].code)} (${kb(BUNDLE_COST[k].codeGz)})`],
+    ["Download, weights (gzip)", k => `${kb(BUNDLE_COST[k].weights)} (${kb(BUNDLE_COST[k].weightsGz)})`],
+    ["Download, total gzip", k => kb(BUNDLE_COST[k].codeGz + BUNDLE_COST[k].weightsGz)],
+    ["Backend", k => DETECTORS[k].backend ?? "–"],
+    ["Load and warm-up", k => fmtMs(DETECTORS[k].loadMs)],
+    ["Checks", k => samples.filter(s => s[k]).length + (errors[k] ? ` (${errors[k]} failed)` : "")],
+    ["Checks a second", k => { const ts = samples.filter(s => s[k]).map(s => s.t); return ts.length > 1 ? ((ts.length - 1) / ((ts[ts.length - 1] - ts[0]) / 1000)).toFixed(1) : "–"; }],
+    ["Time per check, median", k => fmtMs(median(samples.filter(s => s[k]).map(s => s[k].ms)))],
+    ["Time per check, 95th %", k => fmtMs(pct(samples.filter(s => s[k]).map(s => s[k].ms), 0.95))],
+    ["Model alone, median", k => k === "blaze" ? fmtMs(median(samples.filter(s => s.blaze?.model != null).map(s => s.blaze.model))) : "–"],
+    ["Score, last", k => evals[k].last?.face ? evals[k].last.face.score.toFixed(3) : "–"],
+    ["Score, best", k => evals[k].best?.toFixed(3) ?? "–"],
+    ["Faces above the face score", k => { const s = samples.findLast(s => s[k]); return k === "blaze" && s ? String(s.blaze.scores.filter(v => v > rule.face).length) : "–"; }],
+    ["Face middle (circle %)", k => { const f = evals[k].last, s = samples.findLast(x => x[k]); if (!f?.face || !s) return "–"; const b = f.face.box; return `${Math.round((b.x + b.width / 2 - s.sq.x) / s.sq.width * 100)}, ${Math.round((b.y + b.height / 2 - s.sq.y) / s.sq.height * 100)}`; }],
+    ["Face width (circle %)", k => { const f = evals[k].last, s = samples.findLast(x => x[k]); return f?.face && s ? Math.round(f.face.box.width / s.sq.width * 100) + "%" : "–"; }],
+    ["Centered", k => evals[k].last ? (evals[k].last.centered ? "yes" : "no") : "–"],
+    ["Light", k => evals[k].last?.light != null ? evals[k].last.light.toFixed(0) + (evals[k].last.lightOk ? " ok" : " off") : "–"],
+    ["Passed at", k => fmtS(evals[k].passedAt)],
+    ["Tips up at", k => fmtS(evals[k].tipsAt)],
+  ];
+  const keys = active;
+  $("readings").innerHTML = `<thead><tr><th></th>${keys.map(k => `<th style="color: var(${DETECTORS[k].color})">${DETECTORS[k].name}</th>`).join("")}</tr></thead><tbody>` +
+    rows.map(([name, f]) => `<tr><td>${name}</td>${keys.map(k => `<td>${f(k)}</td>`).join("")}</tr>`).join("") + "</tbody>";
+}
+
+// Keep the picture moving between checks.
+(function frame() { if (source && source.kind !== "image") render(); requestAnimationFrame(frame); })();
+window.addEventListener("resize", scheduleRender);
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", scheduleRender);
+
+startWorker("tiny");
+startWorker("blaze");
+refreshStatus();
+
+// For scripted checks.
+window.faceBench = {samples: () => samples, evaluate, detectors: DETECTORS};
+})();
+</script>
+</body></html>
