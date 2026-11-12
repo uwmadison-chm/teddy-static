@@ -92,10 +92,11 @@ ffmpeg -i recording.webm -c copy recording-fixed.webm   # rebuilds the duration 
 
 | field | |
 |---|---|
-| `module_index` | where the session goes back to, as an index into `modules`: the start of the module that was running. `-1` means before the first module. |
+| `module_index` | the module the session goes back to, as an index into `modules`. `-1` means before the first module. |
 | `calibrating` | `true` when that was calibration. Then, as with `module_index` of `-1`, the session goes through calibration again and on from there. |
+| `item_index` | how many of that module's items were done, which is the index into its items of the one to go back to |
 
-Otherwise, the camera and a face check come next, as a `calibration` module with `face_check_only` set, and then the module at `module_index` starts over. Anything from the module that was cut off stays in the run: its events, and its recording, as a media item that was never finished. Recording numbers carry on from the earlier page.
+Otherwise, the camera and a face check come next, as a `calibration` module with `face_check_only` set, and then the module at `module_index` starts again at `item_index`: the sentence, videolog prompt, reel, or question that was cut off, from its beginning. An item counts as done when its recording has stopped (sentences, videologs), it has been rated (reels), or it has been answered (questions). Anything from the item that was cut off stays in the run: its events, and its recording, as a media item that was never finished. Recording numbers carry on from the earlier page.
 
 **`session_finished`**: the end screen has started. After it, Teddy finalizes the run; anything that happens later is only logged to the browser console.
 
@@ -129,7 +130,7 @@ Otherwise, the camera and a face check come next, as a `calibration` module with
 
 ### Modules
 
-**`module_started`**: a module's screen has started. `items`: its item IDs, in order (empty for calibration). `face_check_only`: `true` for the face check after a `session_resumed`, which runs as `calibration` but skips the eyes-closed part; otherwise `false`.
+**`module_started`**: a module's screen has started. `items`: its item IDs, in order (empty for calibration). `item_index`: the index into `items` this screen starts at, which is `0` unless the module was cut off partway, by a revisit or by the camera help screen. A `questions` module's recording then has only the questions from there on in its `items`. `face_check_only`: `true` for the face check after a `session_resumed`, which runs as `calibration` but skips the eyes-closed part; otherwise `false`.
 
 **`module_finished`**: the participant pressed the button to move on from a module.
 
@@ -220,4 +221,4 @@ Reel ratings are `4` Really Funny, `3` Pretty Funny, `2` Not Funny, `1` Hated It
 - **1.2**: `face_check_result` has `detector_backend`.
 - **1.3**: `reel_preloaded` and `reel_preload_failed`. `item_shown` for a reel has `preloaded`.
 - **1.4**: `chime_preload_failed`.
-- **1.5**: `session_resumed`. `session_started` has `resume_failed`, and `module_started` has `face_check_only`.
+- **1.5**: `session_resumed`. `session_started` has `resume_failed`, and `module_started` has `item_index` and `face_check_only`.

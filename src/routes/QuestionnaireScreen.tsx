@@ -45,7 +45,8 @@ export default function QuestionnaireScreen() {
         const questionIDs = CurrentSessionData.getCurrentModuleArgs();
 
         console.log("Starting questionnaire module with questions:", questionIDs)
-        CurrentSessionData.startModule()
+        // After a reload, the question that was cut off, not the first.
+        const first = CurrentSessionData.startModule()
 
         const questionDescription = questionIDs.length == 1 ?
             "a quick question" : "a few quick questions";
@@ -57,12 +58,15 @@ export default function QuestionnaireScreen() {
         panels.showStartPanel();
         await start.next(signal);
 
-        const recording = userVideoRef.current.record({kind: "questions", items: questionIDs}, {signal});
+        // One recording for the questions this screen asks.
+        const recording = first < questionIDs.length ?
+            userVideoRef.current.record({kind: "questions", items: questionIDs.slice(first)}, {signal}) :
+            null;
 
         // Teddy asks each question, and its answers appear once the question
         // has finished typing out (or been tapped through) and the last
         // answers have gone.
-        for (let index = 0; index < questionIDs.length; index++) {
+        for (let index = first; index < questionIDs.length; index++) {
             const question = questions[questionIDs[index]];
             CurrentSessionData.logEvent("item_shown", {
                 item: question.id,
@@ -86,9 +90,10 @@ export default function QuestionnaireScreen() {
                 label: choice.label,
                 choices: question.choices,
             });
+            CurrentSessionData.finishItem();
         }
 
-        recording.stop("finished");
+        recording?.stop("finished");
         panels.showPanel(null);
         teddy.playAnimation(TeddyAnimations.IDLE);
         const hasMoreModules = CurrentSessionData.hasMoreModules();

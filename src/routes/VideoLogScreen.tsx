@@ -43,7 +43,8 @@ export default function VideoLogScreen() {
         const promptIDs = CurrentSessionData.getCurrentModuleArgs();
 
         console.log("Starting videologs module with prompts:", promptIDs)
-        CurrentSessionData.startModule()
+        // After a reload, the prompt that was cut off, not the first.
+        const first = CurrentSessionData.startModule()
 
         const promptDescription = promptIDs.length == 1 ?
             "a prompt" : "a couple prompts";
@@ -55,9 +56,9 @@ export default function VideoLogScreen() {
                 "And please keep your face in frame the whole time!"],
             signal);
 
-        for (let index = 0; index < promptIDs.length; index++) {
+        for (let index = first; index < promptIDs.length; index++) {
             const id = promptIDs[index];
-            if (index > 0) {
+            if (index > first) {
                 teddy.playAnimation(TeddyAnimations.IDLE);
                 const remaining = promptIDs.length - index;
                 const promptDescription = remaining == 1 ?
@@ -97,6 +98,7 @@ export default function VideoLogScreen() {
                 });
             panels.showPanel(null);
             promptTextRef.current.hide()
+            CurrentSessionData.finishItem();
         }
 
         teddy.playAnimation(TeddyAnimations.IDLE);

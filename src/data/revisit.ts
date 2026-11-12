@@ -10,11 +10,14 @@ import {Config} from "@/data/config.ts";
 export interface SavedSession {
     // pig's id for the run on this device; null in debug mode, where there's no run.
     runId: string | null;
-    // The module to go back to the start of, as an index into the link's
+    // The module to go back to, as an index into the link's
     // modules; -1 before the first one.
     module: number;
     // True when that's calibration, which runs before the first module.
     calibrating: boolean;
+    // How many of that module's items were done: the index of the one to go
+    // back to.
+    item: number;
     // How many recordings the session has numbered so far.
     recordings: number;
     // When this was saved, in milliseconds since 1970.
@@ -31,7 +34,8 @@ export function savedSession(): SavedSession | null {
     }
     try {
         const saved = JSON.parse(window.localStorage.getItem(KEY) ?? "null");
-        if (saved == null || typeof saved.module != "number" || typeof saved.recordings != "number") {
+        if (saved == null || typeof saved.module != "number" || typeof saved.recordings != "number" ||
+            typeof saved.item != "number") {
             return null;
         }
         return saved as SavedSession;

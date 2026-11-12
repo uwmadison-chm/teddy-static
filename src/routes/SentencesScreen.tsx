@@ -41,7 +41,8 @@ export default function SentencesScreen() {
         const sentenceIDs = CurrentSessionData.getCurrentModuleArgs();
 
         console.log("Starting sentences module with sentences:", sentenceIDs)
-        CurrentSessionData.startModule()
+        // After a reload, the sentence that was cut off, not the first.
+        const first = CurrentSessionData.startModule()
 
         const sentenceDescription = sentenceIDs.length == 1 ?
             "a sentence" : "a couple sentences";
@@ -51,9 +52,9 @@ export default function SentencesScreen() {
                 "And please keep your face in frame the whole time!"],
             signal);
 
-        for (let index = 0; index < sentenceIDs.length; index++) {
+        for (let index = first; index < sentenceIDs.length; index++) {
             const id = sentenceIDs[index];
-            if (index > 0) {
+            if (index > first) {
                 teddy.playAnimation(TeddyAnimations.IDLE);
                 const remaining = sentenceIDs.length - index;
                 const sentenceDescription = remaining == 1 ?
@@ -89,6 +90,7 @@ export default function SentencesScreen() {
                 });
             panels.showPanel(null);
             promptTextRef.current.hide()
+            CurrentSessionData.finishItem();
         }
 
         teddy.playAnimation(TeddyAnimations.IDLE);
